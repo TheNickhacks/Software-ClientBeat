@@ -1,37 +1,48 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-CL">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}{{ menu_activo|default:"Panel Administrativo" }} · Client Beat{% endblock %}</title>
+  <title>{% block title %}{{ menu_activo|default:"Panel Administrativo" }} · ClientBeat · El Pulso de tu Marca{% endblock %}</title>
+  {% load static %}
+  <link rel="icon" type="image/png" sizes="512x512" href="{% static 'img/LogoClientBeat.png' %}" />
+  <link rel="apple-touch-icon" href="{% static 'img/LogoClientBeat.png' %}" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            primary: '#2563eb',
-            secondary: '#9333ea',
-            accent: '#4f46e5',
+            primary: '#0B3EA6',
+            secondary: '#00B879',
+            accent: '#08337a',
+            cbblue: { DEFAULT: '#0B3EA6', 50: '#eef4ff', 100: '#d9e7ff', 600: '#08337a', 700: '#062556', 900: '#041B3A' },
+            cbgreen: { DEFAULT: '#00B879', 50: '#ecfbf4', 600: '#008E5C', 700: '#00633F' },
           }
         }
       }
     }
   </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  {% load static %}
   <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <style>
+    .gradient-text {
+      background: linear-gradient(90deg, #0B3EA6 0%, #00B879 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .glass-effect { background: rgba(255,255,255,0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.5); }
+  </style>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased">
   {% if messages %}
   <div id="msg-toast-container" class="fixed top-4 right-4 z-[90] space-y-2 w-full max-w-md">
     {% for m in messages %}
     <div class="glass-effect rounded-xl px-4 py-3 shadow-lg border flex items-start gap-3
-                {% if m.tags == 'error' %}border-red-200 bg-red-50 text-red-700
-                {% elif m.tags == 'success' %}border-green-200 bg-green-50 text-green-700
+                {% if m.tags == 'error' %}border-rose-200 bg-rose-50 text-rose-700
+                {% elif m.tags == 'success' %}border-cbgreen-600/30 bg-cbgreen-50 text-cbgreen-700
                 {% elif m.tags == 'warning' %}border-amber-200 bg-amber-50 text-amber-700
-                {% else %}border-blue-200 bg-blue-50 text-blue-700{% endif %}">
+                {% else %}border-cbblue-100 bg-cbblue-50 text-cbblue-700{% endif %}">
       <i class="fa {% if m.tags == 'error' %}fa-exclamation-circle{% elif m.tags == 'success' %}fa-check-circle{% elif m.tags == 'warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %} text-lg mt-0.5"></i>
       <div class="text-sm leading-relaxed flex-1">{{ m }}</div>
       <button type="button" onclick="this.parentElement.remove()"
@@ -44,13 +55,12 @@
   <div class="min-h-screen flex">
     {# ========= SIDEBAR ========= #}
     <aside class="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col fixed h-screen z-40">
-      <div class="px-5 py-5 border-b border-slate-100 flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 flex items-center justify-center text-white font-bold">
-          CB
-        </div>
-        <div class="min-w-0">
-          <div class="font-extrabold gradient-text text-lg leading-none">Client Beat</div>
-          <div class="text-[11px] text-slate-500 mt-0.5">Panel Admin</div>
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
+        <div class="min-w-0 flex items-center gap-3">
+          <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" class="h-10 w-auto object-contain" />
+          <div class="min-w-0">
+            <div class="text-[11px] text-slate-500 mt-0.5">Panel Administrativo</div>
+          </div>
         </div>
       </div>
 
@@ -60,11 +70,11 @@
         <a href="{{ item.url }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all
                   {% if menu_activo == item.label %}
-                    bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-indigo-600/10 text-slate-900 shadow-sm ring-1 ring-indigo-100
+                    bg-gradient-to-r from-cbblue/10 via-cbblue/5 to-cbgreen/10 text-slate-900 shadow-sm ring-1 ring-cbblue/20
                   {% else %}
                     text-slate-600 hover:bg-slate-100 hover:text-slate-900
                   {% endif %}">
-          <span class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 text-{{ item.color }}-600 shadow-sm">
+          <span class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 text-cbblue shadow-sm">
             <i class="fa {{ item.icono }} text-xs"></i>
           </span>
           <span>{{ item.label }}</span>
@@ -75,7 +85,7 @@
         <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400 px-3 mt-6 mb-1">Solo SuperUser</p>
         <a href="/admin-panel/superuser/salud/"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all">
-          <span class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 text-red-600 shadow-sm">
+          <span class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 text-rose-600 shadow-sm">
             <i class="fa fa-heartbeat text-xs"></i>
           </span>
           <span>Salud técnica</span>
@@ -83,8 +93,8 @@
         <a href="/admin/"
            target="_blank"
            rel="noopener noreferrer"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-all">
-          <span class="w-7 h-7 flex items-center justify-center rounded-lg bg-red-100 text-red-600 shadow-sm">
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-rose-600 hover:bg-rose-50 transition-all">
+          <span class="w-7 h-7 flex items-center justify-center rounded-lg bg-rose-100 text-rose-600 shadow-sm">
             <i class="fa fa-unlock text-xs"></i>
           </span>
           <span>Django Admin (técnico)</span>
@@ -94,7 +104,7 @@
 
       <div class="p-4 border-t border-slate-100 text-[11px] text-slate-500 leading-relaxed">
         <div class="flex items-center gap-2 mb-2">
-          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white text-xs font-bold">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-cbblue to-cbgreen flex items-center justify-center text-white text-xs font-bold">
             {{ user.email|slice:":2"|upper }}
           </div>
           <div class="min-w-0">
@@ -104,12 +114,12 @@
             </div>
           </div>
         </div>
-        <a href="/dashboard/" class="inline-block text-slate-500 hover:text-indigo-600 mb-1">
+        <a href="/dashboard/" class="inline-block text-slate-500 hover:text-cbblue mb-1">
           <i class="fa fa-arrow-left mr-1"></i> Volver al dashboard cliente
         </a><br>
         <form method="POST" action="/accounts/logout/" class="inline">
           {% csrf_token %}
-          <button type="submit" class="text-slate-500 hover:text-red-600 font-medium">
+          <button type="submit" class="text-slate-500 hover:text-rose-600 font-medium">
             <i class="fa fa-sign-out-alt mr-1"></i> Cerrar sesión
           </button>
         </form>
@@ -121,8 +131,7 @@
       {# Header móvil / barra superior #}
       <header class="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 sticky top-0 z-30">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">CB</div>
-          <div class="font-bold gradient-text">Client Beat Admin</div>
+          <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" class="h-8 w-auto object-contain" />
         </div>
       </header>
 
@@ -130,8 +139,8 @@
       <div class="px-6 md:px-8 pt-6 pb-2 md:pt-8">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div class="text-xs font-semibold uppercase tracking-wider text-indigo-600 mb-1">
-              Administración Client Beat
+            <div class="text-xs font-semibold uppercase tracking-wider text-cbblue mb-1">
+              Administración ClientBeat · El Pulso de tu Marca
             </div>
             <h1 class="text-2xl md:text-3xl font-extrabold gradient-text">
               {{ menu_activo|default:"Panel" }}
@@ -149,7 +158,7 @@
       </div>
 
       <footer class="px-6 md:px-8 py-4 text-xs text-slate-400 border-t border-slate-100 bg-white/50">
-        © Client Beat SpA · RUT 77.607.311-3 · Asturias 790 E, Rancagua · Chile
+        © ClientBeat SpA · RUT 77.607.311-3 · Asturias 790 E, Rancagua · Chile · El Pulso de tu Marca
       </footer>
     </main>
   </div>

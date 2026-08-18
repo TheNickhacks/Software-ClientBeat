@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Mi Panel — Client Beat{% endblock %}
+{% block title %}Mi Panel · ClientBeat · El Pulso de tu Marca{% endblock %}
 {% block content %}
 <section class="pt-28 pb-20">
   <div class="container mx-auto px-6">
@@ -7,16 +7,16 @@
     {# ---------------- WELCOME BANNER ---------------- #}
     {% if welcome %}
       <div class="mb-8 rounded-2xl overflow-hidden shadow-lg animate-fade-up delay-1">
-        <div class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-8 md:p-10 text-white">
+        <div class="bg-gradient-to-r from-cbblue via-cbblue-700 to-cbgreen p-8 md:p-10 text-white">
           <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div class="max-w-2xl">
               <div class="inline-flex items-center gap-2 bg-white/15 px-3 py-1 rounded-full text-sm font-medium backdrop-blur mb-4">
                 <i class="fa fa-rocket"></i> ¡Onboarding completado!
               </div>
               <h2 class="text-2xl md:text-3xl font-bold mb-3">
-                🎉 ¡Bienvenido{% if user.first_name %} {{ user.first_name }}{% else %},{% endif %} a Client Beat!
+                🎉 ¡Bienvenido{% if user.first_name %} {{ user.first_name }}{% else %},{% endif %} a ClientBeat!
               </h2>
-              <p class="text-blue-50/90 text-base md:text-lg leading-relaxed">
+              <p class="text-cbblue-50/90 text-base md:text-lg leading-relaxed">
                 {% if negocio %}
                   Tu negocio <b class="text-white">{{ negocio.nombre }}</b> ya está configurado. Desde aquí podrás revisar toda tu
                   reputación Google, gestionar encuestas QR y compararte con competidores de tu rubro.
@@ -26,7 +26,7 @@
               </p>
             </div>
             <div class="flex-shrink-0">
-              <a href="/admin/" class="inline-flex items-center gap-2 bg-white text-indigo-700 font-semibold px-5 py-3 rounded-xl shadow-lg hover:shadow-2xl hover:-translate-y-0.5 transition-all">
+              <a href="/admin/" class="inline-flex items-center gap-2 bg-white text-cbblue font-semibold px-5 py-3 rounded-xl shadow-lg hover:shadow-2xl hover:-translate-y-0.5 transition-all">
                 <i class="fa fa-cog"></i> Ir al Panel Admin
               </a>
             </div>
@@ -46,8 +46,8 @@
             Panel de <b>{{ negocio.nombre }}</b>
             {% if rol_actual %}
               · <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full
-                {% if rol_actual == 'ADMIN_SOPORTE' %}bg-blue-100 text-blue-700
-                {% elif rol_actual == 'DUENO' %}bg-purple-100 text-purple-700
+                {% if rol_actual == 'ADMIN_SOPORTE' %}bg-cbblue-50 text-cbblue-700
+                {% elif rol_actual == 'DUENO' %}bg-cbgreen-50 text-cbgreen-700
                 {% else %}bg-slate-100 text-slate-700{% endif %}">
                 <i class="fa fa-shield-halved"></i>
                 {% if rol_actual == 'ADMIN_SOPORTE' %}Admin ClienBeat{% elif rol_actual == 'DUENO' %}Dueño{% else %}Colaborador{% endif %}
@@ -76,10 +76,10 @@
     <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10 animate-fade-up delay-3">
       <div class="glass-effect rounded-2xl p-6 card-hover">
         <div class="flex items-center justify-between mb-4">
-          <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-lg">
+          <div class="w-10 h-10 rounded-xl bg-cbblue-50 text-cbblue-700 flex items-center justify-center text-lg">
             <i class="fa fa-store"></i>
           </div>
-          <span class="text-xs font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+          <span class="text-xs font-medium text-cbblue-700 bg-cbblue-50 px-2 py-0.5 rounded-full">
             {% if negocio %}ACTIVO{% else %}—{% endif %}
           </span>
         </div>
@@ -91,10 +91,10 @@
 
       <div class="glass-effect rounded-2xl p-6 card-hover">
         <div class="flex items-center justify-between mb-4">
-          <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-lg">
+          <div class="w-10 h-10 rounded-xl bg-cbgreen-50 text-cbgreen-700 flex items-center justify-center text-lg">
             <i class="fa fa-map-marker-alt"></i>
           </div>
-          <span class="text-xs font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
+          <span class="text-xs font-medium text-cbgreen-700 bg-cbgreen-50 px-2 py-0.5 rounded-full">
             {% if plan_activo %}{{ plan_activo.get_nombre_mostrar }}{% else %}Plan activo{% endif %}
           </span>
         </div>
@@ -107,10 +107,10 @@
 
       <div class="glass-effect rounded-2xl p-6 card-hover">
         <div class="flex items-center justify-between mb-4">
-          <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-lg">
+          <div class="w-10 h-10 rounded-xl bg-cbblue-50 text-cbblue-700 flex items-center justify-center text-lg">
             <i class="fa fa-users"></i>
           </div>
-          <span class="text-xs font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
+          <span class="text-xs font-medium text-cbblue-700 bg-cbblue-50 px-2 py-0.5 rounded-full">
             Equipo
           </span>
         </div>
@@ -123,10 +123,10 @@
 
       <div class="glass-effect rounded-2xl p-6 card-hover">
         <div class="flex items-center justify-between mb-4">
-          <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg">
+          <div class="w-10 h-10 rounded-xl bg-cbgreen-50 text-cbgreen-700 flex items-center justify-center text-lg">
             <i class="fa fa-star"></i>
           </div>
-          <span class="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+          <span class="text-xs font-medium text-cbgreen-700 bg-cbgreen-50 px-2 py-0.5 rounded-full">
             Próximamente
           </span>
         </div>
@@ -141,19 +141,19 @@
     {% if negocio %}
     <div class="grid lg:grid-cols-3 gap-6 mb-8 animate-fade-up delay-4">
       <div class="lg:col-span-2 glass-effect p-7 md:p-8 rounded-2xl relative overflow-hidden">
-        <div class="absolute -top-16 -right-10 w-40 h-40 bg-gradient-to-br from-indigo-400/10 to-purple-500/10 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="absolute -top-16 -right-10 w-40 h-40 bg-gradient-to-br from-cbblue/10 via-cbgreen/10 to-cbblue-700/10 rounded-full blur-2xl pointer-events-none"></div>
         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6 relative">
           <div>
-            <div class="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full mb-3">
+            <div class="inline-flex items-center gap-2 bg-cbblue-50 text-cbblue-700 text-xs font-bold px-3 py-1 rounded-full mb-3">
               <i class="fa fa-qrcode mr-1"></i>MÓDULO ENCUESTAS QR
             </div>
             <h2 class="text-2xl font-extrabold text-slate-900 mb-1">📊 Tu panel de experiencia cliente</h2>
-            <p class="text-slate-600 text-sm md:text-base">Acá verás las respuestas reales de tus clientes en tiempo real.</p>
+            <p class="text-slate-600 text-sm md:text-base">Acá verás las respuestas <b>100% reales</b> de tus clientes, actualizadas a medida que responden.</p>
           </div>
           <div class="flex gap-3">
             {% if qr_primer_local %}
             <button onclick="document.getElementById('qrModal').classList.remove('hidden')" class="btn-secondary">
-              <i class="fa fa-qrcode text-indigo-600"></i> Ver QR mi local
+              <i class="fa fa-qrcode text-cbblue"></i> Ver QR mi local
             </button>
             {% endif %}
           </div>
@@ -163,10 +163,10 @@
           <div class="bg-white/70 rounded-2xl p-5 border border-slate-100 shadow-sm">
             <div class="flex items-center justify-between mb-2">
               <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total respuestas</span>
-              <i class="fa fa-comment-dots text-blue-500"></i>
+              <i class="fa fa-comment-dots text-cbblue"></i>
             </div>
             <div class="text-3xl font-black text-slate-900">{{ kpi_total_respuestas|default:0 }}</div>
-            <div class="text-xs font-semibold text-emerald-600 mt-1">
+            <div class="text-xs font-semibold text-cbgreen-600 mt-1">
               <i class="fa fa-arrow-trend-up"></i> +{{ kpi_respuestas_30d|default:0 }} últimos 30 días
             </div>
           </div>
@@ -187,26 +187,26 @@
           <div class="bg-white/70 rounded-2xl p-5 border border-slate-100 shadow-sm">
             <div class="flex items-center justify-between mb-2">
               <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Distribución NPS</span>
-              <i class="fa fa-users-line text-purple-500"></i>
+              <i class="fa fa-users-line text-cbblue"></i>
             </div>
             <div class="flex gap-1.5 h-4 rounded-full overflow-hidden mb-2">
-              <div class="bg-emerald-500" style="width:{% if kpi_total_respuestas %}{% widthratio kpi_promotores kpi_total_respuestas 100 %}{% else %}0{% endif %}%"></div>
+              <div class="bg-cbgreen" style="width:{% if kpi_total_respuestas %}{% widthratio kpi_promotores kpi_total_respuestas 100 %}{% else %}0{% endif %}%"></div>
               <div class="bg-amber-500" style="width:{% if kpi_total_respuestas %}{% widthratio kpi_pasivos kpi_total_respuestas 100 %}{% else %}0{% endif %}%"></div>
               <div class="bg-rose-500" style="width:{% if kpi_total_respuestas %}{% widthratio kpi_detractores kpi_total_respuestas 100 %}{% else %}0{% endif %}%"></div>
             </div>
             <div class="grid grid-cols-3 gap-1 text-xs">
-              <div class="text-center"><span class="font-bold text-emerald-600">{{ kpi_promotores|default:0 }}</span><span class="text-slate-400"> P</span></div>
+              <div class="text-center"><span class="font-bold text-cbgreen-700">{{ kpi_promotores|default:0 }}</span><span class="text-slate-400"> P</span></div>
               <div class="text-center"><span class="font-bold text-amber-600">{{ kpi_pasivos|default:0 }}</span><span class="text-slate-400"> Ps</span></div>
               <div class="text-center"><span class="font-bold text-rose-600">{{ kpi_detractores|default:0 }}</span><span class="text-slate-400"> D</span></div>
             </div>
           </div>
 
-          <div class="bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 rounded-2xl p-5 border border-emerald-100 shadow-sm">
+          <div class="bg-gradient-to-br from-cbgreen-50 via-white to-cbblue-50 rounded-2xl p-5 border border-cbgreen-100 shadow-sm">
             <div class="flex items-center justify-between mb-2">
               <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">CSAT Felices</span>
-              <i class="fa fa-face-laugh-beam text-emerald-500"></i>
+              <i class="fa fa-face-laugh-beam text-cbgreen"></i>
             </div>
-            <div class="text-3xl font-black text-emerald-600">{{ kpi_csat_felices_pct|default:0 }}%</div>
+            <div class="text-3xl font-black text-cbgreen-700">{{ kpi_csat_felices_pct|default:0 }}%</div>
             <div class="text-[11px] text-slate-500 mt-1.5">{{ kpi_csat_total|default:0 }} respuestas con emoción</div>
           </div>
         </div>
@@ -224,13 +224,13 @@
               <summary class="list-none cursor-pointer p-4 select-none flex items-start md:items-center justify-between gap-3">
                 <div class="flex items-start gap-3 flex-1">
                   <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 bg-slate-50 border border-slate-100
-                    {% if r.nps_categoria == 'Promotor' %}!bg-emerald-50 !border-emerald-100{% elif r.nps_categoria == 'Detractor' %}!bg-rose-50 !border-rose-100{% else %}!bg-amber-50 !border-amber-100{% endif %}">
+                    {% if r.nps_categoria == 'Promotor' %}!bg-cbgreen-50 !border-cbgreen-100{% elif r.nps_categoria == 'Detractor' %}!bg-rose-50 !border-rose-100{% else %}!bg-amber-50 !border-amber-100{% endif %}">
                     {% if r.csat_emocion == 'MUY_FELIZ' %}😍{% elif r.csat_emocion == 'FELIZ' %}😊{% elif r.csat_emocion == 'NEUTRAL' %}😐{% elif r.csat_emocion == 'INSATISFECHO' %}😞{% elif r.csat_emocion == 'MUY_INSATISFECHO' %}😡{% else %}📊{% endif %}
                   </div>
                   <div class="min-w-0 flex-1">
                     <div class="flex flex-wrap items-center gap-2 mb-1">
                       <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full
-                        {% if r.nps_categoria == 'Promotor' %}bg-emerald-100 text-emerald-700
+                        {% if r.nps_categoria == 'Promotor' %}bg-cbgreen-100 text-cbgreen-700
                         {% elif r.nps_categoria == 'Detractor' %}bg-rose-100 text-rose-700
                         {% else %}bg-amber-100 text-amber-700{% endif %}">
                         {% if r.nps_categoria == 'Promotor' %}<i class="fa fa-thumbs-up"></i>{% elif r.nps_categoria == 'Detractor' %}<i class="fa fa-thumbs-down"></i>{% else %}<i class="fa fa-minus"></i>{% endif %}
@@ -305,9 +305,9 @@
 
       <div class="space-y-6">
         <div class="glass-effect rounded-2xl p-6 relative overflow-hidden">
-          <div class="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-emerald-300/20 via-teal-400/20 to-cyan-400/10 rounded-full blur-2xl pointer-events-none"></div>
+          <div class="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-cbgreen/20 via-cbblue/10 to-cbgreen-50/20 rounded-full blur-2xl pointer-events-none"></div>
           <div class="flex items-center gap-2 mb-4 relative">
-            <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+            <div class="w-10 h-10 rounded-xl bg-cbgreen-50 text-cbgreen-700 flex items-center justify-center">
               <i class="fa fa-face-laugh"></i>
             </div>
             <div>
@@ -319,11 +319,11 @@
             {% with total=kpi_csat_total|default:1 %}
             <div>
               <div class="flex items-center justify-between text-sm mb-1"><span>😍 Muy feliz</span><b class="text-slate-800">{{ kpi_muy_feliz|default:0 }}</b></div>
-              <div class="h-3 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-emerald-400 to-emerald-500" style="width:{% widthratio kpi_muy_feliz|default:0 total 100 %}%"></div></div>
+              <div class="h-3 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-cbgreen to-cbgreen-600" style="width:{% widthratio kpi_muy_feliz|default:0 total 100 %}%"></div></div>
             </div>
             <div>
               <div class="flex items-center justify-between text-sm mb-1"><span>😊 Feliz</span><b class="text-slate-800">{{ kpi_feliz|default:0 }}</b></div>
-              <div class="h-3 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-teal-400 to-teal-500" style="width:{% widthratio kpi_feliz|default:0 total 100 %}%"></div></div>
+              <div class="h-3 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-cbgreen-600 to-teal-500" style="width:{% widthratio kpi_feliz|default:0 total 100 %}%"></div></div>
             </div>
             <div>
               <div class="flex items-center justify-between text-sm mb-1"><span>😐 Neutral</span><b class="text-slate-800">{{ kpi_neutral|default:0 }}</b></div>
@@ -343,7 +343,7 @@
 
         <div class="glass-effect rounded-2xl p-6">
           <div class="flex items-center gap-2 mb-3">
-            <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center"><i class="fa fa-bullhorn"></i></div>
+            <div class="w-10 h-10 rounded-xl bg-cbblue-50 text-cbblue-700 flex items-center justify-center"><i class="fa fa-bullhorn"></i></div>
             <div>
               <h3 class="font-extrabold text-slate-900">Tip: Convierte clientes felices</h3>
               <p class="text-xs text-slate-500">Redirige automáticamente a Google</p>
@@ -352,8 +352,8 @@
           <p class="text-sm text-slate-600 mb-4 leading-relaxed">
             Los Promotores (NPS 9-10) dejan la mejor reseña en Google. Próximamente: <b>redirección automática</b> a reseña Google después de responder.
           </p>
-          <div class="rounded-xl p-4 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 text-sm text-indigo-900">
-            <i class="fa fa-check-circle mr-1 text-emerald-500"></i>
+          <div class="rounded-xl p-4 bg-gradient-to-br from-cbblue-50 to-cbgreen-50 border border-cbblue-100 text-sm text-cbblue-900">
+            <i class="fa fa-check-circle mr-1 text-cbgreen"></i>
             Ya tienes <b>{{ kpi_promotores|default:0 }} promotor{{ kpi_promotores|default:0|pluralize:"es" }}</b> listos para recomendarte.
           </div>
         </div>
@@ -367,14 +367,14 @@
           <i class="fa fa-times"></i>
         </button>
         <div class="text-center mb-5">
-          <div class="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full mb-3">
+          <div class="inline-flex items-center gap-2 bg-cbblue-50 text-cbblue-700 text-xs font-bold px-3 py-1 rounded-full mb-3">
             <i class="fa fa-qrcode mr-1"></i>CÓDIGO QR DE TU LOCAL
           </div>
           <h3 class="text-2xl font-black text-slate-900">{{ qr_primer_local.nombre }}</h3>
           <p class="text-sm text-slate-600">Imprímelo o compártelo con tus clientes.</p>
         </div>
         <div class="flex justify-center mb-5">
-          <div id="qrCodeContainer" class="p-4 bg-white rounded-2xl border-4 border-indigo-50 shadow-inner"></div>
+          <div id="qrCodeContainer" class="p-4 bg-white rounded-2xl border-4 border-cbblue-50 shadow-inner"></div>
         </div>
         <div class="mb-5">
           <label class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">URL pública encuesta (tócala para probar):</label>
@@ -404,7 +404,7 @@
             text: qrUrl,
             width: 280,
             height: 280,
-            colorDark: "#1e1b4b",
+            colorDark: "#0B3EA6",
             colorLight: "#ffffff",
             correctLevel: QRCode.CorrectLevel.H
           });
@@ -415,7 +415,7 @@
     {% else %}
     <div class="glass-effect p-8 md:p-10 rounded-2xl animate-fade-up delay-4">
       <div class="flex items-start gap-4 mb-6">
-        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 text-white flex items-center justify-center text-xl shadow-lg flex-shrink-0">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-cbblue via-cbblue-600 to-cbgreen text-white flex items-center justify-center text-xl shadow-lg flex-shrink-0">
           <i class="fa fa-rocket"></i>
         </div>
         <div>

@@ -1,24 +1,74 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-CL">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}Client Beat{% endblock %}</title>
+  <title>{% block title %}ClientBeat · El Pulso de tu Marca{% endblock %}</title>
+  {% load static %}
+  <link rel="icon" type="image/png" sizes="512x512" href="{% static 'img/LogoClientBeat.png' %}" />
+  <link rel="apple-touch-icon" href="{% static 'img/LogoClientBeat.png' %}" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  {% load static %}
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cbblue: { DEFAULT: '#0B3EA6', 50: '#eef4ff', 100: '#d9e7ff', 600: '#08337a', 700: '#062556', 900: '#041B3A' },
+            cbgreen: { DEFAULT: '#00B879', 50: '#ecfbf4', 600: '#008E5C', 700: '#00633F' },
+          }
+        }
+      }
+    }
+  </script>
   <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
+  <style>
+    .gradient-text {
+      background: linear-gradient(90deg, #0B3EA6 0%, #00B879 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .btn-primary {
+      background: linear-gradient(90deg, #0B3EA6 0%, #008E5C 100%);
+      color: white;
+      padding: 0.65rem 1.25rem;
+      border-radius: 0.75rem;
+      font-weight: 600;
+      box-shadow: 0 6px 18px -6px rgba(11, 62, 166, 0.45);
+      transition: all 0.18s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-secondary {
+      background: white;
+      color: #08337a;
+      padding: 0.6rem 1.1rem;
+      border-radius: 0.75rem;
+      font-weight: 500;
+      border: 1px solid #d9e7ff;
+      box-shadow: 0 2px 8px -2px rgba(11,62,166,0.08);
+      transition: all 0.18s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .btn-secondary:hover { border-color: #00B879; color: #00633F; box-shadow: 0 6px 16px -6px rgba(0,184,121,0.35); }
+    .cb-brand-card { background: linear-gradient(135deg, rgba(11,62,166,0.05), rgba(0,184,121,0.05)); }
+  </style>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col">
   <header class="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-lg border-b border-slate-200/60">
-    <nav class="container mx-auto px-6 py-4 flex items-center justify-between">
-      <a href="/" class="flex items-center gap-2">
-        <span class="text-xl font-bold gradient-text">Client Beat</span>
+    <nav class="container mx-auto px-6 py-3 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-3">
+        <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" class="h-12 w-auto object-contain" />
       </a>
       <div class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-        <a href="#features" class="hover:text-indigo-600 transition-colors">Características</a>
-        <a href="#pricing" class="hover:text-indigo-600 transition-colors">Precios</a>
-        <a href="/legal/privacy/" class="hover:text-indigo-600 transition-colors">Privacidad</a>
+        <a href="#features" class="hover:text-cbblue transition-colors">Características</a>
+        <a href="#pricing" class="hover:text-cbblue transition-colors">Precios</a>
+        <a href="/legal/privacy/" class="hover:text-cbblue transition-colors">Privacidad</a>
       </div>
       <div class="flex items-center gap-3">
         {% if user.is_authenticated %}
@@ -51,36 +101,37 @@
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="bg-slate-900 text-slate-300 py-12">
+  <footer class="bg-cbblue-900 text-slate-300 py-12">
     <div class="container mx-auto px-6">
       <div class="grid md:grid-cols-4 gap-8 mb-8">
         <div>
-          <h3 class="text-lg font-bold text-white mb-3">Client Beat</h3>
-          <p class="text-sm text-slate-400">Transforma la experiencia de tus clientes con inteligencia de datos.</p>
+          <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" class="h-12 w-auto object-contain mb-3 brightness-[0.95]" />
+          <p class="text-sm text-slate-400">El Pulso de tu Marca · Transforma la experiencia de tus clientes con inteligencia de datos NPS y CSAT QR.</p>
         </div>
         <div>
           <h4 class="text-sm font-semibold text-white mb-3">Producto</h4>
           <ul class="space-y-2 text-sm">
-            <li><a href="#features" class="hover:text-white transition-colors">Características</a></li>
-            <li><a href="#pricing" class="hover:text-white transition-colors">Precios</a></li>
+            <li><a href="#features" class="hover:text-cbgreen transition-colors">Características</a></li>
+            <li><a href="#pricing" class="hover:text-cbgreen transition-colors">Precios</a></li>
           </ul>
         </div>
         <div>
           <h4 class="text-sm font-semibold text-white mb-3">Legal</h4>
           <ul class="space-y-2 text-sm">
-            <li><a href="/legal/terms/" class="hover:text-white transition-colors">Términos y Condiciones</a></li>
-            <li><a href="/legal/privacy/" class="hover:text-white transition-colors">Política de Privacidad</a></li>
+            <li><a href="/legal/terms/" class="hover:text-cbgreen transition-colors">Términos y Condiciones</a></li>
+            <li><a href="/legal/privacy/" class="hover:text-cbgreen transition-colors">Política de Privacidad</a></li>
           </ul>
         </div>
         <div>
           <h4 class="text-sm font-semibold text-white mb-3">Contacto</h4>
           <ul class="space-y-2 text-sm">
-            <li><a href="mailto:soporte@clientbeat.cl" class="hover:text-white transition-colors">soporte@clientbeat.cl</a></li>
+            <li><a href="mailto:soporte@clientbeat.cl" class="hover:text-cbgreen transition-colors">soporte@clientbeat.cl</a></li>
+            <li class="text-slate-400"><i class="fa fa-location-dot mr-2 text-cbgreen"></i>Asturias 790 E, Rancagua · Chile</li>
           </ul>
         </div>
       </div>
-      <div class="border-t border-slate-800 pt-6 text-center text-sm text-slate-500">
-        © {% now "Y" %} Client Beat. Todos los derechos reservados.
+      <div class="border-t border-cbblue-700/60 pt-6 text-center text-sm text-slate-400">
+        © {% now "Y" %} ClientBeat SpA · RUT 77.607.311-3 · El Pulso de tu Marca. Todos los derechos reservados.
       </div>
     </div>
   </footer>

@@ -4,28 +4,41 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>¡Gracias por tu opinión! - {{ negocio.nombre|default:"Client Beat" }}</title>
+  <title>¡Gracias por tu opinión! - {{ negocio.nombre|default:"ClientBeat" }}</title>
+  <link rel="icon" type="image/png" sizes="512x512" href="{% static 'img/LogoClientBeat.png' %}" />
+  <link rel="apple-touch-icon" href="{% static 'img/LogoClientBeat.png' %}" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { cbblue: { DEFAULT: '#0B3EA6', 50: '#eef4ff', 600: '#08337a', 900: '#041B3A' }, cbgreen: { DEFAULT: '#00B879', 50: '#ecfbf4', 600: '#008E5C', 700: '#00633F' } } } }
+    }
+  </script>
+  <style>
+    .glass { background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.6); }
+  </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex items-center justify-center p-4">
+<body class="min-h-screen bg-gradient-to-br from-cbgreen-50 via-white to-cbblue-50 flex items-center justify-center p-4">
   <div class="w-full max-w-xl text-center">
-    <div class="glass rounded-3xl shadow-xl p-8 md:p-12 bg-white/85 border border-white">
-      <div class="inline-flex items-center justify-center w-24 h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-lg shadow-emerald-300/50 mb-6 animate-bounce">
+    <div class="flex justify-center mb-6">
+      <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" class="h-14 w-auto object-contain" />
+    </div>
+    <div class="glass rounded-3xl shadow-xl p-8 md:p-12 bg-white/90 border border-white">
+      <div class="inline-flex items-center justify-center w-24 h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-cbgreen via-cbgreen-600 shadow-lg shadow-cbgreen/40 mb-6 animate-bounce">
         <i class="fa fa-check text-white text-5xl md:text-6xl"></i>
       </div>
-      <h1 class="text-3xl md:text-4xl font-black text-emerald-800 mb-3">¡Gracias! 🎉</h1>
-      <p class="text-slate-700 mb-6 md:text-lg text-base">Tu opinión nos ayuda mucho a seguir mejorando. <b>{{ negocio.nombre|default:"El equipo de Client Beat" }}</b> agradece sinceramente tu tiempo.</p>
+      <h1 class="text-3xl md:text-4xl font-black text-cbgreen-700 mb-3">¡Gracias! 🎉</h1>
+      <p class="text-slate-700 mb-6 md:text-lg text-base">Tu opinión nos ayuda mucho a seguir mejorando. <b>{{ negocio.nombre|default:"El equipo de ClientBeat" }}</b> agradece sinceramente tu tiempo.</p>
       {% if negocio.rubro %}
       <div class="text-sm text-slate-500 mb-6">
         Local: <b>{{ local.nombre|default:negocio.nombre }}</b> · {{ local.comuna.nombre|default:"" }}
       </div>
       {% endif %}
-      <a href="/" class="inline-block bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold px-8 py-3 rounded-2xl shadow-lg shadow-emerald-500/30 transition">
+      <a href="/" class="inline-block bg-gradient-to-r from-cbblue to-cbgreen hover:brightness-110 text-white font-bold px-8 py-3 rounded-2xl shadow-lg shadow-cbblue/30 transition-all hover:scale-[1.02]">
         <i class="fa fa-arrow-left mr-2"></i>Volver al inicio
       </a>
     </div>
-    <div class="text-xs text-slate-500 mt-6">Encuesta impulsada por · <span class="font-bold tracking-tight">Client Beat</span></div>
+    <div class="text-xs text-slate-500 mt-6">Encuesta impulsada por · <span class="font-extrabold tracking-tight" style="background: linear-gradient(90deg,#0B3EA6,#00B879);-webkit-background-clip:text;background-clip:text;color:transparent;">ClientBeat</span> · El Pulso de tu Marca</div>
   </div>
 </body>
 </html>

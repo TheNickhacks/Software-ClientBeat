@@ -1,22 +1,31 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es-CL">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Código QR inválido - Client Beat</title>
+  <title>Código QR inválido - ClientBeat</title>
+  <link rel="icon" type="image/png" sizes="512x512" href="{% static 'img/LogoClientBeat.png' %}" />
+  <link rel="apple-touch-icon" href="{% static 'img/LogoClientBeat.png' %}" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <script>
+    tailwind.config = { theme: { extend: { colors: { cbblue: { DEFAULT: '#0B3EA6', 50: '#eef4ff', 600: '#08337a', 900: '#041B3A' }, cbgreen: { DEFAULT: '#00B879', 50: '#ecfbf4', 600: '#008E5C', 700: '#00633F' } } } } }
+  </script>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-rose-50 via-white to-orange-50 flex items-center justify-center p-4">
+<body class="min-h-screen bg-gradient-to-br from-cbblue-50 via-white to-cbgreen-50 flex items-center justify-center p-4">
   <div class="w-full max-w-xl text-center">
-    <div class="bg-white/90 rounded-3xl shadow-xl p-10 border border-white">
-      <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-rose-400 to-orange-500 shadow-lg mb-5">
+    <div class="flex justify-center mb-6">
+      <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" class="h-14 w-auto object-contain" />
+    </div>
+    <div class="bg-white/95 rounded-3xl shadow-xl p-10 border border-white">
+      <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-cbblue via-cbblue-700 shadow-lg shadow-cbblue/40 mb-5">
         <i class="fa fa-qrcode text-white text-4xl"></i>
       </div>
-      <h1 class="text-3xl font-black text-slate-900 mb-3">Código QR no válido</h1>
-      <p class="text-slate-700 mb-6">Este código QR no corresponde a un local activo de Client Beat, o la plantilla de encuesta aún no está configurada.</p>
+      <h1 class="text-3xl font-black text-cbblue-900 mb-3">Código QR no válido</h1>
+      <p class="text-slate-700 mb-6">Este código QR no corresponde a un local activo de ClientBeat, o la plantilla de encuesta aún no está configurada.</p>
       <p class="text-sm text-slate-500 mb-6">Si crees que es un error, contacta al local o a soporte@clientbeat.cl.</p>
-      <a href="/" class="inline-block bg-gradient-to-r from-rose-600 to-orange-600 text-white font-bold px-7 py-3 rounded-2xl shadow-lg transition hover:brightness-110">
+      <a href="/" class="inline-block bg-gradient-to-r from-cbblue to-cbgreen hover:brightness-110 text-white font-bold px-7 py-3 rounded-2xl shadow-lg shadow-cbblue/30 transition hover:scale-[1.02]">
         <i class="fa fa-home mr-2"></i>Ir al inicio
       </a>
     </div>

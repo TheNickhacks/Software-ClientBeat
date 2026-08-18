@@ -4,8 +4,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-  <title>{{ plantilla.nombre_mostrar|default:"Tu opinión nos importa" }} - {{ negocio.nombre|default:"Client Beat" }}</title>
+  <title>{{ plantilla.nombre_mostrar|default:"Tu opinión nos importa" }} - {{ negocio.nombre|default:"ClientBeat" }}</title>
   <meta name="description" content="Comparte tu experiencia con nosotros." />
+  <link rel="icon" type="image/png" sizes="512x512" href="{% static 'img/LogoClientBeat.png' %}" />
+  <link rel="apple-touch-icon" href="{% static 'img/LogoClientBeat.png' %}" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <script>
@@ -13,7 +15,9 @@
       theme: {
         extend: {
           colors: {
-            primary: { DEFAULT: '#4f46e5', 50: '#eef2ff', 600: '#4338ca' },
+            cbblue: { DEFAULT: '#0B3EA6', 50: '#eef4ff', 100: '#d9e7ff', 600: '#08337a', 900: '#041B3A' },
+            cbgreen: { DEFAULT: '#00B879', 50: '#ecfbf4', 600: '#008E5C', 700: '#00633F' },
+            primary: { DEFAULT: '#0B3EA6', 50: '#eef4ff', 600: '#08337a' },
           },
           fontFamily: { sans: ['Inter','system-ui','sans-serif'] },
         }
@@ -22,26 +26,33 @@
   </script>
   <style>
     body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-    .glass { background: rgba(255,255,255,0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.5); }
-    .nps-btn { @apply transition-all rounded-xl px-3 py-5 font-bold text-lg border-2; }
-    .nps-btn.selected { @apply border-primary bg-primary text-white scale-105 shadow-lg; }
-    .nps-btn.unselected { @apply border-slate-200 bg-white text-slate-700 hover:border-primary/50 hover:bg-primary/5; }
-    .csat-btn { @apply text-5xl md:text-6xl transition-all scale-100 hover:scale-125 cursor-pointer; }
-    .csat-btn.selected { @apply scale-125 drop-shadow-lg; }
+    .glass { background: rgba(255,255,255,0.88); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.55); }
+    .nps-btn { transition: all 0.18s ease; border-radius: 0.75rem; padding: 1.25rem 0.75rem; font-weight: 800; font-size: 1.125rem; border: 2px solid transparent; }
+    .nps-btn.selected { border-color: #0B3EA6; background: linear-gradient(90deg, #0B3EA6 0%, #008E5C 100%); color: white; transform: scale(1.05); box-shadow: 0 12px 24px -10px rgba(11,62,166,0.45); }
+    .nps-btn.unselected { border-color: #e2e8f0; background: white; color: #334155; }
+    .nps-btn.unselected:hover { border-color: #00B879; background: rgba(0,184,121,0.06); color: #062556; }
+    .csat-btn { font-size: 3rem; transition: all 0.18s ease; transform: scale(1); }
+    .csat-btn:hover { transform: scale(1.25); cursor: pointer; }
+    .csat-btn.selected { transform: scale(1.3); filter: drop-shadow(0 6px 12px rgba(0,184,121,0.35)); }
     input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .form-input { display: block; width: 100%; padding: 0.75rem 1rem; font-size: 0.95rem; line-height: 1.5; color: #0f172a; background-color: #fff; background-clip: padding-box; border: 1px solid #e2e8f0; border-radius: 0.75rem; transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out; }
+    .form-input:focus { border-color: #0B3EA6; outline: 0; box-shadow: 0 0 0 4px rgba(11,62,166,0.12); }
   </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+<body class="min-h-screen bg-gradient-to-br from-cbblue-50 via-white to-cbgreen-50">
   <div class="min-h-screen flex items-center justify-center p-4 md:p-8">
     <div class="w-full max-w-2xl">
       <div class="text-center mb-6">
-        <div class="inline-flex items-center gap-2 bg-white/70 px-5 py-2 rounded-full border border-indigo-100 shadow-sm mb-3">
-          <i class="fa fa-heart text-pink-500"></i>
-          <span class="text-sm font-semibold text-indigo-900">{{ negocio.nombre|default:"Client Beat" }}{% if local and local.nombre != negocio.nombre %} · {{ local.nombre }}{% endif %}</span>
+        <div class="flex items-center justify-center mb-4">
+          <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" class="h-14 w-auto object-contain" />
+        </div>
+        <div class="inline-flex items-center gap-2 bg-white/80 px-5 py-2 rounded-full border border-cbblue-100 shadow-sm mb-3">
+          <i class="fa fa-heart text-cbgreen"></i>
+          <span class="text-sm font-semibold text-cbblue-900">{{ negocio.nombre|default:"ClientBeat" }}{% if local and local.nombre != negocio.nombre %} · {{ local.nombre }}{% endif %}</span>
         </div>
         {% if negocio.rubro %}
         <div class="text-xs text-slate-500 font-medium">
-          <i class="fa fa-location-dot mr-1 text-indigo-500"></i>{{ local.comuna.nombre|default:"" }}{% if negocio.rubro %} · <i class="fa fa-briefcase mr-1 text-purple-500"></i>{{ negocio.rubro.nombre }}{% endif %}
+          <i class="fa fa-location-dot mr-1 text-cbblue"></i>{{ local.comuna.nombre|default:"" }}{% if negocio.rubro %} · <i class="fa fa-briefcase mr-1 text-cbgreen"></i>{{ negocio.rubro.nombre }}{% endif %}
         </div>
         {% endif %}
       </div>
@@ -102,27 +113,27 @@
               {{ plantilla.titulo_comentario|default:"¿Quieres agregar un comentario?" }}
               {% if not plantilla.comentario_requerido %}<span class="text-xs text-slate-500 font-normal ml-1">(opcional)</span>{% endif %}
             </label>
-            {% render_field form.comentario class="form-input w-full rounded-xl border-slate-200 focus:ring-primary focus:border-primary" rows=4 placeholder="Cuéntanos más sobre tu experiencia..." %}
-            {% if form.comentario.errors %}<div class="text-sm text-red-600 mt-1">{{ form.comentario.errors|join:", " }}</div>{% endif %}
+            {% render_field form.comentario class="form-input w-full rounded-xl border-slate-200 focus:ring-cbblue focus:border-cbblue" rows=4 placeholder="Cuéntanos más sobre tu experiencia..." %}
+            {% if form.comentario.errors %}<div class="text-sm text-rose-600 mt-1">{{ form.comentario.errors|join:", " }}</div>{% endif %}
           </div>
           {% endif %}
 
           <div class="grid md:grid-cols-2 gap-4 items-end">
             <div>
               <label class="block font-bold text-slate-800 mb-2 text-sm">
-                <i class="fa fa-envelope text-indigo-500 mr-1"></i>{{ form.email_opcional.label }}
+                <i class="fa fa-envelope text-cbblue mr-1"></i>{{ form.email_opcional.label }}
               </label>
-              {% render_field form.email_opcional class="form-input w-full rounded-xl border-slate-200 focus:ring-primary focus:border-primary" placeholder="tu@email.cl (solo si quieres que te contactemos)" %}
+              {% render_field form.email_opcional class="form-input w-full rounded-xl border-slate-200 focus:ring-cbblue focus:border-cbblue" placeholder="tu@email.cl (solo si quieres que te contactemos)" %}
               <div class="text-[11px] text-slate-500 mt-1">Solo lo usaremos para dar seguimiento a tu comentario. Nunca spam.</div>
             </div>
             <div class="flex items-center gap-2 text-sm text-slate-700">
-              {% render_field form.es_anonima class="w-5 h-5 accent-primary" %}
+              {% render_field form.es_anonima class="w-5 h-5 accent-cbgreen" %}
               <label for="{{ form.es_anonima.id_for_label }}" class="cursor-pointer font-medium">{{ form.es_anonima.label }}</label>
             </div>
           </div>
 
           <div class="pt-2">
-            <button type="submit" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-indigo-500/30 text-lg transition-all hover:scale-[1.01] active:scale-[0.99]">
+            <button type="submit" class="w-full bg-gradient-to-r from-cbblue to-cbgreen hover:brightness-110 text-white font-bold py-4 rounded-2xl shadow-lg shadow-cbblue/30 text-lg transition-all hover:scale-[1.01] active:scale-[0.99]">
               <i class="fa fa-paper-plane mr-2"></i>Enviar mi opinión
             </button>
           </div>
@@ -132,8 +143,8 @@
         </form>
       </div>
 
-      <div class="text-center text-[11px] text-slate-500 mt-6 opacity-80">
-        Encuesta impulsada por · <span class="font-bold tracking-tight">Client Beat</span>
+      <div class="text-center text-[11px] text-slate-500 mt-6 opacity-90">
+        Encuesta impulsada por · <span class="font-extrabold tracking-tight" style="background: linear-gradient(90deg,#0B3EA6,#00B879); -webkit-background-clip: text; background-clip: text; color: transparent;">ClientBeat</span> · El Pulso de tu Marca
       </div>
     </div>
   </div>
