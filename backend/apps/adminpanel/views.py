@@ -1,11 +1,13 @@
 from django.views.generic import TemplateView, ListView, CreateView, UpdateView, View
 from django.db import connection
+from django.db.models import Count
 from django.contrib import messages
 from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse_lazy
 from .mixins import AdminSoporteRequiredMixin, SuperUserRequiredMixin
 from .forms import PlanForm
 from apps.billing.models import Plan
+from apps.encuestas.models import PlantillaEncuesta
 
 
 def modulos_menu(request):
@@ -177,6 +179,67 @@ class PlaceholderView(AdminSoporteRequiredMixin, TemplateView):
             'no-técnico para gestionar su contenido.'
         )
         return ctx
+
+
+# =======================
+# CRUD PLANTILLAS ENCUESTAS (ADMIN_SOPORTE, NO TÉCNICO)
+# =======================
+
+class AdminPanelPlantillasListView(AdminSoporteRequiredMixin, ListView):
+    template_name = 'admin_panel/plantillas_list.html'
+    model = PlantillaEncuesta
+    context_object_name = 'plantillas'
+    ordering = ['orden', 'nombre']
+
+    def get_queryset(self):
+        return (
+            PlantillaEncuesta.objects.all()
+            .prefetch_related('rubros')
+            .annotate(
+                total_respuestas=Count('respuestas'),
+            )
+            .order_by('orden', 'nombre')
+        )
+
+    def get_context_data(self, **kwargs):
+        from apps.businesses.models import Local
+        ctx = super().get_context_data(**kwargs)
+        ctx['menu'] = modulos_menu(self.request)
+        ctx['menu_activo'] = 'Plantillas Encuestas'
+        ctx['total_plantillas'] = PlantillaEncuesta.objects.count()
+        ctx['plantillas_activas'] = PlantillaEncuesta.objects.filter(activa=True).count()
+        ctx['default'] = PlantillaEncuesta.objects.filter(es_default=True).first()
+        ctx['total_locales'] = Local.objects.filter(estado='ACTIVO').count()
+        return ctx
+
+
+class AdminPanelPlantillaToggleActivaView(AdminSoporteRequiredMixin, View):
+    def post(self, request, pk, *args, **kwargs):
+        plant = get_object_or_404(PlantillaEncuesta, pk=pk)
+        if plant.es_default and plant.activa:
+            messages.error(request, 'No puedes desactivar la plantilla default. Marca otra como default primero.')
+            return redirect('adminpanel:plantillas')
+        plant.activa = not plant.activa
+        plant.save(update_fields=['activa', 'fecha_actualizacion'])
+        estado = 'activada' if plant.activa else 'desactivada'
+        messages.success(request, f'Plantilla "{plant.nombre}" {estado} exitosamente.')
+        return redirect('adminpanel:plantillas')
+
+
+class AdminPanelPlantillaMarcarDefaultView(AdminSoporteRequiredMixin, View):
+    def post(self, request, pk, *args, **kwargs):
+        from django.db import transaction
+        plant = get_object_or_404(PlantillaEncuesta, pk=pk)
+        if not plant.activa:
+            messages.error(request, 'No puedes marcar como default una plantilla inactiva. Actívala primero.')
+            return redirect('adminpanel:plantillas')
+        with transaction.atomic():
+            PlantillaEncuesta.objects.all().update(es_default=False)
+            plant.es_default = True
+            plant.save(update_fields=['es_default', 'fecha_actualizacion'])
+        messages.success(request, f'Ahora la plantilla default es: "{plant.nombre}"')
+        return redirect('adminpanel:plantillas')
+
 
 
 class SuperSaludView(SuperUserRequiredMixin, TemplateView):

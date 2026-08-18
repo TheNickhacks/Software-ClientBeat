@@ -1,0 +1,168 @@
+{% load static widget_tweaks %}
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+  <title>{{ plantilla.nombre_mostrar|default:"Tu opinión nos importa" }} - {{ negocio.nombre|default:"Client Beat" }}</title>
+  <meta name="description" content="Comparte tu experiencia con nosotros." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { DEFAULT: '#4f46e5', 50: '#eef2ff', 600: '#4338ca' },
+          },
+          fontFamily: { sans: ['Inter','system-ui','sans-serif'] },
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    .glass { background: rgba(255,255,255,0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.5); }
+    .nps-btn { @apply transition-all rounded-xl px-3 py-5 font-bold text-lg border-2; }
+    .nps-btn.selected { @apply border-primary bg-primary text-white scale-105 shadow-lg; }
+    .nps-btn.unselected { @apply border-slate-200 bg-white text-slate-700 hover:border-primary/50 hover:bg-primary/5; }
+    .csat-btn { @apply text-5xl md:text-6xl transition-all scale-100 hover:scale-125 cursor-pointer; }
+    .csat-btn.selected { @apply scale-125 drop-shadow-lg; }
+    input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+  <div class="min-h-screen flex items-center justify-center p-4 md:p-8">
+    <div class="w-full max-w-2xl">
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center gap-2 bg-white/70 px-5 py-2 rounded-full border border-indigo-100 shadow-sm mb-3">
+          <i class="fa fa-heart text-pink-500"></i>
+          <span class="text-sm font-semibold text-indigo-900">{{ negocio.nombre|default:"Client Beat" }}{% if local and local.nombre != negocio.nombre %} · {{ local.nombre }}{% endif %}</span>
+        </div>
+        {% if negocio.rubro %}
+        <div class="text-xs text-slate-500 font-medium">
+          <i class="fa fa-location-dot mr-1 text-indigo-500"></i>{{ local.comuna.nombre|default:"" }}{% if negocio.rubro %} · <i class="fa fa-briefcase mr-1 text-purple-500"></i>{{ negocio.rubro.nombre }}{% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="glass rounded-3xl shadow-xl p-6 md:p-10">
+        <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 text-center mb-2">
+          {{ plantilla.nombre_mostrar|default:"¡Tu opinión nos importa!" }}
+        </h1>
+        {% if plantilla.descripcion %}
+        <p class="text-center text-slate-600 mb-8 text-sm md:text-base">{{ plantilla.descripcion }}</p>
+        {% else %}
+        <p class="text-center text-slate-600 mb-8 text-sm md:text-base">¡Ayúdanos a mejorar! Tu feedback es anónimo (a menos que quieras que te contactemos).</p>
+        {% endif %}
+
+        <form method="post" class="space-y-8">
+          {% csrf_token %}
+          <input type="hidden" id="nps_puntaje_hidden" name="nps_puntaje" value="" />
+
+          {% if plantilla.activar_nps %}
+          <div>
+            <label class="block font-bold text-slate-800 mb-2 text-center md:text-lg">
+              {{ plantilla.titulo_nps|default:"¿Qué tan probable es que nos recomiendes a un familiar o amigo?" }}
+            </label>
+            <div class="text-center text-xs text-slate-500 mb-4">0 = Nada probable · 5 = Neutral · 10 = Muy probable</div>
+            <div class="grid grid-cols-11 gap-1 md:gap-2 max-w-2xl mx-auto" id="nps-grid">
+              {% for n in "0123456789"|make_list %}
+              <button type="button" class="nps-btn unselected text-center" data-value="{{ n }}">{{ n }}</button>
+              {% endfor %}
+              <button type="button" class="nps-btn unselected text-center" data-value="10">10</button>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if plantilla.activar_csat %}
+          <div class="text-center py-4">
+            <label class="block font-bold text-slate-800 mb-5 md:text-lg">
+              {{ plantilla.titulo_csat|default:"¿Qué tan satisfecho estás con la atención?" }}
+            </label>
+            <div class="flex gap-4 md:gap-6 justify-center items-end">
+              {% for val, lbl, emoji in form.csat_emocion.field.choices %}
+              {% if val %}
+              <button type="button" class="csat-btn flex flex-col items-center gap-1" data-value="{{ val }}">
+                <span class="select-none" data-emoji>
+                  {% if val == 'MUY_FELIZ' %}😍{% elif val == 'FELIZ' %}😊{% elif val == 'NEUTRAL' %}😐{% elif val == 'INSATISFECHO' %}😞{% elif val == 'MUY_INSATISFECHO' %}😡{% else %}🙂{% endif %}
+                </span>
+                <span class="text-[10px] md:text-xs font-semibold text-slate-500 whitespace-nowrap">{{ lbl|slice:":12" }}</span>
+              </button>
+              {% endif %}
+              {% endfor %}
+              <input type="hidden" name="csat_emocion" id="csat_emocion_hidden" value="" />
+            </div>
+          </div>
+          {% endif %}
+
+          {% if plantilla.activar_comentario %}
+          <div>
+            <label class="block font-bold text-slate-800 mb-2">
+              {{ plantilla.titulo_comentario|default:"¿Quieres agregar un comentario?" }}
+              {% if not plantilla.comentario_requerido %}<span class="text-xs text-slate-500 font-normal ml-1">(opcional)</span>{% endif %}
+            </label>
+            {% render_field form.comentario class="form-input w-full rounded-xl border-slate-200 focus:ring-primary focus:border-primary" rows=4 placeholder="Cuéntanos más sobre tu experiencia..." %}
+            {% if form.comentario.errors %}<div class="text-sm text-red-600 mt-1">{{ form.comentario.errors|join:", " }}</div>{% endif %}
+          </div>
+          {% endif %}
+
+          <div class="grid md:grid-cols-2 gap-4 items-end">
+            <div>
+              <label class="block font-bold text-slate-800 mb-2 text-sm">
+                <i class="fa fa-envelope text-indigo-500 mr-1"></i>{{ form.email_opcional.label }}
+              </label>
+              {% render_field form.email_opcional class="form-input w-full rounded-xl border-slate-200 focus:ring-primary focus:border-primary" placeholder="tu@email.cl (solo si quieres que te contactemos)" %}
+              <div class="text-[11px] text-slate-500 mt-1">Solo lo usaremos para dar seguimiento a tu comentario. Nunca spam.</div>
+            </div>
+            <div class="flex items-center gap-2 text-sm text-slate-700">
+              {% render_field form.es_anonima class="w-5 h-5 accent-primary" %}
+              <label for="{{ form.es_anonima.id_for_label }}" class="cursor-pointer font-medium">{{ form.es_anonima.label }}</label>
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <button type="submit" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-indigo-500/30 text-lg transition-all hover:scale-[1.01] active:scale-[0.99]">
+              <i class="fa fa-paper-plane mr-2"></i>Enviar mi opinión
+            </button>
+          </div>
+          <div class="text-center text-[11px] text-slate-500 pt-2">
+            <i class="fa fa-lock mr-1"></i>Tu respuesta cumple con la ley N°19.628 de protección de datos personales.
+          </div>
+        </form>
+      </div>
+
+      <div class="text-center text-[11px] text-slate-500 mt-6 opacity-80">
+        Encuesta impulsada por · <span class="font-bold tracking-tight">Client Beat</span>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const npsGrid = document.getElementById('nps-grid');
+  const npsHidden = document.getElementById('nps_puntaje_hidden');
+  if (npsGrid) {
+    npsGrid.addEventListener('click', function(e){
+      const btn = e.target.closest('[data-value]');
+      if (!btn || !npsGrid.contains(btn)) return;
+      const val = btn.dataset.value;
+      [...npsGrid.querySelectorAll('.nps-btn')].forEach(b => {
+        b.classList.toggle('selected', b.dataset.value === val);
+        b.classList.toggle('unselected', b.dataset.value !== val);
+      });
+      npsHidden.value = val;
+    });
+  }
+
+  document.querySelectorAll('.csat-btn[data-value]').forEach(btn => {
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.csat-btn[data-value]').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      document.getElementById('csat_emocion_hidden').value = btn.dataset.value;
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,13 +1,21 @@
 import sys
 import io
 import secrets
+import random
 from datetime import datetime, timedelta
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from apps.businesses.models import Negocio, Local, MiembroEquipo
 from apps.billing.models import Plan, Suscripcion
 from apps.geo.models import Comuna, Rubro
+from apps.encuestas.models import (
+    PlantillaEncuesta,
+    RespuestaEncuesta,
+    EmocionCSATChoices,
+    OrigenRespuestaChoices,
+)
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
@@ -51,6 +59,8 @@ class Command(BaseCommand):
 
         if reset:
             self.stdout.write('🧹 Eliminando datos demo existentes...')
+            RespuestaEncuesta.objects.filter(local__negocio__email_contacto='demo@clientbeat.cl').delete()
+            PlantillaEncuesta.objects.filter(nombre__in=['NPS_BASICO_CLIENTE', 'CSAT_COMPLETO_CLIENTE']).delete()
             Suscripcion.objects.filter(negocio__email_contacto='demo@clientbeat.cl').delete()
             Negocio.objects.filter(email_contacto='demo@clientbeat.cl').delete()
             User.objects.filter(email__in=demo_emails).delete()
@@ -449,6 +459,128 @@ class Command(BaseCommand):
             susc.estado = EstadoSuscripcionChoices.ACTIVA
             susc.save()
         self.stdout.write(self.style.SUCCESS(f'  ✅ Suscripción: {susc.get_estado_display()} | Vence: {susc.fecha_vencimiento.strftime("%d/%m/%Y")}'))
+
+        # ======== 8. PLANTILLAS DE ENCUESTAS QR ========
+        self.stdout.write('\n📝 Creando Plantillas de Encuesta (NPS Básico + CSAT Completo)...')
+        PlantillaEncuesta.objects.all().update(es_default=False)
+        plant_nps, _ = PlantillaEncuesta.objects.get_or_create(
+            nombre='NPS_BASICO_CLIENTE',
+            defaults={
+                'nombre_mostrar': '¡Gracias por visitarnos!',
+                'descripcion': 'Encuesta corta NPS 0-10 para medir recomendación.',
+                'orden': 1,
+                'es_default': True,
+                'activa': True,
+                'activar_nps': True,
+                'titulo_nps': '¿Qué tan probable es que nos recomiendes a un familiar o amigo?',
+                'activar_csat': False,
+                'activar_comentario': True,
+                'titulo_comentario': '¿Quieres compartir un comentario sobre tu experiencia? (opcional)',
+                'comentario_requerido': False,
+                'preguntas_extra': [],
+            },
+        )
+        plant_nps.es_default = True
+        plant_nps.save(update_fields=['es_default'])
+        self.stdout.write(self.style.SUCCESS(f'  ✅ Plantilla default: {plant_nps.nombre} | NPS={plant_nps.activar_nps} CSAT={plant_nps.activar_csat}'))
+        plant_csat, _ = PlantillaEncuesta.objects.get_or_create(
+            nombre='CSAT_COMPLETO_CLIENTE',
+            defaults={
+                'nombre_mostrar': '¿Cómo fue tu experiencia hoy?',
+                'descripcion': 'Encuesta completa NPS + CSAT emoción + comentario.',
+                'orden': 10,
+                'es_default': False,
+                'activa': True,
+                'activar_nps': True,
+                'titulo_nps': '¿Qué tan probable es que vuelvas?',
+                'activar_csat': True,
+                'titulo_csat': '¿Qué tan satisfecho estás con la atención?',
+                'activar_comentario': True,
+                'titulo_comentario': 'Cuéntanos más sobre tu visita hoy:',
+                'comentario_requerido': False,
+                'preguntas_extra': [],
+            },
+        )
+        self.stdout.write(self.style.SUCCESS(f'  ✅ Plantilla premium: {plant_csat.nombre} | NPS + CSAT + comentario'))
+
+        # ======== 9. RESPUESTAS ENCUESTA DEMO (histórico 30 últimos 30 días) ========
+        self.stdout.write('\n💚 Creando 30 respuestas encuesta demo histórico...')
+        RespuestaEncuesta.objects.filter(local=local).delete()
+        comentarios_demo_promotor = [
+            'Atención excelente, el café es riquísimo y la atención fue de 10!',
+            'Todo perfecto, el mesero Juan fue muy amable. Volveremos pronto!',
+            'Me encantó el nuevo local, limpio, ordenado y el brunch de 10.',
+            'Súper recomendable, la mejor cafetería de Rancagua sin duda.',
+            'Pedí un cappuccino y un pastelillo de choclo, exquisito todo!',
+            'Gran atención de la dueña, siempre preocupada. 100% recomendado.',
+            'WiFi rápido, mesas cómodas, música agradable. Vuelvo seguro.',
+            'Las promociones están geniales. El café perfecto siempre!',
+            'Atención rápida, platos ricos, precios justos. 10/10.',
+            'Visitamos desde San Fernando, valió la pena el viaje. Gracias!',
+            'Café del Centro es parte de nuestras mañanas. Sigan así!',
+            'El nuevo menú vegano está buenísimo! Gracias por incluir opciones!',
+            'Atención pet friendly, súper agradecida. Mi perra súper bienvenida!',
+            'Me sorprendió gratamente, todo genial, 10 puntos a todo.',
+            'Rápido, económico y rico. Nada más que pedir!',
+            'Excelente ubicación, mesas afuera muy agradables, 100% recomendable.',
+            'Servicio impecable, atención del garzón muy profesional. Vuelvo!',
+            'Café espectacular, mejor que en Santiago. Feliz de volver!',
+            'Muy contenta con el servicio, precios accesibles y todo rico.',
+            'Gran ambiente ideal para reuniones de trabajo con café de primera.',
+        ]
+        comentarios_demo_pasivo = [
+            'Todo estuvo bien, nada destacable. Volvería a probar.',
+            'Buena atención, precios regulares. Mejorar la limpieza del baño.',
+            'Café rico, la comida demoró un poco. Espero que lo mejoren.',
+            'Normal, nada sorprendente. Si pasa lo volvería a visitar.',
+            'Ambiente agradable, pero la música un poco fuerte para mi gusto.',
+        ]
+        comentarios_demo_detractor = [
+            'Demoraron mucho en atenderme, pedido demoró 30 min. Espero mejorar.',
+            'El café estaba frío. Se los hice saber y lo cambiaron sin drama, pero demoró.',
+            'Baño sucio, atención lenta. Deben mejorar esos puntos.',
+        ]
+        origenes = [OrigenRespuestaChoices.QR_IMPRESO] * 21 + [OrigenRespuestaChoices.QR_WEB] * 7 + [OrigenRespuestaChoices.EMAIL] * 2
+        emociones = [
+            EmocionCSATChoices.MUY_FELIZ, EmocionCSATChoices.FELIZ, EmocionCSATChoices.FELIZ,
+            EmocionCSATChoices.NEUTRAL, EmocionCSATChoices.INSATISFECHO, EmocionCSATChoices.MUY_FELIZ,
+        ]
+        respuestas_creadas = 0
+        for idx in range(30):
+            if idx < 21:
+                nps = random.choice([9, 10, 9, 10, 8])
+                cat = 'Promotor'
+                comentario = random.choice(comentarios_demo_promotor)
+                csat = random.choice([EmocionCSATChoices.MUY_FELIZ, EmocionCSATChoices.FELIZ])
+            elif idx < 27:
+                nps = random.choice([7, 8, 7])
+                cat = 'Pasivo'
+                comentario = random.choice(comentarios_demo_pasivo)
+                csat = random.choice([EmocionCSATChoices.NEUTRAL, EmocionCSATChoices.FELIZ])
+            else:
+                nps = random.choice([0, 1, 2, 3, 5, 6])
+                cat = 'Detractor'
+                comentario = random.choice(comentarios_demo_detractor)
+                csat = random.choice([EmocionCSATChoices.INSATISFECHO, EmocionCSATChoices.MUY_INSATISFECHO])
+            origen = origenes[idx]
+            dias_hacia_atras = 30 - idx
+            fecha_r = timezone.now() - timedelta(days=dias_hacia_atras, hours=random.randint(8, 22), minutes=random.randint(0, 59))
+            resp = RespuestaEncuesta(
+                local=local,
+                plantilla=plant_nps,
+                nps_puntaje=nps,
+                csat_emocion=csat,
+                comentario=comentario if idx % 2 == 0 else None,
+                email_opcional=None if idx % 5 else f'cliente{idx+1}@cliente.cl',
+                origen=origen,
+                es_anonima=(idx % 4 == 0),
+                metadata={'dispositivo': random.choice(['mobile', 'mobile', 'desktop']), 'origen_idx': idx},
+            )
+            resp.save()
+            resp.fecha_respuesta = fecha_r
+            resp.save(update_fields=['fecha_respuesta'])
+            respuestas_creadas += 1
+        self.stdout.write(self.style.SUCCESS(f'  ✅ {respuestas_creadas} respuestas creadas: 21 Promotores + 6 Pasivos + 3 Detractores (30d histórico)'))
 
         # ======== RESUMEN ========
         self.stdout.write('\n' + '=' * 60)

@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'apps.geo',
     'apps.businesses',
     'apps.billing',
+    'apps.encuestas',
     'apps.reputation',
     'apps.surveys',
     'apps.sentiment',
@@ -115,8 +116,10 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'es-cl'
+DEFAULT_CHARSET = 'utf-8'
 TIME_ZONE = 'America/Santiago'
 USE_I18N = True
+USE_L10N = True
 USE_TZ = True
 DATE_FORMAT = 'd/m/Y'
 SHORT_DATE_FORMAT = 'd/m/Y'

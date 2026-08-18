@@ -12,6 +12,7 @@ urlpatterns = [
     path('negocios/', include('apps.businesses.urls')),
     path('billing/', include('apps.billing.urls')),
     path('encuestas/', include('apps.surveys.urls')),
+    path('e/', include('apps.encuestas.urls')),
     path('reputacion/', include('apps.reputation.urls')),
     path('api/api-auth/', obtain_auth_token),
 ]

@@ -150,6 +150,73 @@ def dashboard(request):
         )
         ctx['suscripcion_activa'] = suscripcion
         ctx['plan_activo'] = suscripcion.plan if suscripcion else None
+
+        from django.db.models import Count, Avg, Q, IntegerField, Sum, Case, When
+        from apps.encuestas.models import RespuestaEncuesta, EmocionCSATChoices
+        from django.utils import timezone
+        desde_30d = timezone.now() - timezone.timedelta(days=30)
+        locales_negocio_qs = RespuestaEncuesta.objects.filter(
+            local__negocio=negocio,
+        ).select_related('local', 'plantilla')
+        locales_negocio_total = locales_negocio_qs.count()
+        ctx['kpi_total_respuestas'] = locales_negocio_total
+
+        locales_30d = locales_negocio_qs.filter(fecha_respuesta__gte=desde_30d)
+        ctx['kpi_respuestas_30d'] = locales_30d.count()
+        if locales_negocio_total:
+            promedio_nps = locales_negocio_qs.exclude(nps_puntaje__isnull=True).aggregate(avg=Avg('nps_puntaje'))['avg'] or 0
+            promotores = locales_negocio_qs.filter(nps_puntaje__gte=9).count()
+            pasivos = locales_negocio_qs.filter(nps_puntaje__in=[7, 8]).count()
+            detractores = locales_negocio_qs.filter(nps_puntaje__lte=6).count()
+            total_cat = promotores + pasivos + detractores or 1
+            nps_score = round(100 * (promotores - detractores) / total_cat)
+        else:
+            promedio_nps = 0
+            promotores = pasivos = detractores = 0
+            total_cat = 1
+            nps_score = 0
+        ctx['kpi_nps_promedio'] = round(promedio_nps, 1) if promedio_nps else 0
+        ctx['kpi_nps_score'] = nps_score
+        ctx['kpi_promotores'] = promotores
+        ctx['kpi_pasivos'] = pasivos
+        ctx['kpi_detractores'] = detractores
+        if nps_score >= 50:
+            ctx['nps_color'] = 'emerald'
+            ctx['nps_badge'] = 'Promotor'
+        elif nps_score >= 0:
+            ctx['nps_color'] = 'amber'
+            ctx['nps_badge'] = 'Pasivo'
+        else:
+            ctx['nps_color'] = 'rose'
+            ctx['nps_badge'] = 'Detractor'
+
+        if locales_negocio_total:
+            muy_feliz = locales_negocio_qs.filter(csat_emocion=EmocionCSATChoices.MUY_FELIZ).count()
+            feliz = locales_negocio_qs.filter(csat_emocion=EmocionCSATChoices.FELIZ).count()
+            csat_total = locales_negocio_qs.exclude(csat_emocion__isnull=True).count() or 1
+            ctx['kpi_csat_felices_pct'] = round(100 * (muy_feliz + feliz) / csat_total) if csat_total else 0
+            ctx['kpi_csat_total'] = csat_total
+            ctx['kpi_muy_feliz'] = muy_feliz
+            ctx['kpi_feliz'] = feliz
+            ctx['kpi_neutral'] = locales_negocio_qs.filter(csat_emocion=EmocionCSATChoices.NEUTRAL).count()
+            ctx['kpi_insatisfecho'] = locales_negocio_qs.filter(csat_emocion=EmocionCSATChoices.INSATISFECHO).count()
+            ctx['kpi_muy_insatisfecho'] = locales_negocio_qs.filter(csat_emocion=EmocionCSATChoices.MUY_INSATISFECHO).count()
+        else:
+            ctx['kpi_csat_felices_pct'] = 0
+            ctx['kpi_csat_total'] = 0
+            ctx['kpi_muy_feliz'] = 0
+            ctx['kpi_feliz'] = 0
+            ctx['kpi_neutral'] = 0
+            ctx['kpi_insatisfecho'] = 0
+            ctx['kpi_muy_insatisfecho'] = 0
+
+        ultimas_respuestas = list(locales_negocio_qs.order_by('-fecha_respuesta')[:15])
+        ctx['ultimas_respuestas'] = ultimas_respuestas
+
+        locales_primer_local = negocio.locales.order_by('fecha_creacion').first()
+        if locales_primer_local:
+            ctx['qr_primer_local'] = locales_primer_local
+            ctx['qr_url'] = request.build_absolute_uri('/e/' + locales_primer_local.qr_token + '/')
     return render(request, 'dashboard_placeholder.html', ctx)
 
 
