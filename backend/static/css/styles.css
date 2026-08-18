@@ -1,0 +1,160 @@
+/* ==========================================================
+   Client Beat — CSS Global
+   Paleta: blue-600 (#2563eb), purple-600 (#9333ea), indigo-600 (#4f46e5)
+   ========================================================== */
+
+:root {
+  --primary: #2563eb;
+  --secondary: #9333ea;
+  --accent: #4f46e5;
+}
+
+/* ---------- Gradient text ---------- */
+.gradient-text {
+  background: linear-gradient(90deg, #2563eb 0%, #9333ea 50%, #4f46e5 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* ---------- Glass effect (cards) ---------- */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 24px rgba(37, 99, 235, 0.08);
+}
+
+/* ---------- Cards hover ---------- */
+.card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.card-hover:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(79, 70, 229, 0.15);
+}
+
+/* ---------- Botones primarios ---------- */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(90deg, #2563eb 0%, #9333ea 50%, #4f46e5 100%);
+  background-size: 200% 100%;
+  color: white;
+  font-weight: 600;
+  padding: 0.85rem 1.75rem;
+  border-radius: 0.85rem;
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+  transition: all 0.3s ease;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+}
+.btn-primary:hover {
+  background-position: 100% 0%;
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px rgba(147, 51, 234, 0.4);
+}
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* ---------- Botones secundarios ---------- */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.85);
+  color: #1e293b;
+  font-weight: 500;
+  padding: 0.55rem 1.1rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  transition: all 0.25s ease;
+  text-decoration: none;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+.btn-secondary:hover {
+  background: white;
+  border-color: rgba(79, 70, 229, 0.4);
+  color: #4f46e5;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.12);
+}
+
+/* ---------- Prose para contenido legal ---------- */
+.prose-slate h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+.prose-slate h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #334155;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+.prose-slate p {
+  margin-bottom: 0.9rem;
+  line-height: 1.75;
+  color: #475569;
+}
+.prose-slate ul,
+.prose-slate ol {
+  margin-bottom: 0.9rem;
+  padding-left: 1.4rem;
+  line-height: 1.75;
+  color: #475569;
+}
+.prose-slate a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.prose-slate strong {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+/* ---------- Formularios base ---------- */
+.form-input {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(255, 255, 255, 0.9);
+  transition: all 0.2s;
+  outline: none;
+  font-size: 0.95rem;
+}
+.form-input:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+.form-label {
+  display: block;
+  font-weight: 500;
+  color: #334155;
+  margin-bottom: 0.35rem;
+  font-size: 0.9rem;
+}
+
+/* ---------- Animaciones fade ---------- */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fadeInUp 0.8s ease forwards; }
+
+.delay-1 { animation-delay: 0.1s; opacity: 0; }
+.delay-2 { animation-delay: 0.25s; opacity: 0; }
+.delay-3 { animation-delay: 0.4s; opacity: 0; }
+.delay-4 { animation-delay: 0.55s; opacity: 0; }

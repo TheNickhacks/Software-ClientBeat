@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}{{ menu_activo|default:"Panel Administrativo" }} · Client Beat{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#2563eb',
+            secondary: '#9333ea',
+            accent: '#4f46e5',
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+  {% if messages %}
+  <div id="msg-toast-container" class="fixed top-4 right-4 z-[90] space-y-2 w-full max-w-md">
+    {% for m in messages %}
+    <div class="glass-effect rounded-xl px-4 py-3 shadow-lg border flex items-start gap-3
+                {% if m.tags == 'error' %}border-red-200 bg-red-50 text-red-700
+                {% elif m.tags == 'success' %}border-green-200 bg-green-50 text-green-700
+                {% elif m.tags == 'warning' %}border-amber-200 bg-amber-50 text-amber-700
+                {% else %}border-blue-200 bg-blue-50 text-blue-700{% endif %}">
+      <i class="fa {% if m.tags == 'error' %}fa-exclamation-circle{% elif m.tags == 'success' %}fa-check-circle{% elif m.tags == 'warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %} text-lg mt-0.5"></i>
+      <div class="text-sm leading-relaxed flex-1">{{ m }}</div>
+      <button type="button" onclick="this.parentElement.remove()"
+              class="text-slate-400 hover:text-slate-600 text-lg leading-none ml-1">×</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="min-h-screen flex">
+    {# ========= SIDEBAR ========= #}
+    <aside class="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col fixed h-screen z-40">
+      <div class="px-5 py-5 border-b border-slate-100 flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 flex items-center justify-center text-white font-bold">
+          CB
+        </div>
+        <div class="min-w-0">
+          <div class="font-extrabold gradient-text text-lg leading-none">Client Beat</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Panel Admin</div>
+        </div>
+      </div>
+
+      <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+        <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400 px-3 mt-2 mb-1">Gestión</p>
+        {% for item in menu %}
+        <a href="{{ item.url }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all
+                  {% if menu_activo == item.label %}
+                    bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-indigo-600/10 text-slate-900 shadow-sm ring-1 ring-indigo-100
+                  {% else %}
+                    text-slate-600 hover:bg-slate-100 hover:text-slate-900
+                  {% endif %}">
+          <span class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 text-{{ item.color }}-600 shadow-sm">
+            <i class="fa {{ item.icono }} text-xs"></i>
+          </span>
+          <span>{{ item.label }}</span>
+        </a>
+        {% endfor %}
+
+        {% if user.is_superuser %}
+        <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400 px-3 mt-6 mb-1">Solo SuperUser</p>
+        <a href="/admin-panel/superuser/salud/"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all">
+          <span class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 text-red-600 shadow-sm">
+            <i class="fa fa-heartbeat text-xs"></i>
+          </span>
+          <span>Salud técnica</span>
+        </a>
+        <a href="/admin/"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-all">
+          <span class="w-7 h-7 flex items-center justify-center rounded-lg bg-red-100 text-red-600 shadow-sm">
+            <i class="fa fa-unlock text-xs"></i>
+          </span>
+          <span>Django Admin (técnico)</span>
+        </a>
+        {% endif %}
+      </nav>
+
+      <div class="p-4 border-t border-slate-100 text-[11px] text-slate-500 leading-relaxed">
+        <div class="flex items-center gap-2 mb-2">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white text-xs font-bold">
+            {{ user.email|slice:":2"|upper }}
+          </div>
+          <div class="min-w-0">
+            <div class="text-slate-800 font-semibold text-[12px] truncate">{{ user.get_full_name|default:user.email }}</div>
+            <div class="text-[10px] text-slate-400">
+              {% if user.is_superuser %}SuperUser Django{% elif user.is_admin_soporte %}Admin Soporte{% else %}{{ user.get_rol_display }}{% endif %}
+            </div>
+          </div>
+        </div>
+        <a href="/dashboard/" class="inline-block text-slate-500 hover:text-indigo-600 mb-1">
+          <i class="fa fa-arrow-left mr-1"></i> Volver al dashboard cliente
+        </a><br>
+        <form method="POST" action="/accounts/logout/" class="inline">
+          {% csrf_token %}
+          <button type="submit" class="text-slate-500 hover:text-red-600 font-medium">
+            <i class="fa fa-sign-out-alt mr-1"></i> Cerrar sesión
+          </button>
+        </form>
+      </div>
+    </aside>
+
+    {# ========= CONTENIDO PRINCIPAL ========= #}
+    <main class="flex-1 md:ml-64 flex flex-col min-h-screen">
+      {# Header móvil / barra superior #}
+      <header class="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">CB</div>
+          <div class="font-bold gradient-text">Client Beat Admin</div>
+        </div>
+      </header>
+
+      {# Título sección #}
+      <div class="px-6 md:px-8 pt-6 pb-2 md:pt-8">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-xs font-semibold uppercase tracking-wider text-indigo-600 mb-1">
+              Administración Client Beat
+            </div>
+            <h1 class="text-2xl md:text-3xl font-extrabold gradient-text">
+              {{ menu_activo|default:"Panel" }}
+            </h1>
+            <p class="text-sm text-slate-500 mt-1">
+              {% block admin_subtitle %}Gestión no técnica del producto. Sin acceso a funciones raw de base de datos.{% endblock %}
+            </p>
+          </div>
+          {% block admin_header_actions %}{% endblock %}
+        </div>
+      </div>
+
+      <div class="px-6 md:px-8 py-6 flex-1">
+        {% block admin_content %}{% endblock %}
+      </div>
+
+      <footer class="px-6 md:px-8 py-4 text-xs text-slate-400 border-t border-slate-100 bg-white/50">
+        © Client Beat SpA · RUT 77.607.311-3 · Asturias 790 E, Rancagua · Chile
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

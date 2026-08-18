@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Client Beat — Mide la Satisfacción de tus Clientes{% endblock %}
+{% block content %}
+
+<section class="relative overflow-hidden pt-36 pb-20 md:pt-40">
+  <div class="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-indigo-600/20"></div>
+  <div class="container mx-auto px-6 relative z-10">
+    <div class="max-w-4xl mx-auto text-center">
+      <img
+        src="https://storage.googleapis.com/hostinger-horizons-assets-prod/1a278a57-ddc3-48d4-9216-30f7b1b4e998/216e817e9696a1575f704e812c10a089.png"
+        alt="Client Beat Logo"
+        class="mx-auto h-64 md:h-80 w-auto object-contain mb-6"
+        style="filter: drop-shadow(0 12px 24px rgba(0,0,0,0.3))"
+      />
+      <h1 class="text-5xl md:text-7xl font-bold gradient-text mb-6 animate-fade-up delay-1">
+        Mide la Satisfacción de tus Clientes
+      </h1>
+      <p class="text-xl md:text-2xl text-gray-600 mb-8 animate-fade-up delay-2">
+        Transforma la experiencia de tus clientes con encuestas inteligentes, benchmarking sectorial y análisis en tiempo real.
+      </p>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-up delay-3">
+        <a href="/accounts/register/" class="btn-primary text-lg py-4 px-8">
+          Comenzar Ahora
+          <i class="fa-solid fa-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features" class="py-20 bg-white/50">
+  <div class="container mx-auto px-6">
+    <h2 class="text-4xl font-bold gradient-text mb-4 text-center">
+      ¿Por qué elegir nuestra plataforma?
+    </h2>
+    <p class="text-xl text-gray-600 max-w-3xl mx-auto text-center mb-16">
+      Todo lo que necesitas para entender, medir y mejorar la experiencia de tus clientes en un solo lugar.
+    </p>
+    <div class="grid md:grid-cols-3 gap-8">
+      <div class="glass-effect p-8 rounded-2xl card-hover text-center animate-fade-up delay-1">
+        <div class="mb-6 flex justify-center">
+          <i class="fa-solid fa-chart-line text-blue-600 w-12 h-12 text-5xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-3">Análisis Inteligente</h3>
+        <p class="text-gray-600">
+          Métricas avanzadas y visualizaciones que revelan insights accionables.
+        </p>
+      </div>
+      <div class="glass-effect p-8 rounded-2xl card-hover text-center animate-fade-up delay-2">
+        <div class="mb-6 flex justify-center">
+          <i class="fa-solid fa-trending-up text-purple-600 w-12 h-12 text-5xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-3">Benchmarking Sectorial</h3>
+        <p class="text-gray-600">
+          Compárate con empresas de tu rubro y descubre oportunidades de mejora.
+        </p>
+      </div>
+      <div class="glass-effect p-8 rounded-2xl card-hover text-center animate-fade-up delay-3">
+        <div class="mb-6 flex justify-center">
+          <i class="fa-solid fa-comments text-indigo-600 w-12 h-12 text-5xl"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800 mb-3">Encuestas Personalizadas</h3>
+        <p class="text-gray-600">
+          Crea encuestas NPS y CSAT mediante códigos QR en tus locales.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-20 bg-gradient-to-r from-blue-600 to-purple-600">
+  <div class="container mx-auto px-6 text-center">
+    <h2 class="text-4xl font-bold text-white mb-6">
+      ¿Listo para transformar tu negocio?
+    </h2>
+    <p class="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+      Únete a cientos de empresas que ya están midiendo y mejorando la satisfacción de sus clientes con Client Beat.
+    </p>
+    <a
+      href="/accounts/register/"
+      class="inline-block bg-white text-blue-600 font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
+    >
+      Ver Plan y Comenzar
+    </a>
+  </div>
+</section>
+
+{% endblock %}

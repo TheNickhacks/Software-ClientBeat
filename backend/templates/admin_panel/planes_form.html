@@ -1,0 +1,271 @@
+{% extends 'admin_panel/base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}{% if modo == 'crear' %}Crear nuevo plan{% else %}Editar plan: {{ object.nombre }}{% endif %} · Panel Admin{% endblock %}
+
+{% block admin_subtitle %}
+  {% if modo == 'crear' %}
+    Configura un nuevo plan de suscripción con precios, límites, cobros escalonados y feature flags.
+  {% else %}
+    Actualiza la información del plan {{ object.nombre }}. Los cambios se reflejan inmediatamente en el onboarding.
+  {% endif %}
+{% endblock %}
+
+{% block admin_header_actions %}
+<a href="{% url 'adminpanel:planes' %}"
+   class="btn-secondary !px-4 !py-2.5 text-sm inline-flex items-center gap-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50">
+  <i class="fa fa-arrow-left"></i> Volver a listado
+</a>
+{% endblock %}
+
+{% block admin_content %}
+
+<form method="POST" id="planForm" class="max-w-6xl mx-auto space-y-5">
+  {% csrf_token %}
+
+  {% if form.errors %}
+  <div class="glass-effect rounded-2xl p-5 border-2 border-red-100 bg-red-50/40">
+    <div class="flex items-start gap-3">
+      <div class="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+        <i class="fa fa-exclamation-circle"></i>
+      </div>
+      <div class="flex-1">
+        <div class="font-bold text-red-700 mb-1">Revisa los siguientes errores antes de guardar:</div>
+        <ul class="text-sm text-red-700 list-disc ml-5 space-y-1">
+          {% for field in form %}
+            {% for error in field.errors %}
+              <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+            {% endfor %}
+          {% endfor %}
+          {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+    <div class="glass-effect rounded-2xl p-6 card-hover lg:col-span-2">
+      <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
+        <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 inline-flex items-center justify-center text-sm">
+          <i class="fa fa-info-circle"></i>
+        </span>
+        1 · Datos básicos del plan
+      </h2>
+      <p class="text-xs text-slate-500 mb-5 ml-10">Nombre público, código interno y descripción que verán los dueños en el onboarding (paso 3).</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.nombre.label }} *</label>
+          {% render_field form.nombre class="input-base" placeholder="Ej: PLAN_PROFESIONAL_2026" %}
+          <p class="text-[11px] text-slate-500 mt-1">Nombre slug / interno. Sin espacios ni caracteres especiales.</p>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.nombre_mostrar.label }}</label>
+          {% render_field form.nombre_mostrar class="input-base" placeholder="Ej: Plan Profesional ClienBeat" %}
+          <p class="text-[11px] text-slate-500 mt-1">Si queda vacío se usa el nombre interno.</p>
+        </div>
+        <div class="md:col-span-2">
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.descripcion.label }}</label>
+          {% render_field form.descripcion class="input-base" placeholder="Breve descripción del plan (1-2 líneas)." %}
+        </div>
+        <div class="md:col-span-2">
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 flex items-center justify-between">
+            <span>{{ form.caracteristicas.label }}</span>
+            <span class="text-[10px] text-slate-400 font-normal">Lista · 1 línea por característica · aparecerá como bullet points</span>
+          </label>
+          {% render_field form.caracteristicas class="input-base font-mono text-xs" %}
+        </div>
+      </div>
+    </div>
+
+    <div class="glass-effect rounded-2xl p-6 card-hover">
+      <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
+        <span class="w-8 h-8 rounded-lg bg-green-100 text-green-600 inline-flex items-center justify-center text-sm">
+          <i class="fa fa-coins"></i>
+        </span>
+        2 · Precio y duración
+      </h2>
+      <p class="text-xs text-slate-500 mb-5">Precios (CLP y/o UF) y días de prueba gratis del ciclo (30 = mensual; 365 = lanzamiento).</p>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.precio_clp.label }}</label>
+          {% render_field form.precio_clp class="input-base text-lg font-bold" type="number" min="0" %}
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.precio_uf.label }}</label>
+          {% render_field form.precio_uf class="input-base text-lg font-bold" type="number" min="0" step="0.01" %}
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.moneda.label }}</label>
+          {% render_field form.moneda class="input-base" %}
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.dias_prueba_gratis.label }} (días) *</label>
+          {% render_field form.dias_prueba_gratis class="input-base" type="number" min="1" %}
+          <p class="text-[11px] text-slate-500 mt-1"><i class="fa fa-lightbulb text-amber-500 mr-1"></i>Plan MVP = 365 días (gratis lanzamiento); planes pagos = 30 días (mensual).</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass-effect rounded-2xl p-6 card-hover">
+      <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
+        <span class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 inline-flex items-center justify-center text-sm">
+          <i class="fa fa-user-friends"></i>
+        </span>
+        3 · Límites de usuarios y locales
+      </h2>
+      <p class="text-xs text-slate-500 mb-5">Cantidades incluidas en el precio base (0 = ilimitado).</p>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.usuarios_permitidos.label }}</label>
+          {% render_field form.usuarios_permitidos class="input-base" type="number" min="0" %}
+          <p class="text-[11px] text-slate-500 mt-1">Básico=2 · Emp=5 · Prof=10</p>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.locales_permitidos.label }}</label>
+          {% render_field form.locales_permitidos class="input-base" type="number" min="0" %}
+          <p class="text-[11px] text-slate-500 mt-1">MVP = 1 local</p>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.locales_gratis_incluidos.label }}</label>
+          {% render_field form.locales_gratis_incluidos class="input-base" type="number" min="0" %}
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.costo_local_adicional_clp.label }} (CLP)</label>
+          {% render_field form.costo_local_adicional_clp class="input-base" type="number" min="0" %}
+          <p class="text-[11px] text-slate-500 mt-1">B30k · E25k · P20k</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass-effect rounded-2xl p-6 card-hover">
+      <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
+        <span class="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 inline-flex items-center justify-center text-sm">
+          <i class="fa fa-list-ul"></i>
+        </span>
+        4 · Rubros online / e-commerce
+      </h2>
+      <p class="text-xs text-slate-500 mb-5">Mismo cálculo escalonado que locales, pero para rubros digitales (ventas web, SaaS, etc.).</p>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.rubros_permitidos.label }}</label>
+          {% render_field form.rubros_permitidos class="input-base" type="number" min="0" %}
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.rubros_gratis_incluidos.label }}</label>
+          {% render_field form.rubros_gratis_incluidos class="input-base" type="number" min="0" %}
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.costo_rubro_adicional_clp.label }} (CLP)</label>
+          {% render_field form.costo_rubro_adicional_clp class="input-base" type="number" min="0" %}
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.rubros.label }}</label>
+          {% render_field form.rubros class="input-base h-32 !p-2 text-xs" %}
+          <p class="text-[11px] text-slate-500 mt-1">Opcional. Selecciona qué rubros aplican para este plan (ninguno = todos permitidos). Mantén Ctrl/Cmd para multiselección.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass-effect rounded-2xl p-6 card-hover">
+      <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
+        <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 inline-flex items-center justify-center text-sm">
+          <i class="fa fa-rocket"></i>
+        </span>
+        5 · Feature flags del plan
+      </h2>
+      <p class="text-xs text-slate-500 mb-5">
+        Niveles funcionales según Descripción App:
+        <strong>Básico (solo datos propios) · Empresarial (+ Benchmarking) · Profesional (+ Encuestas custom).</strong>
+      </p>
+
+      <div class="space-y-3">
+        <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition cursor-pointer">
+          <span class="mt-1">{% render_field form.tiene_benchmarking_rubro class="w-4 h-4 accent-indigo-600" %}</span>
+          <span>
+            <span class="font-semibold text-sm text-slate-800 block">{{ form.tiene_benchmarking_rubro.label }}</span>
+            <span class="text-[11px] text-slate-500 block">Comparativas anónimas con negocios del mismo rubro. Planes Básico = NO, Emp/Prof = SI.</span>
+          </span>
+        </label>
+        <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition cursor-pointer">
+          <span class="mt-1">{% render_field form.tiene_encuestas_custom class="w-4 h-4 accent-indigo-600" %}</span>
+          <span>
+            <span class="font-semibold text-sm text-slate-800 block">{{ form.tiene_encuestas_custom.label }}</span>
+            <span class="text-[11px] text-slate-500 block">Permite al dueño agregar preguntas propias a la encuesta QR. Solo Plan Profesional = SI (máx 5).</span>
+          </span>
+        </label>
+        <div class="p-3 rounded-xl border border-slate-200 bg-slate-50/40">
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.max_preguntas_encuesta_custom.label }}</label>
+          {% render_field form.max_preguntas_encuesta_custom class="input-base" type="number" min="0" max="50" %}
+          <p class="text-[11px] text-slate-500 mt-1">Recomendado: Plan Profesional = 5 preguntas extra como máximo.</p>
+        </div>
+        <label class="flex items-start gap-3 p-3 rounded-xl border border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 transition cursor-pointer">
+          <span class="mt-1">{% render_field form.es_lanzamiento_gratis class="w-4 h-4 accent-emerald-600" %}</span>
+          <span>
+            <span class="font-semibold text-sm text-emerald-800 block">{{ form.es_lanzamiento_gratis.label }}</span>
+            <span class="text-[11px] text-emerald-700 block">Plan MVP exclusivo. No aparece públicamente en la página de precios. 365 días gratis.</span>
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <div class="glass-effect rounded-2xl p-6 card-hover">
+      <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
+        <span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 inline-flex items-center justify-center text-sm">
+          <i class="fa fa-cog"></i>
+        </span>
+        6 · Estado y configuración general
+      </h2>
+      <p class="text-xs text-slate-500 mb-5">Reglas de visualización del plan en el sistema (onboarding, renovaciones).</p>
+
+      <div class="space-y-3">
+        <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition cursor-pointer">
+          <span class="mt-1">{% render_field form.activo class="w-4 h-4 accent-green-600" %}</span>
+          <span>
+            <span class="font-semibold text-sm text-slate-800 block">{{ form.activo.label }}</span>
+            <span class="text-[11px] text-slate-500 block">Inactivo = no se puede asignar ni aparece. Úsalo para descontinuar planes (NO BORRES).</span>
+          </span>
+        </label>
+        <label class="flex items-start gap-3 p-3 rounded-xl border border-purple-200 bg-purple-50/40 hover:bg-purple-50 transition cursor-pointer">
+          <span class="mt-1">{% render_field form.es_plan_default class="w-4 h-4 accent-purple-600" %}</span>
+          <span>
+            <span class="font-semibold text-sm text-purple-800 block">{{ form.es_plan_default.label }}</span>
+            <span class="text-[11px] text-purple-700 block">Se asigna automáticamente al terminar onboarding. Marca SOLO 1 (se desmarcan los demás).</span>
+          </span>
+        </label>
+        <div class="p-3 rounded-xl border border-slate-200">
+          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.orden.label }} (visualización)</label>
+          {% render_field form.orden class="input-base" type="number" min="0" step="10" %}
+          <p class="text-[11px] text-slate-500 mt-1">Recomendado: 10 · 20 · 30 (Básico, Empresarial, Profesional). MVP = 1.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="sticky bottom-4 z-30 glass-effect rounded-2xl p-4 border border-slate-200 shadow-xl flex items-center justify-between gap-3 flex-wrap">
+    <div class="text-xs text-slate-500">
+      <i class="fa fa-shield-alt text-indigo-600 mr-1"></i>
+      <strong class="text-slate-700">Regla:</strong> Si marcas default, el plan anterior deja de serlo automáticamente. No puedes desactivar un plan default.
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{% url 'adminpanel:planes' %}"
+         class="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-sm font-semibold transition">
+        Cancelar
+      </a>
+      <button type="submit" class="btn-primary !px-6 !py-2.5 text-sm inline-flex items-center gap-2">
+        <i class="fa fa-save"></i>
+        {% if modo == 'crear' %}Crear plan{% else %}Guardar cambios{% endif %}
+      </button>
+    </div>
+  </div>
+</form>
+
+{% endblock %}

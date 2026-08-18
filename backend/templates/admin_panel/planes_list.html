@@ -1,0 +1,220 @@
+{% extends 'admin_panel/base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Planes y Precios · Panel Admin Client Beat{% endblock %}
+
+{% block admin_subtitle %}
+  Gestiona los planes de suscripción disponibles para Client Beat: precios, límites,
+  cobros extras escalonados, feature flags de benchmarking y encuestas custom.
+{% endblock %}
+
+{% block admin_header_actions %}
+<a href="{% url 'adminpanel:plan_create' %}"
+   class="btn-primary !px-4 !py-2.5 text-sm inline-flex items-center gap-2">
+  <i class="fa fa-plus"></i> Crear nuevo plan
+</a>
+{% endblock %}
+
+{% block admin_content %}
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+  <div class="glass-effect rounded-xl p-5 card-hover">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs uppercase tracking-wider font-bold text-slate-400">Planes totales</span>
+      <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+        <i class="fa fa-layer-group"></i>
+      </div>
+    </div>
+    <div class="text-3xl font-extrabold gradient-text">{{ planes_total }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-5 card-hover">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs uppercase tracking-wider font-bold text-slate-400">Activos y visibles</span>
+      <div class="w-8 h-8 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">
+        <i class="fa fa-check-circle"></i>
+      </div>
+    </div>
+    <div class="text-3xl font-extrabold text-green-700">{{ planes_activos }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-5 card-hover">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs uppercase tracking-wider font-bold text-slate-400">Plan default onboarding</span>
+      <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
+        <i class="fa fa-star"></i>
+      </div>
+    </div>
+    <div class="text-xl font-extrabold gradient-text truncate">
+      {% if default_plan %}{{ default_plan.nombre }}{% else %}<span class="text-red-500 font-semibold">Sin asignar</span>{% endif %}
+    </div>
+    <div class="text-xs text-slate-500 mt-1">
+      {% if default_plan %}
+        ${{ default_plan.precio_clp|default:0 }} CLP · {{ default_plan.dias_prueba_gratis }} días prueba
+      {% else %}
+        Debes marcar 1 plan como default (MVP recomendado).
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="glass-effect rounded-2xl overflow-hidden card-hover">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50/70 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider font-bold">
+        <tr>
+          <th class="px-5 py-4 text-left">Plan</th>
+          <th class="px-3 py-4 text-center">Precio base</th>
+          <th class="px-3 py-4 text-center">Usuarios</th>
+          <th class="px-3 py-4 text-center">Locales</th>
+          <th class="px-3 py-4 text-center">Extra local</th>
+          <th class="px-3 py-4 text-center">Rubros</th>
+          <th class="px-3 py-4 text-center">Benchmark</th>
+          <th class="px-3 py-4 text-center">Custom</th>
+          <th class="px-3 py-4 text-center">Estado</th>
+          <th class="px-5 py-4 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for plan in planes %}
+        <tr class="{% if not plan.activo %}opacity-60{% endif %} hover:bg-indigo-50/40 transition">
+          <td class="px-5 py-4">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 text-white flex items-center justify-center shrink-0">
+                <i class="fa fa-tag"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-bold text-slate-800 text-base">{{ plan.nombre }}</span>
+                  {% if plan.es_plan_default %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[10px] font-semibold uppercase tracking-wide">
+                      <i class="fa fa-star"></i> Default
+                    </span>
+                  {% endif %}
+                  {% if plan.es_lanzamiento_gratis %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-semibold uppercase tracking-wide">
+                      <i class="fa fa-gift"></i> Lanzamiento
+                    </span>
+                  {% endif %}
+                </div>
+                <div class="text-[11px] text-slate-500 mt-1 font-mono">ID: {{ plan.nombre }} · Orden: {{ plan.orden }} · {{ plan.dias_prueba_gratis }} días</div>
+                <div class="text-xs text-slate-600 mt-1 line-clamp-1">{{ plan.descripcion|default:"—" }}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-3 py-4 text-center whitespace-nowrap">
+            <div class="font-extrabold text-lg text-slate-800">${{ plan.precio_clp|default:0 }}</div>
+            <div class="text-[11px] text-slate-500">{{ plan.moneda }}</div>
+          </td>
+          <td class="px-3 py-4 text-center font-semibold text-slate-700">
+            {{ plan.usuarios_permitidos|default:"∞" }}
+          </td>
+          <td class="px-3 py-4 text-center">
+            <div class="font-semibold text-slate-700">{{ plan.locales_permitidos|default:"∞" }}</div>
+            <div class="text-[10px] text-slate-500">{{ plan.locales_gratis_incluidos }} gratis</div>
+          </td>
+          <td class="px-3 py-4 text-center whitespace-nowrap">
+            <div class="font-semibold text-indigo-700">${{ plan.costo_local_adicional_clp|default:0 }}</div>
+            <div class="text-[10px] text-slate-500">por local extra</div>
+          </td>
+          <td class="px-3 py-4 text-center">
+            <div class="font-semibold text-slate-700">{{ plan.rubros_permitidos|default:"∞" }}</div>
+            <div class="text-[10px] text-slate-500">{{ plan.rubros_gratis_incluidos }} gratis</div>
+            {% if plan.rubros.all %}
+              <div class="text-[10px] text-purple-600 mt-1">{{ plan.rubros.all|length }} rubros asociados</div>
+            {% endif %}
+          </td>
+          <td class="px-3 py-4 text-center">
+            {% if plan.tiene_benchmarking_rubro %}
+              <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-600"><i class="fa fa-check"></i></span>
+            {% else %}
+              <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-400"><i class="fa fa-times"></i></span>
+            {% endif %}
+          </td>
+          <td class="px-3 py-4 text-center">
+            {% if plan.tiene_encuestas_custom %}
+              <div class="flex flex-col items-center">
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-600"><i class="fa fa-check"></i></span>
+                <span class="text-[10px] text-slate-500 mt-0.5">máx {{ plan.max_preguntas_encuesta_custom|default:0 }} preg</span>
+              </div>
+            {% else %}
+              <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-400"><i class="fa fa-times"></i></span>
+            {% endif %}
+          </td>
+          <td class="px-3 py-4 text-center">
+            {% if plan.activo %}
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold">
+                <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Activo
+              </span>
+            {% else %}
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">
+                <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Inactivo
+              </span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-4 text-right whitespace-nowrap">
+            <div class="flex items-center justify-end gap-2">
+              <a href="{% url 'adminpanel:plan_update' plan.pk %}"
+                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-semibold transition">
+                <i class="fa fa-edit"></i> Editar
+              </a>
+              {% if not plan.es_plan_default %}
+              <form method="POST" action="{% url 'adminpanel:plan_marcar_default' plan.pk %}" class="inline" onsubmit="return confirm('¿Seguro que quieres marcar este plan como DEFAULT de onboarding? Todos los demás planes dejarán de ser el default.');">
+                {% csrf_token %}
+                <button type="submit"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 text-xs font-semibold transition disabled:opacity-40"
+                        {% if not plan.activo %}disabled title="Actívalo primero"{% endif %}>
+                  <i class="fa fa-star"></i> Default
+                </button>
+              </form>
+              {% endif %}
+              <form method="POST" action="{% url 'adminpanel:plan_toggle_activo' plan.pk %}" class="inline" onsubmit="return confirm('¿Seguro que quieres {% if plan.activo %}DESACTIVAR{% else %}ACTIVAR{% endif %} este plan?');">
+                {% csrf_token %}
+                <button type="submit"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition
+                               {% if plan.activo %}bg-amber-50 text-amber-700 hover:bg-amber-100{% else %}bg-green-50 text-green-700 hover:bg-green-100{% endif %}
+                               {% if plan.es_plan_default %}opacity-30 cursor-not-allowed{% endif %}"
+                        {% if plan.es_plan_default %}disabled title="No puedes desactivar el plan default"{% endif %}>
+                  {% if plan.activo %}<i class="fa fa-pause-circle"></i> Desactivar{% else %}<i class="fa fa-play-circle"></i> Activar{% endif %}
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="10" class="px-6 py-16 text-center text-slate-500">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-3xl">
+              <i class="fa fa-box-open"></i>
+            </div>
+            <div class="text-lg font-bold text-slate-600 mb-1">Todavía no hay planes creados.</div>
+            <div class="text-sm mb-6">Crea el plan MVP Básico para empezar a onboarding dueños.</div>
+            <a href="{% url 'adminpanel:plan_create' %}" class="btn-primary !px-5 !py-2.5 text-sm inline-flex items-center gap-2">
+              <i class="fa fa-plus"></i> Crear primer plan
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="font-bold text-slate-700 mb-2 flex items-center gap-2"><i class="fa fa-calculator text-indigo-600"></i> Fórmula cálculo mensual</div>
+    <div class="bg-slate-50 rounded-lg p-3 font-mono text-[11px] leading-relaxed text-slate-600 border border-slate-100">
+Total = precio_base<br>
+      &nbsp;&nbsp;+ max(0, locales - locales_gratis_incluidos) * costo_local_extra<br>
+      &nbsp;&nbsp;+ max(0, rubros_online - rubros_gratis_incluidos) * costo_rubro_extra
+    </div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="font-bold text-slate-700 mb-2 flex items-center gap-2"><i class="fa fa-lightbulb text-amber-500"></i> Buenas prácticas</div>
+    <ul class="space-y-1.5 text-slate-600">
+      <li class="flex items-start gap-2"><i class="fa fa-check-circle text-green-500 mt-0.5"></i><span><strong>Solo 1 plan default</strong> (MVP recomendado = 365 días gratis).</span></li>
+      <li class="flex items-start gap-2"><i class="fa fa-check-circle text-green-500 mt-0.5"></i><span>Usa <strong>Orden</strong> 10 / 20 / 30 para reordenar visualmente.</span></li>
+      <li class="flex items-start gap-2"><i class="fa fa-check-circle text-green-500 mt-0.5"></i><span>Desactiva planes antiguos, NO los borres (suscripciones históricas lo referencian).</span></li>
+      <li class="flex items-start gap-2"><i class="fa fa-check-circle text-green-500 mt-0.5"></i><span>Extras escalonados doc: Básico $30k / Empresarial $25k / Profesional $20k.</span></li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends 'admin_panel/base.html' %}
+{% block admin_subtitle %}Información técnica de salud de la plataforma (solo SuperUser Django).{% endblock %}
+{% block admin_content %}
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="glass-effect rounded-2xl p-6 border border-slate-100">
+    <div class="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center mb-3">
+      <i class="fa fa-database"></i>
+    </div>
+    <h3 class="font-bold text-slate-800 mb-2">Base de datos</h3>
+    <div class="space-y-2 text-sm">
+      <div class="flex justify-between py-1 border-b border-slate-100">
+        <span class="text-slate-500">Conexión (healthcheck)</span>
+        <span class="font-bold {% if db_ok %}text-green-600{% else %}text-red-600{% endif %}">
+          {% if db_ok %}OK ✓{% else %}FALLO ✗{% endif %}
+        </span>
+      </div>
+      <div class="flex justify-between py-1 border-b border-slate-100">
+        <span class="text-slate-500">Vendor DB</span>
+        <span class="font-semibold text-slate-800">{{ db_vendor }}</span>
+      </div>
+      <div class="flex justify-between py-1 border-b border-slate-100">
+        <span class="text-slate-500">Engine Django</span>
+        <span class="font-mono text-[11px] text-slate-700 break-all">{{ DATABASE_ENGINE }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="glass-effect rounded-2xl p-6 border border-slate-100">
+    <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center mb-3">
+      <i class="fa fa-sliders-h"></i>
+    </div>
+    <h3 class="font-bold text-slate-800 mb-2">Runtime</h3>
+    <div class="space-y-2 text-sm">
+      <div class="flex justify-between py-1 border-b border-slate-100">
+        <span class="text-slate-500">DEBUG</span>
+        <span class="font-bold {% if DEBUG %}text-amber-600{% else %}text-green-600{% endif %}">{{ DEBUG|yesno:"ACTIVO,OFF" }}</span>
+      </div>
+    </div>
+    <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 mt-4 text-[12px] text-amber-700 leading-relaxed">
+      <i class="fa fa-exclamation-triangle mr-1"></i>
+      Recuerda: el panel técnico NO es para operaciones de soporte diario. Usa el panel de Gestión de Negocios / Planes para eso.
+    </div>
+  </div>
+
+  <div class="glass-effect rounded-2xl p-6 border border-slate-100">
+    <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-3">
+      <i class="fa fa-link"></i>
+    </div>
+    <h3 class="font-bold text-slate-800 mb-2">Acceso Django Admin (raw)</h3>
+    <p class="text-xs text-slate-500 leading-relaxed mb-4">
+      Consola de Django Admin tradicional para CRUD raw. Puede romper datos si no se usa con cuidado. Solo SuperUser.
+    </p>
+    <a href="/admin/" target="_blank" class="btn-secondary w-full justify-center !py-2 text-sm">
+      <i class="fa fa-external-link-alt mr-1"></i> Abrir /admin/ (técnico)
+    </a>
+  </div>
+</section>
+{% endblock %}

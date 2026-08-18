@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% block title %}Mi Panel — Client Beat{% endblock %}
+{% block content %}
+<section class="pt-28 pb-20">
+  <div class="container mx-auto px-6">
+
+    {# ---------------- WELCOME BANNER ---------------- #}
+    {% if welcome %}
+      <div class="mb-8 rounded-2xl overflow-hidden shadow-lg animate-fade-up delay-1">
+        <div class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-8 md:p-10 text-white">
+          <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div class="max-w-2xl">
+              <div class="inline-flex items-center gap-2 bg-white/15 px-3 py-1 rounded-full text-sm font-medium backdrop-blur mb-4">
+                <i class="fa fa-rocket"></i> ¡Onboarding completado!
+              </div>
+              <h2 class="text-2xl md:text-3xl font-bold mb-3">
+                🎉 ¡Bienvenido{% if user.first_name %} {{ user.first_name }}{% else %},{% endif %} a Client Beat!
+              </h2>
+              <p class="text-blue-50/90 text-base md:text-lg leading-relaxed">
+                {% if negocio %}
+                  Tu negocio <b class="text-white">{{ negocio.nombre }}</b> ya está configurado. Desde aquí podrás revisar toda tu
+                  reputación Google, gestionar encuestas QR y compararte con competidores de tu rubro.
+                {% else %}
+                  Estamos preparando tu panel. Mientras tanto, explora el menú y empieza a personalizar tu cuenta.
+                {% endif %}
+              </p>
+            </div>
+            <div class="flex-shrink-0">
+              <a href="/admin/" class="inline-flex items-center gap-2 bg-white text-indigo-700 font-semibold px-5 py-3 rounded-xl shadow-lg hover:shadow-2xl hover:-translate-y-0.5 transition-all">
+                <i class="fa fa-cog"></i> Ir al Panel Admin
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    {# ---------------- HEADER CON ROL / NEGOCIO ---------------- #}
+    <div class="flex flex-col md:flex-row md:items-end md:justify-between mb-8 gap-4 animate-fade-up delay-2">
+      <div>
+        <h1 class="text-3xl font-bold gradient-text mb-2">
+          Bienvenido, {{ user.get_full_name|default:user.email }}
+        </h1>
+        <p class="text-gray-500">
+          {% if negocio %}
+            Panel de <b>{{ negocio.nombre }}</b>
+            {% if rol_actual %}
+              · <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full
+                {% if rol_actual == 'ADMIN_SOPORTE' %}bg-blue-100 text-blue-700
+                {% elif rol_actual == 'DUENO' %}bg-purple-100 text-purple-700
+                {% else %}bg-slate-100 text-slate-700{% endif %}">
+                <i class="fa fa-shield-halved"></i>
+                {% if rol_actual == 'ADMIN_SOPORTE' %}Admin ClienBeat{% elif rol_actual == 'DUENO' %}Dueño{% else %}Colaborador{% endif %}
+              </span>
+            {% endif %}
+          {% else %}
+            Selecciona un negocio para comenzar
+          {% endif %}
+        </p>
+      </div>
+      <div class="flex gap-3">
+        {% if rol_actual == 'DUENO' or rol_actual == 'ADMIN_SOPORTE' %}
+          {% if negocio %}
+            <a href="/admin/billing/suscripcion/?negocio__id={{ negocio.id }}" class="btn-secondary">
+              <i class="fa fa-credit-card"></i> Mi Suscripción
+            </a>
+          {% endif %}
+        {% endif %}
+        <a href="/accounts/logout/" class="btn-secondary">
+          <i class="fa fa-sign-out-alt"></i> Cerrar Sesión
+        </a>
+      </div>
+    </div>
+
+    {# ---------------- CARDS DE ESTADO (RESUMEN MVP) ---------------- #}
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10 animate-fade-up delay-3">
+      <div class="glass-effect rounded-2xl p-6 card-hover">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-lg">
+            <i class="fa fa-store"></i>
+          </div>
+          <span class="text-xs font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+            {% if negocio %}ACTIVO{% else %}—{% endif %}
+          </span>
+        </div>
+        <p class="text-sm text-gray-500 mb-1">Negocios activos</p>
+        <h3 class="text-2xl font-bold text-slate-900">
+          {% if negocios_qs %}{{ negocios_qs.count }}{% else %}0{% endif %}
+        </h3>
+      </div>
+
+      <div class="glass-effect rounded-2xl p-6 card-hover">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-lg">
+            <i class="fa fa-map-marker-alt"></i>
+          </div>
+          <span class="text-xs font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
+            {% if plan_activo %}{{ plan_activo.get_nombre_mostrar }}{% else %}Plan activo{% endif %}
+          </span>
+        </div>
+        <p class="text-sm text-gray-500 mb-1">Locales registrados</p>
+        <h3 class="text-2xl font-bold text-slate-900">
+          {% if negocio %}{{ negocio.locales.count }}{% else %}0{% endif %}
+          <span class="text-sm font-medium text-gray-400">/ {% if plan_activo %}{{ plan_activo.locales_permitidos }}{% else %}∞{% endif %} permitido{% if plan_activo and plan_activo.locales_permitidos != 1 %}s{% endif %}</span>
+        </h3>
+      </div>
+
+      <div class="glass-effect rounded-2xl p-6 card-hover">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-lg">
+            <i class="fa fa-users"></i>
+          </div>
+          <span class="text-xs font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
+            Equipo
+          </span>
+        </div>
+        <p class="text-sm text-gray-500 mb-1">Miembros del equipo</p>
+        <h3 class="text-2xl font-bold text-slate-900">
+          {% if negocio %}{{ negocio.miembros_equipo.count }}{% else %}0{% endif %}
+          <span class="text-sm font-medium text-gray-400">/ {% if plan_activo %}{{ plan_activo.usuarios_permitidos }}{% else %}∞{% endif %} permitido{% if plan_activo and plan_activo.usuarios_permitidos != 1 %}s{% endif %}</span>
+        </h3>
+      </div>
+
+      <div class="glass-effect rounded-2xl p-6 card-hover">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg">
+            <i class="fa fa-star"></i>
+          </div>
+          <span class="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+            Próximamente
+          </span>
+        </div>
+        <p class="text-sm text-gray-500 mb-1">Rating promedio Google</p>
+        <h3 class="text-2xl font-bold text-slate-900">
+          — <span class="text-sm font-medium text-gray-400">/ 5.0</span>
+        </h3>
+      </div>
+    </div>
+
+    {# ---------------- PLACEHOLDER FASES SIGUIENTES ---------------- #}
+    <div class="glass-effect p-8 md:p-10 rounded-2xl animate-fade-up delay-4">
+      <div class="flex items-start gap-4 mb-6">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 text-white flex items-center justify-center text-xl shadow-lg flex-shrink-0">
+          <i class="fa fa-clipboard-list"></i>
+        </div>
+        <div>
+          <h2 class="text-2xl font-bold text-slate-900 mb-1">🛠 Tu panel de control se está construyendo</h2>
+          <p class="text-gray-600">
+            Estamos implementando todos los módulos. Aquí verás próximamente:
+          </p>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-5">
+        <div class="flex items-start gap-3 p-5 bg-slate-50/70 rounded-xl border border-slate-200/60">
+          <div class="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0">
+            <i class="fa fa-chart-line"></i>
+          </div>
+          <div>
+            <h4 class="font-semibold text-slate-900 mb-1">Reputación Google + Benchmarking</h4>
+            <p class="text-sm text-gray-500 leading-relaxed">
+              Métricas avanzadas de reseñas, snapshot semanal vs competidores y ranking de tu rubro.
+            </p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3 p-5 bg-slate-50/70 rounded-xl border border-slate-200/60">
+          <div class="w-9 h-9 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center flex-shrink-0">
+            <i class="fa fa-qrcode"></i>
+          </div>
+          <div>
+            <h4 class="font-semibold text-slate-900 mb-1">Encuestas QR (NPS + CSAT)</h4>
+            <p class="text-sm text-gray-500 leading-relaxed">
+              Genera códigos QR por local, recibe feedback al instante y redirige clientes felices a Google.
+            </p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3 p-5 bg-slate-50/70 rounded-xl border border-slate-200/60">
+          <div class="w-9 h-9 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center flex-shrink-0">
+            <i class="fa fa-comments"></i>
+          </div>
+          <div>
+            <h4 class="font-semibold text-slate-900 mb-1">Análisis de Sentimiento</h4>
+            <p class="text-sm text-gray-500 leading-relaxed">
+              Motor léxico con modismos chilenos + corrección manual de clasificaciones por tu equipo.
+            </p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3 p-5 bg-slate-50/70 rounded-xl border border-slate-200/60">
+          <div class="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
+            <i class="fa fa-users-gear"></i>
+          </div>
+          <div>
+            <h4 class="font-semibold text-slate-900 mb-1">Equipo, Locales y Suscripción</h4>
+            <p class="text-sm text-gray-500 leading-relaxed">
+              Invita colaboradores, gestiona múltiples locales y controla tu facturación Flow en un solo lugar.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

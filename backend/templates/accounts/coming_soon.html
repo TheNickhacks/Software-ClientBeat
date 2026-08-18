@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Crear tu Cuenta — Client Beat{% endblock %}
+{% block content %}
+<section class="relative min-h-screen pt-32 pb-16">
+  <div class="absolute inset-0 bg-gradient-to-br from-blue-600/15 via-purple-600/15 to-indigo-600/15 pointer-events-none"></div>
+  <div class="container mx-auto px-6 relative z-10">
+    <div class="max-w-xl mx-auto">
+      <div class="glass-effect rounded-2xl p-8 md:p-10 text-center card-hover">
+        <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 flex items-center justify-center text-white text-3xl shadow-lg">
+          <i class="fa fa-rocket"></i>
+        </div>
+        <h1 class="text-3xl md:text-4xl font-bold gradient-text mb-3">¡Crea tu cuenta en Client Beat!</h1>
+        <p class="text-gray-600 mb-8">Estamos terminando el flujo completo de registro. Mientras tanto, puedes crear tu usuario administrador ejecutando el siguiente comando en tu terminal:</p>
+        <div class="bg-slate-900 text-green-300 text-left p-5 rounded-xl mb-8 overflow-x-auto text-sm font-mono shadow-inner">
+          cd backend ; python manage.py createsuperuser
+        </div>
+        <ul class="text-left text-gray-600 text-sm space-y-2 mb-8 px-2">
+          <li>✅ El email será tu usuario de inicio de sesión</li>
+          <li>✅ Ingresa tu nombre, email y contraseña cuando se te solicite</li>
+          <li>✅ Luego accede en <a href="/accounts/login/" class="text-indigo-600 font-medium underline">/accounts/login/</a></li>
+          <li>✅ También puedes entrar al panel admin en <a href="/admin/" class="text-indigo-600 font-medium underline">/admin/</a></li>
+        </ul>
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <a href="/accounts/login/" class="btn-primary">
+            <i class="fa fa-sign-in-alt"></i> Ir a Iniciar Sesión
+          </a>
+          <a href="/" class="btn-secondary">
+            Volver al Inicio
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

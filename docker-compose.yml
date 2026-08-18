@@ -1,0 +1,81 @@
+services:
+  web:
+    build: .
+    container_name: clientbeat-web
+    command: >
+      bash -c "python manage.py migrate --noinput &&
+               python manage.py collectstatic --noinput --clear 2>/dev/null || true &&
+               python -m gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120"
+    volumes:
+      - ./:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - clientbeat-net
+
+  celery-worker:
+    build: .
+    container_name: clientbeat-celery-worker
+    command: celery -A core worker -l info --pool=solo
+    volumes:
+      - ./:/app
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - clientbeat-net
+
+  celery-beat:
+    build: .
+    container_name: clientbeat-celery-beat
+    command: celery -A core beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - ./:/app
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - clientbeat-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: clientbeat-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - clientbeat-net
+
+  flower:
+    build: .
+    container_name: clientbeat-flower
+    command: celery -A core flower --port=5555 --basic_auth=admin:admin123
+    ports:
+      - "5555:5555"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - celery-worker
+    restart: unless-stopped
+    networks:
+      - clientbeat-net
+
+volumes:
+  redis-data:
+
+networks:
+  clientbeat-net:
+    driver: bridge
