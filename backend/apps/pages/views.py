@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
+from datetime import datetime
 
 from apps.accounts.onboarding_service import onboarding_pendiente, onboarding_siguiente_paso
 
@@ -123,8 +124,115 @@ _CONTENIDOS_LEGALES = {
 }
 
 
+TEMPORALIDAD_CHOICES = [
+    ('SEMANAL', 'Semanal (7 días)', 7),
+    ('MENSUAL', 'Mensual (30 días)', 30),
+    ('TRIMESTRAL', 'Trimestral (90 días)', 90),
+    ('SEMESTRAL', 'Semestral (180 días)', 180),
+    ('ANUAL', 'Anual (365 días)', 365),
+]
+
+
+UBICACION_CHOICES = [
+    ('KM_5',     'Hasta 5 km',     5),
+    ('KM_10',    'Hasta 10 km',    10),
+    ('KM_MAS_10','Más de 10 km',   9999),
+    ('COMUNAL',  'Comunal',        None),
+    ('REGIONAL', 'Regional',       None),
+    ('NACIONAL', 'Nacional',       None),
+]
+
+
+NPS_CAT_CHOICES = [
+    ('TODOS', 'Todas las categorías'),
+    ('PROMOTOR', 'Solo Promotores (NPS 9-10)'),
+    ('PASIVO', 'Solo Pasivos (NPS 7-8)'),
+    ('DETRACTOR', 'Solo Detractores (NPS 0-6)'),
+]
+
+
+DIMENSIONES_TEMATICAS = {
+    'ATENCION': {
+        'nombre': 'Atención al Cliente',
+        'icono': 'fa-user-tie',
+        'color': 'cbblue',
+        'keywords': ['atención', 'atencion', 'personal', 'trato', 'amable', 'amabilidad',
+                     'rápido', 'rapido', 'velocidad', 'espera', 'demora', 'lento',
+                     'caja', 'pago', 'horario', 'empleado', 'mozo', 'asesor', 'asesor',
+                     'ayuda', 'amigable', 'cordial', 'grosero', 'mala atención', 'mal atendido'],
+    },
+    'PRODUCTO': {
+        'nombre': 'Producto / Servicio',
+        'icono': 'fa-mug-hot',
+        'color': 'amber',
+        'keywords': ['producto', 'comida', 'bebida', 'café', 'cafe', 'alimento', 'calidad',
+                     'precio', 'variedad', 'fresco', 'frescura', 'presentación', 'presentacion',
+                     'rico', 'sabor', 'soso', 'malo', 'barato', 'caro', 'cantidad', 'porción',
+                     'porcion', 'servicio', 'resultado', 'stock', 'disponible', 'talla', 'modelo'],
+    },
+    'ESPACIO': {
+        'nombre': 'Espacio / Ambiente',
+        'icono': 'fa-couch',
+        'color': 'purple',
+        'keywords': ['local', 'ambiente', 'lugar', 'espacio', 'música', 'musica', 'decoración',
+                     'decoracion', 'iluminación', 'iluminacion', 'temperatura', 'acogedor',
+                     'cómodo', 'comodo', 'mobiliario', 'mesa', 'silla', 'sucio', 'desorden',
+                     'orden', 'grande', 'pequeño', 'pequeno', 'ruido', 'silencio', 'estacionamiento'],
+    },
+    'LIMPIEZA': {
+        'nombre': 'Limpieza e Higiene',
+        'icono': 'fa-soap',
+        'color': 'emerald',
+        'keywords': ['limpio', 'limpieza', 'aseo', 'higiene', 'baño', 'bano', 'aseado',
+                     'sucio', 'basura', 'mancha', 'olor', 'desinfectado', 'utensilios',
+                     'vajilla', 'mesa', 'piso', 'orden', 'cocina', 'higienico', 'sanitario'],
+    },
+}
+
+
 def landing(request):
     return render(request, 'landing.html')
+
+
+def _parse_date(s):
+    if not s:
+        return None
+    for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y'):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except (ValueError, TypeError):
+            continue
+    return None
+
+
+def _analizar_tematicas(comentarios):
+    """Recibe lista de textos y retorna conteo de menciones por dimensión temática."""
+    result = {k: {'menciones': 0, 'nombre': v['nombre'], 'icono': v['icono'], 'color': v['color']}
+              for k, v in DIMENSIONES_TEMATICAS.items()}
+    total = 0
+    for texto in comentarios:
+        if not texto:
+            continue
+        txt = texto.lower()
+        matched_any = False
+        for key, dim in DIMENSIONES_TEMATICAS.items():
+            if any(k in txt for k in dim['keywords']):
+                result[key]['menciones'] += 1
+                total += 1
+                matched_any = True
+        if not matched_any:
+            pass
+    for key in result:
+        if total > 0:
+            result[key]['pct'] = round(100 * result[key]['menciones'] / total, 1)
+        else:
+            result[key]['pct'] = 0
+    return result, total
+
+
+def _estrellas_html(n):
+    n = max(0, min(5, int(n or 0)))
+    return ('★' * n) + ('☆' * (5 - n))
 
 
 @login_required(login_url='/accounts/login/')
@@ -132,11 +240,62 @@ def dashboard(request):
     if onboarding_pendiente(request.user):
         paso, _ = onboarding_siguiente_paso(request.user)
         return redirect(f'/accounts/onboarding/?paso={paso}')
+
+    # ========= TABS / PESTAÑAS =========
+    tabs = [
+        {'key': 'resumen',  'label': '📊 Resumen KPI',      'icon': 'fa-chart-column'},
+        {'key': 'encuestas','label': '✅ Encuestas QR',      'icon': 'fa-square-check'},
+        {'key': 'google',   'label': '⭐ Reseñas Google',    'icon': 'fa-star'},
+        {'key': 'analisis', 'label': '🧠 Análisis Latencia & Temática', 'icon': 'fa-brain'},
+        {'key': 'benchmark','label': '🏆 Benchmark',         'icon': 'fa-trophy'},
+    ]
+    tab_actual = request.GET.get('tab', 'resumen')
+    if tab_actual not in [t['key'] for t in tabs]:
+        tab_actual = 'resumen'
+
+    # ========= FILTROS GLOBALES =========
+    temp_key = request.GET.get('temporalidad', 'MENSUAL')
+    temp_map = {c[0]: c for c in TEMPORALIDAD_CHOICES}
+    temp_selected = temp_map.get(temp_key, TEMPORALIDAD_CHOICES[1])
+    temp_days = temp_selected[2]
+    temp_label = temp_selected[1]
+
+    ubi_key = request.GET.get('ubicacion', 'COMUNAL')
+    ubi_map = {c[0]: c for c in UBICACION_CHOICES}
+    ubi_selected = ubi_map.get(ubi_key, UBICACION_CHOICES[3])
+    ubi_km = ubi_selected[2]
+    ubi_label = ubi_selected[1]
+
+    filtro_local_id = request.GET.get('local')
+    filtro_nps_cat = request.GET.get('nps_cat', 'TODOS')
+    filtro_fecha_desde = _parse_date(request.GET.get('fecha_desde'))
+    filtro_fecha_hasta = _parse_date(request.GET.get('fecha_hasta'))
+    filtro_fecha_exacta = _parse_date(request.GET.get('fecha_exacta'))
+
     ctx = {
         'welcome': request.GET.get('welcome') == '1',
         'negocio': getattr(request, 'negocio', None),
         'negocios_qs': getattr(request, 'negocios_qs', None),
         'rol_actual': getattr(request, 'rol_actual_negocio', None),
+        'temporalidad_actual': temp_key,
+        'temporalidad_label': temp_label,
+        'temporalidad_dias': temp_days,
+        'temporalidad_choices': TEMPORALIDAD_CHOICES,
+        'ubicacion_actual': ubi_key,
+        'ubicacion_label': ubi_label,
+        'ubicacion_km': ubi_km,
+        'ubicacion_choices': UBICACION_CHOICES,
+        'tabs': tabs,
+        'tab_actual': tab_actual,
+        'filtro_nps_cat': filtro_nps_cat,
+        'nps_cat_choices': NPS_CAT_CHOICES,
+        'filtro_local_id': filtro_local_id,
+        'filtro_fecha_desde': request.GET.get('fecha_desde', '') if filtro_fecha_desde is None else filtro_fecha_desde.strftime('%Y-%m-%d'),
+        'filtro_fecha_hasta': request.GET.get('fecha_hasta', '') if filtro_fecha_hasta is None else filtro_fecha_hasta.strftime('%Y-%m-%d'),
+        'filtro_fecha_exacta': request.GET.get('fecha_exacta', '') if filtro_fecha_exacta is None else filtro_fecha_exacta.strftime('%Y-%m-%d'),
+        'filtro_fecha_desde_obj': filtro_fecha_desde,
+        'filtro_fecha_hasta_obj': filtro_fecha_hasta,
+        'filtro_fecha_exacta_obj': filtro_fecha_exacta,
     }
     negocio = ctx['negocio']
     if negocio is not None:
@@ -151,23 +310,61 @@ def dashboard(request):
         ctx['suscripcion_activa'] = suscripcion
         ctx['plan_activo'] = suscripcion.plan if suscripcion else None
 
-        from django.db.models import Count, Avg, Q, IntegerField, Sum, Case, When
+        ctx['locales_disponibles'] = list(
+            negocio.locales.filter(estado='ACTIVO').values('id', 'nombre').order_by('nombre')
+        )
+
+        from django.db.models import Count, Avg, Q, IntegerField, Sum, Case, When, F
         from apps.encuestas.models import RespuestaEncuesta, EmocionCSATChoices
         from django.utils import timezone
-        desde_30d = timezone.now() - timezone.timedelta(days=30)
+        desde_temp = timezone.now() - timezone.timedelta(days=temp_days)
+
+        # Construir base QS con filtros
         locales_negocio_qs = RespuestaEncuesta.objects.filter(
             local__negocio=negocio,
         ).select_related('local', 'plantilla')
+
+        if filtro_local_id:
+            try:
+                lid = int(filtro_local_id)
+                locales_negocio_qs = locales_negocio_qs.filter(local_id=lid)
+            except (ValueError, TypeError):
+                pass
+        if filtro_fecha_desde:
+            dt_desde = datetime.combine(filtro_fecha_desde, datetime.min.time(), tzinfo=timezone.get_current_timezone())
+            locales_negocio_qs = locales_negocio_qs.filter(fecha_respuesta__gte=dt_desde)
+        if filtro_fecha_hasta:
+            dt_hasta = datetime.combine(filtro_fecha_hasta, datetime.max.time(), tzinfo=timezone.get_current_timezone())
+            locales_negocio_qs = locales_negocio_qs.filter(fecha_respuesta__lte=dt_hasta)
+        if filtro_fecha_exacta:
+            dt_exacta = datetime.combine(filtro_fecha_exacta, datetime.min.time(), tzinfo=timezone.get_current_timezone())
+            dt_exacta_fin = datetime.combine(filtro_fecha_exacta, datetime.max.time(), tzinfo=timezone.get_current_timezone())
+            locales_negocio_qs = locales_negocio_qs.filter(fecha_respuesta__range=(dt_exacta, dt_exacta_fin))
+
         locales_negocio_total = locales_negocio_qs.count()
         ctx['kpi_total_respuestas'] = locales_negocio_total
 
-        locales_30d = locales_negocio_qs.filter(fecha_respuesta__gte=desde_30d)
-        ctx['kpi_respuestas_30d'] = locales_30d.count()
+        # Aplicar rango temporal (si no hay filtros personalizados de fecha, usamos temp)
+        if not (filtro_fecha_desde or filtro_fecha_hasta or filtro_fecha_exacta):
+            locales_rango = locales_negocio_qs.filter(fecha_respuesta__gte=desde_temp)
+        else:
+            locales_rango = locales_negocio_qs
+        ctx['kpi_respuestas_rango'] = locales_rango.count()
+        ctx['kpi_respuestas_30d'] = locales_rango.count()
+
+        # Filtrar por categoría NPS
+        if filtro_nps_cat == 'PROMOTOR':
+            locales_rango = locales_rango.filter(nps_puntaje__gte=9)
+        elif filtro_nps_cat == 'PASIVO':
+            locales_rango = locales_rango.filter(nps_puntaje__in=[7, 8])
+        elif filtro_nps_cat == 'DETRACTOR':
+            locales_rango = locales_rango.filter(nps_puntaje__lte=6)
+
         if locales_negocio_total:
             promedio_nps = locales_negocio_qs.exclude(nps_puntaje__isnull=True).aggregate(avg=Avg('nps_puntaje'))['avg'] or 0
-            promotores = locales_negocio_qs.filter(nps_puntaje__gte=9).count()
-            pasivos = locales_negocio_qs.filter(nps_puntaje__in=[7, 8]).count()
-            detractores = locales_negocio_qs.filter(nps_puntaje__lte=6).count()
+            promotores = locales_rango.filter(nps_puntaje__gte=9).count()
+            pasivos = locales_rango.filter(nps_puntaje__in=[7, 8]).count()
+            detractores = locales_rango.filter(nps_puntaje__lte=6).count()
             total_cat = promotores + pasivos + detractores or 1
             nps_score = round(100 * (promotores - detractores) / total_cat)
         else:
@@ -191,16 +388,16 @@ def dashboard(request):
             ctx['nps_badge'] = 'Detractor'
 
         if locales_negocio_total:
-            muy_feliz = locales_negocio_qs.filter(csat_emocion=EmocionCSATChoices.MUY_FELIZ).count()
-            feliz = locales_negocio_qs.filter(csat_emocion=EmocionCSATChoices.FELIZ).count()
-            csat_total = locales_negocio_qs.exclude(csat_emocion__isnull=True).count() or 1
+            muy_feliz = locales_rango.filter(csat_emocion=EmocionCSATChoices.MUY_FELIZ).count()
+            feliz = locales_rango.filter(csat_emocion=EmocionCSATChoices.FELIZ).count()
+            csat_total = locales_rango.exclude(csat_emocion__isnull=True).count() or 1
             ctx['kpi_csat_felices_pct'] = round(100 * (muy_feliz + feliz) / csat_total) if csat_total else 0
             ctx['kpi_csat_total'] = csat_total
             ctx['kpi_muy_feliz'] = muy_feliz
             ctx['kpi_feliz'] = feliz
-            ctx['kpi_neutral'] = locales_negocio_qs.filter(csat_emocion=EmocionCSATChoices.NEUTRAL).count()
-            ctx['kpi_insatisfecho'] = locales_negocio_qs.filter(csat_emocion=EmocionCSATChoices.INSATISFECHO).count()
-            ctx['kpi_muy_insatisfecho'] = locales_negocio_qs.filter(csat_emocion=EmocionCSATChoices.MUY_INSATISFECHO).count()
+            ctx['kpi_neutral'] = locales_rango.filter(csat_emocion=EmocionCSATChoices.NEUTRAL).count()
+            ctx['kpi_insatisfecho'] = locales_rango.filter(csat_emocion=EmocionCSATChoices.INSATISFECHO).count()
+            ctx['kpi_muy_insatisfecho'] = locales_rango.filter(csat_emocion=EmocionCSATChoices.MUY_INSATISFECHO).count()
         else:
             ctx['kpi_csat_felices_pct'] = 0
             ctx['kpi_csat_total'] = 0
@@ -210,13 +407,322 @@ def dashboard(request):
             ctx['kpi_insatisfecho'] = 0
             ctx['kpi_muy_insatisfecho'] = 0
 
-        ultimas_respuestas = list(locales_negocio_qs.order_by('-fecha_respuesta')[:15])
+        ultimas_respuestas = list(locales_rango.order_by('-fecha_respuesta')[:20])
         ctx['ultimas_respuestas'] = ultimas_respuestas
 
         locales_primer_local = negocio.locales.order_by('fecha_creacion').first()
         if locales_primer_local:
             ctx['qr_primer_local'] = locales_primer_local
             ctx['qr_url'] = request.build_absolute_uri('/e/' + locales_primer_local.qr_token + '/')
+
+        # ==========================================================
+        #  ANÁLISIS LATENCIA + DISTRIBUCIÓN TEMPORAL
+        # ==========================================================
+        analisis_latencia = None
+        if locales_negocio_total >= 2:
+            try:
+                fechas = list(
+                    locales_rango.order_by('fecha_respuesta')
+                    .values_list('fecha_respuesta', flat=True)
+                )
+                if len(fechas) >= 2:
+                    deltas_horas = []
+                    for i in range(1, len(fechas)):
+                        d = (fechas[i] - fechas[i-1]).total_seconds() / 3600.0
+                        if d >= 0:
+                            deltas_horas.append(d)
+                    if deltas_horas:
+                        prom_horas = sum(deltas_horas) / len(deltas_horas)
+                        ctx['analisis_latencia'] = {
+                            'n_intervalos': len(deltas_horas),
+                            'promedio_horas': round(prom_horas, 1),
+                            'promedio_minutos': round(prom_horas * 60, 0),
+                            'respuestas_por_dia_prom': round(len(fechas) / max(1, temp_days), 2),
+                            'primera': fechas[0],
+                            'ultima': fechas[-1],
+                        }
+                # Distribución hora del día
+                horas_count = [0] * 24
+                dias_semana_count = [0] * 7
+                dias_labels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+                for dt in fechas:
+                    h = timezone.localtime(dt).hour
+                    horas_count[h] += 1
+                    d = dt.weekday()  # 0=lun a 6=dom
+                    dias_semana_count[d] += 1
+                ctx['dist_horas'] = {
+                    'labels': list(range(24)),
+                    'data': horas_count,
+                    'pico_hora': max(range(24), key=lambda i: horas_count[i]),
+                }
+                ctx['dist_dias'] = {
+                    'labels': dias_labels,
+                    'data': dias_semana_count,
+                    'pico_dia': dias_labels[max(range(7), key=lambda i: dias_semana_count[i])] if any(dias_semana_count) else '—',
+                }
+            except Exception as e:
+                ctx['analisis_latencia_error'] = str(e)
+
+        # ==========================================================
+        #  ANÁLISIS TEMÁTICA 4D (palabras clave)
+        # ==========================================================
+        textos_comentarios = []
+        for r in locales_rango:
+            c = getattr(r, 'comentario', None) or ''
+            if c:
+                textos_comentarios.append(c)
+        tematicas, total_menciones = _analizar_tematicas(textos_comentarios)
+        ctx['tematicas_4d'] = tematicas
+        ctx['tematicas_total_menciones'] = total_menciones
+        ctx['comentarios_analizados'] = len(textos_comentarios)
+
+        # ==========================================================
+        #  RESEÑAS GOOGLE (estrellas 1-5 con diferenciador)
+        # ==========================================================
+        from apps.reputation.models import ResenaGoogle, SentimientoChoices
+        google_qs = ResenaGoogle.objects.filter(
+            local__negocio=negocio
+        ).select_related('local').order_by('-fecha_google')
+
+        if filtro_local_id:
+            try:
+                lid = int(filtro_local_id)
+                google_qs = google_qs.filter(local_id=lid)
+            except (ValueError, TypeError):
+                pass
+
+        if not (filtro_fecha_desde or filtro_fecha_hasta or filtro_fecha_exacta):
+            google_rango = google_qs.filter(fecha_google__gte=desde_temp)
+        else:
+            google_rango = google_qs
+        if filtro_fecha_desde:
+            dt_desde = datetime.combine(filtro_fecha_desde, datetime.min.time(), tzinfo=timezone.get_current_timezone())
+            google_rango = google_rango.filter(fecha_google__gte=dt_desde)
+        if filtro_fecha_hasta:
+            dt_hasta = datetime.combine(filtro_fecha_hasta, datetime.max.time(), tzinfo=timezone.get_current_timezone())
+            google_rango = google_rango.filter(fecha_google__lte=dt_hasta)
+        if filtro_fecha_exacta:
+            dt1 = datetime.combine(filtro_fecha_exacta, datetime.min.time(), tzinfo=timezone.get_current_timezone())
+            dt2 = datetime.combine(filtro_fecha_exacta, datetime.max.time(), tzinfo=timezone.get_current_timezone())
+            google_rango = google_rango.filter(fecha_google__range=(dt1, dt2))
+
+        ctx['google_total'] = google_qs.count()
+        ctx['google_rango'] = google_rango.count()
+        google_rango_list = list(google_rango[:30])
+        if google_qs.exists():
+            rating_avg = google_qs.aggregate(avg=Avg('calificacion'))['avg'] or 0
+            ctx['google_rating_promedio'] = round(float(rating_avg), 1)
+            ctx['google_estrellas'] = _estrellas_html(rating_avg)
+            rating_counts = {}
+            for s in range(1, 6):
+                rating_counts[s] = google_qs.filter(calificacion=s).count()
+            ctx['google_rating_dist'] = rating_counts
+        else:
+            ctx['google_rating_promedio'] = 0
+            ctx['google_estrellas'] = _estrellas_html(0)
+            ctx['google_rating_dist'] = {1:0, 2:0, 3:0, 4:0, 5:0}
+        ctx['google_resenas'] = google_rango_list
+
+        rating_dist = ctx.get('google_rating_dist', {1:0,2:0,3:0,4:0,5:0})
+        google_total_count = ctx.get('google_total', 0) or 1
+        google_rating_rows = []
+        for stars in (5, 4, 3, 2, 1):
+            c = rating_dist.get(stars, 0)
+            google_rating_rows.append({
+                'stars': stars,
+                'estrellas': _estrellas_html(stars),
+                'count': c,
+                'pct': round(100 * c / google_total_count, 0) if google_total_count else 0,
+            })
+        ctx['google_rating_rows'] = google_rating_rows
+
+        if 'dist_horas' in ctx:
+            horas_data = ctx['dist_horas']['data']
+            ctx['dist_horas']['max_val'] = max(horas_data) if any(horas_data) else 1
+        if 'dist_dias' in ctx:
+            dias_max = max(ctx['dist_dias']['data']) if any(ctx['dist_dias']['data']) else 1
+            ctx['dist_dias']['max_val'] = dias_max
+            dias_list = []
+            for i, lbl in enumerate(ctx['dist_dias']['labels']):
+                val = ctx['dist_dias']['data'][i]
+                dias_list.append({
+                    'label': lbl,
+                    'count': val,
+                    'pct': round(100 * val / dias_max, 0) if dias_max else 0,
+                })
+            ctx['dist_dias']['rows'] = dias_list
+
+        tematicas_list = list(tematicas.items())
+        tematicas_list.sort(key=lambda kv: kv[1]['menciones'], reverse=True)
+        ctx['tematicas_ranking'] = tematicas_list
+
+        # ==========================================================
+        #  EXPORT EXCEL
+        # ==========================================================
+        puede_exportar = request.user.is_superuser or (
+            ctx.get('plan_activo') and getattr(ctx['plan_activo'], 'tiene_export_excel', False)
+        )
+        ctx['puede_exportar_excel'] = puede_exportar
+
+        if request.GET.get('export') == 'excel' and puede_exportar:
+            from io import BytesIO
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            from openpyxl.utils import get_column_letter
+            from django.http import HttpResponse
+
+            hoy = timezone.localdate()
+            filename = f"ClientBeat-KPIs-{negocio.slug}-{hoy:%Y%m%d}.xlsx"
+
+            wb = Workbook()
+            delgada = Side(style='thin', color='D1D5DB')
+            borde_completo = Border(left=delgada, right=delgada, top=delgada, bottom=delgada)
+            fuente_header = Font(bold=True, color='FFFFFF', size=11)
+            fill_header = PatternFill(start_color='4F46E5', end_color='4F46E5', fill_type='solid')
+            fill_subhead = PatternFill(start_color='EEF2FF', end_color='EEF2FF', fill_type='solid')
+            centro = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+            ws_kpi = wb.active
+            ws_kpi.title = "Resumen KPI"
+            ws_kpi['A1'] = f"ClientBeat - Reporte KPI {negocio.nombre}"
+            ws_kpi['A1'].font = Font(bold=True, size=16, color='4F46E5')
+            ws_kpi.merge_cells('A1:F1')
+            ws_kpi['A2'] = f"Periodo: {temp_label} · Ubicación: {ubi_label} · Generado: {hoy:%d-%m-%Y}"
+            ws_kpi['A2'].font = Font(size=11, italic=True, color='6B7280')
+            ws_kpi.merge_cells('A2:F2')
+
+            headers1 = ['Indicador', 'Valor', 'Detalle', 'Fórmula / Contexto', '', '']
+            for col_idx, h in enumerate(headers1, start=1):
+                celda = ws_kpi.cell(row=4, column=col_idx, value=h)
+                celda.font = fuente_header
+                celda.fill = fill_header
+                celda.alignment = centro
+                celda.border = borde_completo
+
+            kpi_rows = [
+                ("TOTAL RESPUESTAS (histórico)", locales_negocio_total, "", "Todas las RespuestaEncuesta del negocio", "", ""),
+                (f"RESPUESTAS ÚLTIMOS {temp_days} DÍAS", ctx['kpi_respuestas_rango'], f"Rango filtrado {temp_label}", "", "", ""),
+                ("", "", "", "", "", ""),
+                ("== NPS (Net Promoter Score) ==", "", "", "Escala 0-10 · Promotores 9-10 · Pasivos 7-8 · Detractores 0-6", "", ""),
+                ("NPS SCORE (RANGO)", nps_score, f"[{ctx['nps_badge']}]", "(%PROMOTORES - %DETRACTORES) · Bueno >= +50", "", ""),
+                ("NPS Promedio Histórico (0-10)", ctx['kpi_nps_promedio'], "", "Media aritmética nps_puntaje (todas)", "", ""),
+                ("  · Promotores (P)", promotores, "", "nps_puntaje 9 ó 10", "", ""),
+                ("  · Pasivos (Pa)", pasivos, "", "nps_puntaje 7 ó 8", "", ""),
+                ("  · Detractores (D)", detractores, "", "nps_puntaje 0 a 6", "", ""),
+                ("", "", "", "", "", ""),
+                ("== CSAT (Customer Satisfaction) ==", "", "", "Índice = Σ Felices / Total * 100", "", ""),
+                ("CSAT Índice Felices (%)", ctx['kpi_csat_felices_pct'], "", "(Muy Feliz + Feliz) / CSAT Total * 100", "", ""),
+                ("CSAT Total (con emoción)", ctx['kpi_csat_total'], "", "Respuestas con csat_emocion NO null", "", ""),
+                ("  · Muy Feliz", ctx['kpi_muy_feliz'], "", "EmocionCSATChoices.MUY_FELIZ", "", ""),
+                ("  · Feliz", ctx['kpi_feliz'], "", "EmocionCSATChoices.FELIZ", "", ""),
+                ("  · Neutral", ctx['kpi_neutral'], "", "EmocionCSATChoices.NEUTRAL", "", ""),
+                ("  · Insatisfecho", ctx['kpi_insatisfecho'], "", "EmocionCSATChoices.INSATISFECHO", "", ""),
+                ("  · Muy Insatisfecho", ctx['kpi_muy_insatisfecho'], "", "EmocionCSATChoices.MUY_INSATISFECHO", "", ""),
+                ("", "", "", "", "", ""),
+                ("== RESEÑAS GOOGLE ==", "", "", "", "", ""),
+                ("Total reseñas Google", ctx.get('google_total', 0), "", "Todas", "", ""),
+                ("Rating promedio Google", ctx.get('google_rating_promedio', 0), "/ 5.0", "Calificación promedio", "", ""),
+                ("", "", "", "", "", ""),
+                ("== PLAN ACTIVO ==", "", "", "", "", ""),
+                ("Plan", str(ctx.get('plan_activo') or "MVP Básico"), "", "Suscripcion ACTIVA del negocio", "", ""),
+            ]
+            for r_idx, fila in enumerate(kpi_rows, start=5):
+                for c_idx, val in enumerate(fila, start=1):
+                    cel = ws_kpi.cell(row=r_idx, column=c_idx, value=val)
+                    cel.border = borde_completo
+                    if isinstance(val, str) and val.startswith("=="):
+                        cel.fill = fill_subhead
+                        cel.font = Font(bold=True, color='4F46E5')
+            anchos1 = [44, 14, 28, 50, 8, 8]
+            for i, w in enumerate(anchos1, start=1):
+                ws_kpi.column_dimensions[get_column_letter(i)].width = w
+
+            ws_hist = wb.create_sheet(title="Histórico Respuestas")
+            headers2 = [
+                "#", "Fecha Respuesta", "Local", "RUT Cliente",
+                "NPS 0-10", "Categoría NPS", "CSAT Emoción",
+                "Edad", "Género", "¿Volverías?", "Comentario",
+            ]
+            for col_idx, h in enumerate(headers2, start=1):
+                celda = ws_hist.cell(row=1, column=col_idx, value=h)
+                celda.font = fuente_header
+                celda.fill = fill_header
+                celda.alignment = centro
+                celda.border = borde_completo
+
+            def nps_cat(p):
+                if p is None: return ""
+                if p >= 9: return "PROMOTOR"
+                if p >= 7: return "PASIVO"
+                return "DETRACTOR"
+
+            for r_idx, resp in enumerate(locales_rango.order_by('fecha_respuesta'), start=2):
+                fila = [
+                    r_idx - 1,
+                    timezone.localtime(resp.fecha_respuesta).strftime("%Y-%m-%d %H:%M") if resp.fecha_respuesta else "",
+                    getattr(resp.local, 'nombre', '') if resp.local else "",
+                    getattr(resp, 'cliente_rut', '') or "",
+                    resp.nps_puntaje if resp.nps_puntaje is not None else "",
+                    nps_cat(resp.nps_puntaje),
+                    resp.get_csat_emocion_display() if resp.csat_emocion else "",
+                    getattr(resp, 'get_rango_edad_display', lambda: '')() or "",
+                    getattr(resp, 'get_genero_display', lambda: '')() or "",
+                    getattr(resp, 'get_volveria_display', lambda: '')() or "",
+                    (getattr(resp, 'comentario', None) or "")[:300],
+                ]
+                for c_idx, val in enumerate(fila, start=1):
+                    celda = ws_hist.cell(row=r_idx, column=c_idx, value=val)
+                    celda.border = borde_completo
+                    celda.alignment = Alignment(vertical='center', wrap_text=True)
+                    if c_idx == 6 and isinstance(val, str):
+                        if val == "PROMOTOR": celda.font = Font(bold=True, color='059669')
+                        elif val == "DETRACTOR": celda.font = Font(bold=True, color='DC2626')
+                        elif val == "PASIVO": celda.font = Font(bold=True, color='D97706')
+            anchos2 = [5, 19, 26, 14, 9, 12, 18, 14, 12, 14, 42]
+            for i, w in enumerate(anchos2, start=1):
+                ws_hist.column_dimensions[get_column_letter(i)].width = w
+            ws_hist.freeze_panes = 'A2'
+
+            ws_google = wb.create_sheet(title="Reseñas Google")
+            headers_g = ["#", "Fecha Google", "Local", "Autor", "Calificación (★)", "Sentimiento", "Comentario"]
+            for col_idx, h in enumerate(headers_g, start=1):
+                celda = ws_google.cell(row=1, column=col_idx, value=h)
+                celda.font = fuente_header
+                celda.fill = fill_header
+                celda.alignment = centro
+                celda.border = borde_completo
+            for r_idx, rg in enumerate(google_rango_list, start=2):
+                fila_g = [
+                    r_idx - 1,
+                    timezone.localtime(rg.fecha_google).strftime("%Y-%m-%d") if rg.fecha_google else "",
+                    getattr(rg.local, 'nombre', '') if rg.local else "",
+                    rg.autor_nombre,
+                    int(rg.calificacion or 0),
+                    rg.get_sentimiento_display() if rg.sentimiento else "—",
+                    (rg.comentario or "")[:500],
+                ]
+                for c_idx, val in enumerate(fila_g, start=1):
+                    celda = ws_google.cell(row=r_idx, column=c_idx, value=val)
+                    celda.border = borde_completo
+                    celda.alignment = Alignment(vertical='center', wrap_text=True)
+            anchos_g = [5, 14, 24, 22, 16, 14, 70]
+            for i, w in enumerate(anchos_g, start=1):
+                ws_google.column_dimensions[get_column_letter(i)].width = w
+            ws_google.freeze_panes = 'A2'
+
+            virtual_book = BytesIO()
+            wb.save(virtual_book)
+            virtual_book.seek(0)
+
+            response = HttpResponse(
+                virtual_book.read(),
+                content_type=(
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ),
+            )
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+
     return render(request, 'dashboard_placeholder.html', ctx)
 
 

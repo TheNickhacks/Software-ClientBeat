@@ -114,6 +114,44 @@ class Plan(models.Model):
     activo = models.BooleanField(default=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
+    # ======= FEATURE FLAGS NUEVOS (Planes Excel: Plan1 Solo Google / Plan2 Google+QR CB / Plan3 Full + Benchmark CB) =======
+    tiene_analisis_google = models.BooleanField(
+        default=True,
+        help_text='Análisis rating Google + reseñas Google + evolución histórica Google. Plan1 = True.'
+    )
+    tiene_benchmark_google = models.BooleanField(
+        default=True,
+        help_text='Benchmark Google contra competencia (rating, nº opiniones, desempate 3 reglas). Plan1 = True.'
+    )
+    tiene_notificaciones = models.BooleanField(
+        default=True,
+        help_text='Notificaciones eventos planes/pagos/benchmark/reseñas/CSAT-NPS. Todos los planes = True.'
+    )
+    tiene_qr_clientbeat = models.BooleanField(
+        default=False,
+        help_text='QR encuestas NPS y CSAT por local. Plan1 = False. Plan2 y Plan3 = True.'
+    )
+    tiene_segmentacion_demografica = models.BooleanField(
+        default=False,
+        help_text='Segmentación demográfica clientes (edad, género, etc.) desde QR. Plan2 y Plan3 = True.'
+    )
+    tiene_encuestas_custom_rubro = models.BooleanField(
+        default=False,
+        help_text='Encuestas personalizadas según dimensiones/atributos del rubro (28 rubros Metodología). Plan2 y Plan3 = True.'
+    )
+    max_preguntas_adicionales = models.IntegerField(
+        default=0,
+        help_text='Preguntas adicionales permitidas (fuera del set por rubro). Plan1 = 0, Plan2 = 0, Plan3 = 3.'
+    )
+    tiene_benchmark_clientbeat = models.BooleanField(
+        default=False,
+        help_text='BENCHMARK CLIENTBEAT por rubro (comparativa NPS/CSAT/dimensiones con otros CB de misma comuna/región). Plan3 = True.'
+    )
+    tiene_export_excel = models.BooleanField(
+        default=True,
+        help_text='Exportar métricas a Excel/CSV. Todos los planes = True.'
+    )
+
     class Meta:
         verbose_name = 'Plan'
         verbose_name_plural = 'Planes'

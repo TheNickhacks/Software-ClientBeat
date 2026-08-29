@@ -28,13 +28,16 @@ class LocalInline(SuperUserOnlyAdminMixin, admin.TabularInline):
 class NegocioAdmin(SuperUserOnlyAdminMixin, admin.ModelAdmin):
     list_display = [
         'nombre',
+        'razon_social',
         'rut',
+        'rango_empleados',
         'rubro_google',
         'ciudad',
         'dueño',
         'cantidad_locales',
         'cantidad_miembros',
         'verificado',
+        'acepto_politica',
         'estado',
         'fecha_creacion',
     ]
@@ -43,10 +46,12 @@ class NegocioAdmin(SuperUserOnlyAdminMixin, admin.ModelAdmin):
         'estado',
         'ciudad',
         'rubro_google',
+        'rango_empleados',
         'fecha_creacion',
     ]
     search_fields = [
         'nombre',
+        'razon_social',
         'rut',
         'rubro_google',
         'email_contacto',
@@ -56,6 +61,10 @@ class NegocioAdmin(SuperUserOnlyAdminMixin, admin.ModelAdmin):
     readonly_fields = ['id', 'fecha_creacion', 'fecha_actualizacion', 'fecha_verificacion']
     raw_id_fields = ['dueño']
     inlines = [MiembroEquipoInline, LocalInline]
+
+    def acepto_politica(self, obj):
+        return obj.acepto_politica_datos.strftime('%d-%m-%Y') if obj.acepto_politica_datos else '—'
+    acepto_politica.short_description = 'LOPD'
 
     def cantidad_locales(self, obj):
         return obj.locales.count()
@@ -78,6 +87,8 @@ class MiembroEquipoAdmin(SuperUserOnlyAdminMixin, admin.ModelAdmin):
         'usuario',
         'negocio',
         'rol',
+        'permisos_por_rol_display',
+        'permisos_custom_count',
         'estado',
         'fecha_invitacion',
         'fecha_aceptacion',
@@ -98,6 +109,20 @@ class MiembroEquipoAdmin(SuperUserOnlyAdminMixin, admin.ModelAdmin):
     readonly_fields = ['id', 'fecha_invitacion']
     ordering = ['-fecha_invitacion']
 
+    def permisos_por_rol_display(self, obj):
+        defaults = obj.permisos_por_rol
+        if not defaults:
+            return '—'
+        return ', '.join(defaults) if isinstance(defaults, list) else str(defaults)
+    permisos_por_rol_display.short_description = 'Permisos (defaults rol)'
+    permisos_por_rol_display.admin_order_field = 'rol'
+
+    def permisos_custom_count(self, obj):
+        if not obj.permisos:
+            return 0
+        return len(obj.permisos) if isinstance(obj.permisos, list) else 'ERR'
+    permisos_custom_count.short_description = 'Permisos (custom)'
+
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         if request.user.is_superuser:
@@ -112,12 +137,16 @@ class LocalAdmin(SuperUserOnlyAdminMixin, admin.ModelAdmin):
         'negocio',
         'ciudad',
         'qr_token',
+        'qr_colores',
+        'qr_config_resumen',
         'estado',
         'fecha_creacion',
     ]
     list_filter = [
         'estado',
         'ciudad',
+        'qr_error_level',
+        'qr_mostrar_logo',
     ]
     search_fields = [
         'nombre',
@@ -125,10 +154,48 @@ class LocalAdmin(SuperUserOnlyAdminMixin, admin.ModelAdmin):
         'qr_token',
         'google_place_id',
         'negocio__nombre',
+        'qr_texto_corto',
+        'qr_encabezado',
     ]
     readonly_fields = ['id', 'qr_token', 'fecha_creacion', 'fecha_actualizacion']
-    raw_id_fields = ['negocio']
+    raw_id_fields = ['negocio', 'comuna']
     ordering = ['-fecha_creacion']
+    fieldsets = (
+        (None, {
+            'fields': ('id', 'negocio', 'nombre', 'estado', 'fecha_creacion', 'fecha_actualizacion')
+        }),
+        ('Ubicación y Google', {
+            'fields': ('direccion', 'ciudad', 'comuna', 'latitud', 'longitud', 'google_place_id', 'horario'),
+            'classes': ('collapse',),
+        }),
+        ('QR Personalización ClientBeat (Plan2/Plan3)', {
+            'fields': (
+                'qr_token',
+                ('qr_logo', 'qr_mostrar_logo'),
+                ('qr_color_primario', 'qr_color_secundario', 'qr_color_fondo'),
+                ('qr_encabezado', 'qr_texto_corto'),
+                ('qr_tamano_pixels', 'qr_error_level', 'qr_estilo_borde'),
+            ),
+            'description': 'Campos de personalización del código QR de experiencia cliente (disponible Planes 2 y 3). Defaults colores indigo/morado ClientBeat, error H 30% recomendado con logo centro.',
+        }),
+    )
+
+    def qr_colores(self, obj):
+        return f'{obj.qr_color_primario or "-"} / {obj.qr_color_secundario or "-"}'
+    qr_colores.short_description = 'QR Colores'
+
+    def qr_config_resumen(self, obj):
+        config = []
+        if obj.qr_logo:
+            config.append('LOGO')
+        if obj.qr_mostrar_logo:
+            config.append('Mostrar Logo')
+        if obj.qr_estilo_borde:
+            config.append('Glass borde')
+        config.append(f'T{obj.qr_tamano_pixels}')
+        config.append(f'E{obj.qr_error_level}')
+        return ' | '.join(config)
+    qr_config_resumen.short_description = 'QR Config'
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)

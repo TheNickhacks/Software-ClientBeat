@@ -30,21 +30,148 @@ class AdminPanelDashboardView(AdminSoporteRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         from apps.billing.models import Plan, Suscripcion, EstadoSuscripcionChoices
-        from apps.businesses.models import Negocio
+        from apps.businesses.models import Negocio, Local, MiembroEquipo, RolChoices
+        from apps.encuestas.models import RespuestaEncuesta, EmocionCSATChoices
+        from apps.geo.models import Rubro
+        from apps.notifications.models import PlantillaNotificacion, CategoriaNotificacionChoices
         from django.contrib.auth import get_user_model
+        from django.db.models import Count, Avg, Q, IntegerField
+        from django.utils import timezone
+
         User = get_user_model()
+        ahora = timezone.now()
+        desde_30d = ahora - timezone.timedelta(days=30)
 
         ctx['menu'] = modulos_menu(self.request)
         ctx['menu_activo'] = 'Dashboard'
+
+        # ==============================
+        # 1) KPI PRINCIPALES (8 cards)
+        # ==============================
+        negocios_activos = Negocio.objects.filter(estado='ACTIVO').count()
+        suscripciones_activas = Suscripcion.objects.filter(estado=EstadoSuscripcionChoices.ACTIVA).count()
+        usuarios_activos = User.objects.filter(is_active=True).count()
+        planes_activos = Plan.objects.filter(activo=True).count()
+        locales_total = Local.objects.count()
+        respuestas_30d = RespuestaEncuesta.objects.filter(fecha_respuesta__gte=desde_30d).count()
+        plantillas_notif = PlantillaNotificacion.objects.filter(activo=True).count()
+        rubros_activos = Rubro.objects.filter(activo=True).count()
+
         ctx['kpis'] = [
-            ('Negocios registrados', Negocio.objects.filter(estado='ACTIVO').count(), 'text-purple-700', 'bg-purple-100'),
-            ('Suscripciones activas', Suscripcion.objects.filter(estado=EstadoSuscripcionChoices.ACTIVA).count(), 'text-green-700', 'bg-green-100'),
-            ('Usuarios plataforma', User.objects.filter(is_active=True).count(), 'text-blue-700', 'bg-blue-100'),
-            ('Planes disponibles', Plan.objects.filter(activo=True).count(), 'text-indigo-700', 'bg-indigo-100'),
+            ('Negocios activos', negocios_activos, 'text-purple-700', 'bg-purple-100', 'fa-store'),
+            ('Suscripciones activas', suscripciones_activas, 'text-green-700', 'bg-green-100', 'fa-credit-card'),
+            ('Usuarios plataforma', usuarios_activos, 'text-blue-700', 'bg-blue-100', 'fa-users'),
+            ('Planes disponibles', planes_activos, 'text-indigo-700', 'bg-indigo-100', 'fa-tags'),
+            ('Locales totales', locales_total, 'text-rose-700', 'bg-rose-100', 'fa-location-dot'),
+            ('Respuestas últimos 30d', respuestas_30d, 'text-amber-700', 'bg-amber-100', 'fa-chart-simple'),
+            ('Plantillas notif activas', plantillas_notif, 'text-cyan-700', 'bg-cyan-100', 'fa-envelope-open-text'),
+            ('Rubros activos GEO DB', rubros_activos, 'text-fuchsia-700', 'bg-fuchsia-100', 'fa-list-check'),
         ]
+
+        # ==============================
+        # 2) MÉTRICAS DINÁMICAS RUBROS
+        # ==============================
+        rubros_top = list(
+            Rubro.objects.filter(activo=True)
+            .annotate(total_negocios=Count('negocios', distinct=True))
+            .order_by('-total_negocios')[:10]
+        )
+        rubros_top_max = max((r.total_negocios for r in rubros_top), default=1)
+        ctx['rubros_top'] = [
+            {
+                'nombre': r.nombre,
+                'total_negocios': r.total_negocios,
+                'pct': round(100 * r.total_negocios / rubros_top_max) if rubros_top_max else 0,
+            }
+            for r in rubros_top
+        ]
+
+        # ==============================
+        # 3) PLANES VENDIDOS (count por plan)
+        # ==============================
+        ventas_planes = (
+            Suscripcion.objects
+            .filter(estado=EstadoSuscripcionChoices.ACTIVA)
+            .values('plan__nombre', 'plan__color_clase_css')
+            .annotate(total=Count('id'))
+            .order_by('-total')
+        )
+        ventas_planes_list = []
+        for vp in ventas_planes:
+            ventas_planes_list.append({
+                'nombre': vp['plan__nombre'] or 'MVP Básico',
+                'total': vp['total'],
+                'color': vp['plan__color_clase_css'] or 'bg-slate-500',
+            })
+        ctx['ventas_planes'] = ventas_planes_list
+        ctx['ventas_planes_total'] = sum(v['total'] for v in ventas_planes_list) or 1
+
+        # ==============================
+        # 4) ROLES EQUIPO DISTRIBUCIÓN
+        # ==============================
+        roles_dist = []
+        rol_choices_map = {c[0]: c[1] for c in RolChoices.choices}
+        for rol_key, rol_label in RolChoices.choices:
+            cnt = MiembroEquipo.objects.filter(rol=rol_key).count()
+            roles_dist.append({
+                'label': rol_label,
+                'key': rol_key,
+                'total': cnt,
+            })
+        roles_total = sum(r['total'] for r in roles_dist) or 1
+        for r in roles_dist:
+            r['pct'] = round(100 * r['total'] / roles_total)
+        ctx['roles_distribucion'] = sorted(roles_dist, key=lambda x: -x['total'])
+
+        # ==============================
+        # 5) NPS PROMEDIO CROSS-NEGOCIOS (últimos 30d)
+        # ==============================
+        resp_30d_nps = RespuestaEncuesta.objects.filter(
+            fecha_respuesta__gte=desde_30d,
+            nps_puntaje__isnull=False,
+        )
+        total_nps_30d = resp_30d_nps.count()
+        if total_nps_30d:
+            prom_nps = resp_30d_nps.aggregate(prom=Avg('nps_puntaje'))['prom'] or 0
+            promotores_30d = resp_30d_nps.filter(nps_puntaje__gte=9).count()
+            pasivos_30d = resp_30d_nps.filter(nps_puntaje__in=[7, 8]).count()
+            detractores_30d = resp_30d_nps.filter(nps_puntaje__lte=6).count()
+            nps_score_plataforma = round(100 * (promotores_30d - detractores_30d) / total_nps_30d)
+        else:
+            prom_nps = 0
+            promotores_30d = pasivos_30d = detractores_30d = 0
+            nps_score_plataforma = 0
+        ctx['nps_plataforma'] = {
+            'score': nps_score_plataforma,
+            'promedio': round(prom_nps, 1),
+            'total': total_nps_30d,
+            'promotores': promotores_30d,
+            'pasivos': pasivos_30d,
+            'detractores': detractores_30d,
+            'badge': 'Promotor' if nps_score_plataforma >= 50 else 'Pasivo' if nps_score_plataforma >= 0 else 'Detractor',
+            'color': 'emerald' if nps_score_plataforma >= 50 else 'amber' if nps_score_plataforma >= 0 else 'rose',
+        }
+
+        # ==============================
+        # 6) CATEGORÍAS NOTIFICACIONES
+        # ==============================
+        notif_cats = []
+        for cat_key, cat_label in CategoriaNotificacionChoices.choices:
+            cnt = PlantillaNotificacion.objects.filter(categoria=cat_key, activo=True).count()
+            notif_cats.append({'label': cat_label, 'total': cnt})
+        ctx['notificaciones_categorias'] = notif_cats
+
+        # ==============================
+        # 7) LISTAS COMPLEMENTARIAS
+        # ==============================
         ctx['ultimos_negocios'] = (
             Negocio.objects.select_related('dueño')
+            .annotate(cant_locales=Count('locales'))
             .order_by('-fecha_creacion')[:5]
+        )
+        ctx['ultimas_respuestas_plataforma'] = (
+            RespuestaEncuesta.objects.select_related('local__negocio', 'plantilla')
+            .order_by('-fecha_respuesta')[:10]
         )
         ctx['vencen_7dias'] = (
             Suscripcion.objects.select_related('negocio', 'plan')
@@ -52,6 +179,7 @@ class AdminPanelDashboardView(AdminSoporteRequiredMixin, TemplateView):
             .order_by('fecha_vencimiento')[:5]
         )
         ctx['planes'] = Plan.objects.filter(activo=True).order_by('orden')
+        ctx['fecha_hora_generacion'] = timezone.localtime(ahora).strftime('%Y-%m-%d %H:%M:%S')
         return ctx
 
 

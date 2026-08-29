@@ -47,3 +47,9 @@ desktop.ini
 documentos_extraidos.txt
 extract_docs.py
 extract_docs_to_file.py
+
+# ===== Planillas y scripts temporales trabajo local =====
+*.xlsx
+*.csv
+_leer_*.py
+_leer_*.txt

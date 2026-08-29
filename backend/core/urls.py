@@ -14,6 +14,7 @@ urlpatterns = [
     path('encuestas/', include('apps.surveys.urls')),
     path('e/', include('apps.encuestas.urls')),
     path('reputacion/', include('apps.reputation.urls')),
+    path('geo/', include('apps.geo.urls')),
     path('api/api-auth/', obtain_auth_token),
 ]
 

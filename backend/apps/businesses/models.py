@@ -9,6 +9,13 @@ class Negocio(models.Model):
         SUSPENDIDO = 'SUSPENDIDO', 'Suspendido'
         ELIMINADO = 'ELIMINADO', 'Eliminado'
 
+    class RangoEmpleadosChoices(models.TextChoices):
+        R1 = 'R1', '1 persona'
+        R2 = 'R2', '2 personas'
+        R3_5 = 'R3_5', '3 a 5 personas'
+        R6_15 = 'R6_15', '6 a 15 personas'
+        R16_MAS = 'R16_MAS', '16 o más personas'
+
     id = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
@@ -18,11 +25,32 @@ class Negocio(models.Model):
         max_length=255,
         verbose_name='Nombre del negocio'
     )
+    razon_social = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name='Razón Social',
+        help_text='Nombre legal de la empresa (SII). Requerido en el onboarding Paso 2.'
+    )
     rut = models.CharField(
         max_length=20,
         blank=True,
         null=True,
         verbose_name='RUT'
+    )
+    rango_empleados = models.CharField(
+        max_length=10,
+        choices=RangoEmpleadosChoices.choices,
+        blank=True,
+        null=True,
+        verbose_name='Rango de empleados',
+        help_text='Tamaño de equipo del negocio.'
+    )
+    acepto_politica_datos = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name='Fecha aceptación Política de Protección de Datos',
+        help_text='LOPD N°19.628 / RGPD. Se guarda la fecha en la cual el dueño aceptó.'
     )
     rubro_google = models.CharField(
         max_length=255,
@@ -144,8 +172,10 @@ class Negocio(models.Model):
 class MiembroEquipo(models.Model):
     class RolChoices(models.TextChoices):
         DUENO = 'DUENO', 'Dueño'
-        USUARIO_EQUIPO = 'USUARIO_EQUIPO', 'Usuario de Equipo'
+        ADMINISTRADOR_LOCAL = 'ADMINISTRADOR_LOCAL', 'Administrador Completo Local'
         GESTOR = 'GESTOR', 'Gestor (solo lectura + gestión encuestas)'
+        USUARIO_EQUIPO = 'USUARIO_EQUIPO', 'Usuario de Equipo'
+        VISUALIZADOR_DESCARGA = 'VISUALIZADOR_DESCARGA', 'Visualizador / Descarga Información'
 
     class EstadoChoices(models.TextChoices):
         ACTIVO = 'ACTIVO', 'Activo'
@@ -154,11 +184,13 @@ class MiembroEquipo(models.Model):
 
     class PermisosChoices(models.TextChoices):
         VER_TODO = 'VER_TODO', 'Ver métricas y reseñas'
+        DESCARGAR_REPORTES = 'DESCARGAR_REPORTES', 'Descargar reportes y Excel'
         GESTIONAR_ENCUESTAS = 'GESTIONAR_ENCUESTAS', 'Crear y gestionar encuestas'
         GESTIONAR_LOCALES = 'GESTIONAR_LOCALES', 'Agregar y editar locales'
         GESTIONAR_EQUIPO = 'GESTIONAR_EQUIPO', 'Invitar y gestionar equipo'
-        GESTIONAR_CUENTA = 'GESIONAR_CUENTA', 'Configuración de cuenta y facturación'
+        GESTIONAR_CUENTA = 'GESTIONAR_CUENTA', 'Configuración de cuenta y facturación'
         CORREGIR_SENTIMIENTO = 'CORREGIR_SENTIMIENTO', 'Corregir análisis de sentimiento'
+        VER_COMPETENCIA = 'VER_COMPETENCIA', 'Ver Benchmark y competidores'
 
     id = models.UUIDField(
         primary_key=True,
@@ -178,7 +210,7 @@ class MiembroEquipo(models.Model):
         verbose_name='Usuario'
     )
     rol = models.CharField(
-        max_length=20,
+        max_length=30,
         choices=RolChoices.choices,
         default=RolChoices.USUARIO_EQUIPO,
         verbose_name='Rol en el negocio'
@@ -192,7 +224,7 @@ class MiembroEquipo(models.Model):
     permisos = models.JSONField(
         default=list,
         blank=True,
-        help_text='Lista de permisos específicos (usar PermisosChoices). Si rol=DUEÑO, se ignoran.',
+        help_text='Lista de permisos específicos (usar PermisosChoices). Si rol=DUEÑO, se ignoran. Roles ADMINISTRADOR_LOCAL tienen todos los permisos salvo GESTIONAR_CUENTA.',
         verbose_name='Permisos específicos'
     )
     fecha_invitacion = models.DateTimeField(
@@ -222,10 +254,40 @@ class MiembroEquipo(models.Model):
     def __str__(self):
         return f'{self.usuario} en {self.negocio} ({self.get_rol_display()})'
 
+    @property
+    def permisos_por_rol(self):
+        """Permisos defaults según rol (no considera los permisos custom JSON individuales)."""
+        if self.rol == self.RolChoices.DUENO:
+            return [c[0] for c in self.PermisosChoices.choices]
+        if self.rol == self.RolChoices.ADMINISTRADOR_LOCAL:
+            return [
+                self.PermisosChoices.VER_TODO,
+                self.PermisosChoices.DESCARGAR_REPORTES,
+                self.PermisosChoices.GESTIONAR_ENCUESTAS,
+                self.PermisosChoices.GESTIONAR_LOCALES,
+                self.PermisosChoices.GESTIONAR_EQUIPO,
+                self.PermisosChoices.CORREGIR_SENTIMIENTO,
+                self.PermisosChoices.VER_COMPETENCIA,
+            ]
+        if self.rol == self.RolChoices.GESTOR:
+            return [
+                self.PermisosChoices.VER_TODO,
+                self.PermisosChoices.GESTIONAR_ENCUESTAS,
+                self.PermisosChoices.VER_COMPETENCIA,
+            ]
+        if self.rol == self.RolChoices.VISUALIZADOR_DESCARGA:
+            return [
+                self.PermisosChoices.VER_TODO,
+                self.PermisosChoices.DESCARGAR_REPORTES,
+            ]
+        return [self.PermisosChoices.VER_TODO]
+
     def tiene_permiso(self, permiso):
         if self.rol == self.RolChoices.DUENO:
             return True
-        return permiso in (self.permisos or [])
+        if permiso in (self.permisos or []):
+            return True
+        return permiso in self.permisos_por_rol
 
 
 class Local(models.Model):
@@ -299,6 +361,76 @@ class Local(models.Model):
         unique=True,
         verbose_name='Token QR'
     )
+
+    class QrErrorLevelChoices(models.TextChoices):
+        L = 'L', 'L - Bajo (7%)'
+        M = 'M', 'M - Medio (15%)'
+        Q = 'Q', 'Q - Alto (25%)'
+        H = 'H', 'H - Máximo (30%, recomendado con logo)'
+
+    qr_logo = models.ImageField(
+        upload_to='locales/qr_logos/',
+        blank=True,
+        null=True,
+        verbose_name='Logo personalizado QR (PNG/SVG transparente 512px)',
+        help_text='Recomendado 200x200px PNG. Si está vacío usa el logo del negocio o el default ClientBeat.'
+    )
+    qr_color_primario = models.CharField(
+        max_length=12,
+        default='#4F46E5',
+        blank=True,
+        verbose_name='Color primario QR (módulos oscuros)',
+        help_text='Hex color (ej: #4F46E5 = Indigo ClientBeat).'
+    )
+    qr_color_secundario = models.CharField(
+        max_length=12,
+        default='#7C3AED',
+        blank=True,
+        verbose_name='Color secundario QR (acento/degradado)',
+        help_text='Hex color para esquinas/degradado/estilo glass.'
+    )
+    qr_color_fondo = models.CharField(
+        max_length=12,
+        default='#FFFFFF',
+        blank=True,
+        verbose_name='Color fondo QR (blanco por defecto)',
+        help_text='Recomendado blanco o colores muy claros para legibilidad impresora.'
+    )
+    qr_texto_corto = models.CharField(
+        max_length=80,
+        default='¡Gracias por tu visita!',
+        blank=True,
+        verbose_name='Línea de texto bajo el QR (máximo 80 caracteres)',
+        help_text='Aparece impreso bajo el código QR en el PDF/PNG descargable.'
+    )
+    qr_encabezado = models.CharField(
+        max_length=80,
+        default='Califica tu experiencia',
+        blank=True,
+        verbose_name='Encabezado arriba del QR (máximo 80 caracteres)',
+        help_text='Título arriba del código QR (ej: "Ayúdanos a mejorar").'
+    )
+    qr_tamano_pixels = models.PositiveSmallIntegerField(
+        default=1024,
+        verbose_name='Tamaño del QR en píxeles (cuadrado, LxL)',
+        help_text='Recomendado impresión 1024px o 2048px; web 512px OK.'
+    )
+    qr_error_level = models.CharField(
+        max_length=3,
+        choices=QrErrorLevelChoices.choices,
+        default=QrErrorLevelChoices.H,
+        verbose_name='Nivel corrección de errores QR',
+        help_text='Si tiene logo, usar H (30%) es el default recomendado.'
+    )
+    qr_mostrar_logo = models.BooleanField(
+        default=True,
+        verbose_name='Mostrar logo centro del QR (si hay logo disponible)'
+    )
+    qr_estilo_borde = models.BooleanField(
+        default=True,
+        verbose_name='Borde glassmorphism y logo ClientBeat en esquina'
+    )
+
     estado = models.CharField(
         max_length=20,
         choices=EstadoChoices.choices,

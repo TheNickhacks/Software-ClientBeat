@@ -26,7 +26,7 @@
         </div>
       </div>
 
-      {# ---------- AQUI EMPIEZA EL CONTENIDO DE CADA PASO ---------- #}
+      {# ---------- CONTENIDO PASO 2 ---------- #}
       {% block wizard_inner %}
 
       <div class="glass-effect rounded-2xl p-8 card-hover">
@@ -45,7 +45,7 @@
           </span>
         </div>
 
-        <form method="POST" action="?paso=2" class="space-y-8">
+        <form method="POST" action="?paso=2" id="onboardingPaso2Form" class="space-y-8">
           {% csrf_token %}
           <input type="hidden" name="paso" value="2" />
 
@@ -65,22 +65,41 @@
                 {% endif %}
               </div>
               <div>
-                <label class="form-label">{{ form_negocio.rut.label }} <span class="text-gray-400 font-normal">(opcional)</span></label>
+                <label class="form-label">{{ form_negocio.razon_social.label }}</label>
+                {{ form_negocio.razon_social }}
+                {% if form_negocio.razon_social.errors %}
+                  <div class="text-xs text-red-600 mt-1">{% for e in form_negocio.razon_social.errors %}{{ e }}<br>{% endfor %}</div>
+                {% endif %}
+              </div>
+              <div>
+                <label class="form-label">{{ form_negocio.rut.label }}</label>
                 {{ form_negocio.rut }}
                 {% if form_negocio.rut.errors %}
                   <div class="text-xs text-red-600 mt-1">{% for e in form_negocio.rut.errors %}{{ e }}<br>{% endfor %}</div>
+                {% endif %}
+              </div>
+              <div>
+                <label class="form-label">{{ form_negocio.rango_empleados.label }}</label>
+                {{ form_negocio.rango_empleados }}
+                {% if form_negocio.rango_empleados.errors %}
+                  <div class="text-xs text-red-600 mt-1">{% for e in form_negocio.rango_empleados.errors %}{{ e }}<br>{% endfor %}</div>
                 {% endif %}
               </div>
             </div>
 
             <div class="grid md:grid-cols-1 gap-5 mt-5">
               <div class="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl p-5">
-                <div class="flex items-start gap-2 mb-4">
-                  <i class="fa fa-location-dot text-indigo-600 mt-1"></i>
-                  <div>
-                    <p class="font-bold text-slate-800 text-sm">Ubicación de tu negocio (Chile)</p>
-                    <p class="text-xs text-slate-500 mt-0.5">Selecciona Región → Provincia → Comuna (se filtran automáticamente).</p>
+                <div class="flex items-start justify-between gap-2 mb-4">
+                  <div class="flex items-start gap-2">
+                    <i class="fa fa-location-dot text-indigo-600 mt-1"></i>
+                    <div>
+                      <p class="font-bold text-slate-800 text-sm">Ubicación de tu negocio (Chile)</p>
+                      <p class="text-xs text-slate-500 mt-0.5">Selecciona Región → Provincia → Comuna (se filtran automáticamente).</p>
+                    </div>
                   </div>
+                  <span id="geoLoading" class="hidden text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 htmx-indicator">
+                    <i class="fa fa-spinner fa-spin"></i> Actualizando…
+                  </span>
                 </div>
                 <div class="grid md:grid-cols-3 gap-4">
                   <div>
@@ -171,7 +190,25 @@
               <h2 class="text-xl font-bold text-slate-800">SECCIÓN 2 · Tu primer Local</h2>
             </div>
 
-            <div class="grid md:grid-cols-2 gap-5">
+            {# CHECKBOX USAR MISMA DIRECCION #}
+            <div class="mb-5">
+              <label class="flex items-start gap-3 p-4 rounded-xl cursor-pointer select-none transition bg-gradient-to-br from-purple-50 to-fuchsia-50 border border-purple-100 hover:border-purple-200">
+                <div class="mt-0.5">
+                  {{ form_local.usar_datos_negocio }}
+                </div>
+                <div class="flex-1">
+                  <p class="font-bold text-slate-800 text-sm">
+                    {{ form_local.usar_datos_negocio.label }}
+                  </p>
+                  <p class="text-xs text-slate-500 mt-1">
+                    Marca esta casilla para reutilizar automáticamente la dirección y comuna que ingresaste en la Sección 1 (recomendado para locales con misma dirección matriz).
+                  </p>
+                </div>
+                <i class="fa fa-link text-purple-500 mt-1"></i>
+              </label>
+            </div>
+
+            <div id="seccionLocalDatos" class="grid md:grid-cols-2 gap-5">
               <div>
                 <label class="form-label">{{ form_local.nombre.label }}</label>
                 {{ form_local.nombre }}
@@ -188,7 +225,7 @@
               </div>
             </div>
 
-            <div class="mt-5">
+            <div id="seccionLocalDireccion" class="mt-5">
               <label class="form-label">{{ form_local.direccion.label }}</label>
               {{ form_local.direccion }}
               {% if form_local.direccion.errors %}
@@ -202,11 +239,35 @@
             </p>
           </div>
 
+          <hr class="border-slate-200" />
+
+          {# POLÍTICA PROTECCIÓN DATOS #}
+          <div class="bg-gradient-to-br from-rose-50 to-pink-50 border border-rose-100 rounded-xl p-5">
+            <label class="flex items-start gap-3 cursor-pointer select-none">
+              <div class="mt-0.5">
+                {{ form_negocio.acepto_politica_datos_check }}
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 text-sm">
+                  {{ form_negocio.acepto_politica_datos_check.label }}
+                </p>
+                <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Autorizo a Client Beat SpA. a tratar los datos personales de mi negocio, clientes y colaboradores de acuerdo a la
+                  <a href="#" target="_blank" class="text-indigo-600 hover:underline font-semibold">Política de Privacidad</a>
+                  y la Ley N°19.628 sobre Protección de la Vida Privada.
+                </p>
+              </div>
+            </label>
+            {% if form_negocio.acepto_politica_datos_check.errors %}
+              <div class="text-xs text-red-600 mt-2 pl-7">{% for e in form_negocio.acepto_politica_datos_check.errors %}{{ e }}<br>{% endfor %}</div>
+            {% endif %}
+          </div>
+
           <div class="flex flex-col sm:flex-row gap-3 pt-4">
             <button type="submit" name="accion" value="reiniciar" form="reiniciarForm" class="btn-secondary flex-1 justify-center">
               <i class="fa fa-rotate-left"></i> Reiniciar wizard
             </button>
-            <button type="submit" class="btn-primary flex-1 sm:flex-none">
+            <button type="submit" id="btnGuardarPaso2" class="btn-primary flex-1 sm:flex-none">
               Finalizar configuración →
             </button>
           </div>
@@ -228,58 +289,169 @@
 </section>
 <script>
 (function(){
-  const regionSel    = document.getElementById('id_neg-region') || document.getElementById('id_region');
-  const provinciaSel = document.getElementById('id_neg-provincia') || document.getElementById('id_provincia');
-  const comunaSel    = document.getElementById('id_neg-comuna') || document.getElementById('id_comuna');
-  const localComSel  = document.querySelector('[name="loc-comuna"]') || document.getElementById('id_loc-comuna');
+  // ================= CASCADA GEO NEGOCIO =================
+  const negRegion    = document.getElementById('id_neg-region');
+  const negProvincia = document.getElementById('id_neg-provincia');
+  const negComuna    = document.getElementById('id_neg-comuna');
+  const geoLoading   = document.getElementById('geoLoading');
 
-  function filtrarOptions(sel, attr, value) {
+  function setLoading(on){
+    if (!geoLoading) return;
+    geoLoading.classList.toggle('hidden', !on);
+  }
+
+  function fillSelect(sel, items, emptyLabel){
     if (!sel) return;
-    const actual = sel.value;
-    let firstOk = null;
-    for (const opt of sel.options) {
-      if (!opt.value) { opt.style.display = ''; continue; }
-      const data = opt.getAttribute(attr);
-      const ok = !value || (data && data == value);
-      opt.style.display = ok ? '' : 'none';
-      if (ok && !firstOk && opt.value) firstOk = opt.value;
+    const prev = sel.value;
+    sel.innerHTML = '';
+    const def = document.createElement('option');
+    def.value = ''; def.textContent = emptyLabel || 'Selecciona una opción';
+    sel.appendChild(def);
+    for (const it of items){
+      const o = document.createElement('option');
+      o.value = it.id;
+      o.textContent = it.nombre;
+      sel.appendChild(o);
     }
-    if (![...sel.options].some(o => o.value && o.value === actual && o.style.display !== 'none')) {
-      sel.value = firstOk || '';
+    if ([...sel.options].some(o => String(o.value) === String(prev))) {
+      sel.value = prev;
+    } else {
+      sel.value = '';
     }
   }
 
-  // Agregar data-region a provincia y data-provincia a comuna (usando sus textos de Django o parseando options).
-  // Como Django no inyecta data attributes, usamos fetch JSON (alternativa: usar selects locales hardcode mapping via values).
-  // Implementación simple: al cambiar region → deshabilita/guarda valor actual provincia y comuna, luego onchange provincia → comuna.
-  if (regionSel && provinciaSel) {
-    provinciaSel.dataset.todo = JSON.stringify([...provinciaSel.options].map(o=>({v:o.value,t:o.text})));
-    regionSel.addEventListener('change', function() {
-      const v = this.value;
-      const original = JSON.parse(provinciaSel.dataset.todo || '[]');
-      provinciaSel.innerHTML = '';
-      const def = document.createElement('option'); def.value=''; def.textContent = 'Selecciona una provincia';
-      provinciaSel.appendChild(def);
-      for (const o of original) {
-        if (!o.v) continue;
-        // Se necesita mapping: en el form provincias ya tienen select_related region, pero no el data attr.
-        // Workaround simple: solo reordenar o mostrar todas (la validación clean() del form rechaza si no coincide).
-        const opt = document.createElement('option'); opt.value=o.v; opt.textContent=o.t;
-        provinciaSel.appendChild(opt);
+  async function cargarProvincias(regionId){
+    if (!regionId){
+      fillSelect(negProvincia, [], 'Selecciona primero una región');
+      fillSelect(negComuna, [], 'Selecciona primero una provincia');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`/geo/api/region/${regionId}/provincias/`);
+      const data = await res.json();
+      if (data.ok){
+        fillSelect(negProvincia, data.provincias, 'Selecciona una provincia');
       }
-      if (comunaSel && comunaSel.options) comunaSel.dispatchEvent(new Event('input'));
+    } catch(e){
+      console.error('Error cargar provincias:', e);
+    } finally {
+      setLoading(false);
+      cargarComunas(null, true);
+    }
+  }
+
+  async function cargarComunas(provinciaId, skipProvincia){
+    const provId = provinciaId || negProvincia?.value;
+    if (!provId){
+      fillSelect(negComuna, [], 'Selecciona primero una provincia');
+      syncLocalConNegocio();
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`/geo/api/provincia/${provId}/comunas/`);
+      const data = await res.json();
+      if (data.ok){
+        fillSelect(negComuna, data.comunas, 'Selecciona una comuna');
+      }
+    } catch(e){
+      console.error('Error cargar comunas:', e);
+    } finally {
+      setLoading(false);
+      syncLocalConNegocio();
+    }
+  }
+
+  if (negRegion) {
+    negRegion.addEventListener('change', e => cargarProvincias(e.target.value));
+  }
+  if (negProvincia) {
+    negProvincia.addEventListener('change', e => cargarComunas(e.target.value));
+  }
+  // Carga inicial si hay valores previos (POST con errores o edición)
+  if (negRegion && negRegion.value) cargarProvincias(negRegion.value);
+
+  // ================= CHECKBOX: MISMA DIRECCIÓN LOCAL =================
+  const checkMismaDir = document.getElementById('id_loc-usar_datos_negocio');
+  const seccDir = document.getElementById('seccionLocalDireccion');
+  const seccDatos = document.getElementById('seccionLocalDatos');
+  const locComunaSel = document.getElementById('id_loc-comuna');
+  const locDirInput = document.getElementById('id_loc-direccion');
+  const negDirInput = document.getElementById('id_neg-direccion');
+
+  function toggleLocalFields(){
+    const activo = checkMismaDir.checked;
+    const comunaInputs = seccDatos ? seccDatos.querySelectorAll('select, input') : [];
+    if (seccDir){
+      const dirInputs = seccDir.querySelectorAll('input, textarea');
+      dirInputs.forEach(i => { if (i !== checkMismaDir) i.disabled = activo; });
+      if (activo) seccDir.classList.add('opacity-60','pointer-events-none');
+      else seccDir.classList.remove('opacity-60','pointer-events-none');
+    }
+    comunaInputs.forEach(i => {
+      if (i.id === 'id_loc-nombre' || i.id && i.id.includes('nombre')) return; // nombre siempre editable
+      if (i === checkMismaDir) return;
+      if (i.tagName === 'SELECT') {
+        i.disabled = activo;
+      }
     });
+    const grid = seccDatos;
+    if (grid){
+      if (activo) grid.style.opacity = '0.85';
+      else grid.style.opacity = '';
+    }
+    syncLocalConNegocio();
   }
 
-  // Sincronizar comuna del local con la comuna del negocio si local está vacío.
-  if (comunaSel && localComSel) {
-    const sync = () => {
-      if (comunaSel.value && !localComSel.value) {
-        localComSel.value = comunaSel.value;
+  function syncLocalConNegocio(){
+    if (!checkMismaDir || !checkMismaDir.checked) return;
+    // Copiar comuna
+    if (locComunaSel && negComuna && negComuna.value){
+      const busco = String(negComuna.value);
+      const coinciden = [...locComunaSel.options].some(o => String(o.value) === busco);
+      if (!coinciden){
+        // Si aún no tiene options, rellenar con comuna actual (copia exacta)
+        const nombre = negComuna.options[negComuna.selectedIndex]?.textContent;
+        if (nombre){
+          locComunaSel.innerHTML = '';
+          const def = document.createElement('option'); def.value=''; def.textContent = 'Selecciona comuna';
+          locComunaSel.appendChild(def);
+          const op = document.createElement('option'); op.value = busco; op.textContent = nombre; op.selected = true;
+          locComunaSel.appendChild(op);
+        }
+      } else {
+        locComunaSel.value = busco;
       }
-    };
-    comunaSel.addEventListener('change', sync);
-    sync();
+    }
+    // Copiar dirección
+    if (locDirInput && negDirInput){
+      if (!locDirInput.value && negDirInput.value) {
+        locDirInput.value = negDirInput.value;
+      } else if (negDirInput.value && checkMismaDir.checked){
+        locDirInput.value = negDirInput.value;
+      }
+    }
+  }
+
+  if (checkMismaDir){
+    checkMismaDir.addEventListener('change', toggleLocalFields);
+    toggleLocalFields();
+    // Sync cuando cambia el negocio
+    negComuna?.addEventListener('change', syncLocalConNegocio);
+    negDirInput?.addEventListener('input', syncLocalConNegocio);
+  }
+
+  // ================= CHECK ANTES DE SUBMIT =================
+  const form = document.getElementById('onboardingPaso2Form');
+  if (form){
+    form.addEventListener('submit', function(){
+      const btn = document.getElementById('btnGuardarPaso2');
+      if (btn){
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Guardando…';
+      }
+    });
   }
 })();
 </script>

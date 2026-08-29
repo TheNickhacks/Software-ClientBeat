@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'apps.sentiment',
     'apps.pages',
     'apps.adminpanel',
+    'apps.notifications',
 ]
 
 MIDDLEWARE = [

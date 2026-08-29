@@ -36,7 +36,7 @@
     {% endif %}
 
     {# ---------------- HEADER CON ROL / NEGOCIO ---------------- #}
-    <div class="flex flex-col md:flex-row md:items-end md:justify-between mb-8 gap-4 animate-fade-up delay-2">
+    <div class="flex flex-col md:flex-row md:items-end md:justify-between mb-6 gap-4 animate-fade-up delay-2">
       <div>
         <h1 class="text-3xl font-bold gradient-text mb-2">
           Bienvenido, {{ user.get_full_name|default:user.email }}
@@ -58,7 +58,21 @@
           {% endif %}
         </p>
       </div>
-      <div class="flex gap-3">
+      <div class="flex flex-wrap gap-3">
+        {% if puede_exportar_excel and negocio %}
+          <button type="submit" form="filtrosDashboardForm" name="export" value="excel"
+                  class="inline-flex items-center gap-2 bg-gradient-to-r from-cbgreen to-cbgreen-700 text-white font-semibold px-5 py-3 rounded-xl shadow-lg shadow-cbgreen-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all">
+            <i class="fa fa-file-excel"></i> Exportar Excel
+          </button>
+        {% elif negocio and not puede_exportar_excel %}
+          <span class="inline-flex items-center gap-2 bg-slate-100 text-slate-500 font-medium px-4 py-3 rounded-xl"
+                title="Upgrade a Plan 2 (QR o Plan 3 Full para exportar en Excel.">
+            <i class="fa fa-file-excel"></i> Exportar Excel
+            <span class="text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full ml-1">
+              LOCKED · Plan 2/3
+            </span>
+          </span>
+        {% endif %}
         {% if rol_actual == 'DUENO' or rol_actual == 'ADMIN_SOPORTE' %}
           {% if negocio %}
             <a href="/admin/billing/suscripcion/?negocio__id={{ negocio.id }}" class="btn-secondary">
@@ -72,7 +86,180 @@
       </div>
     </div>
 
-    {# ---------------- CARDS DE ESTADO (RESUMEN MVP) ---------------- #}
+    {% if negocio %}
+
+    {# ================= TABS / PESTAÑAS NAVBAR ================= #}
+    <div class="mb-6 animate-fade-up delay-2 overflow-x-auto scrollbar-thin">
+      <div class="glass-effect rounded-2xl p-2 flex gap-1 min-w-max">
+        {% for t in tabs %}
+          <a href="?tab={{ t.key }}&temporalidad={{ temporalidad_actual }}&ubicacion={{ ubicacion_actual }}{% if filtro_local_id %}&local={{ filtro_local_id }}{% endif %}{% if filtro_nps_cat != 'TODOS' %}&nps_cat={{ filtro_nps_cat }}{% endif %}{% if filtro_fecha_desde %}&fecha_desde={{ filtro_fecha_desde }}{% endif %}{% if filtro_fecha_hasta %}&fecha_hasta={{ filtro_fecha_hasta }}{% endif %}{% if filtro_fecha_exacta %}&fecha_exacta={{ filtro_fecha_exacta }}{% endif %}{% if welcome %}&welcome=1{% endif %}"
+             class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap
+               {% if tab_actual == t.key %}
+                 bg-gradient-to-r from-cbblue to-cbgreen text-white shadow-lg shadow-cbblue-500/20
+               {% else %}
+                 text-slate-600 hover:bg-slate-100
+               {% endif %}">
+            <i class="fa {{ t.icon }}"></i> {{ t.label }}
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# ================= SELECTORES FILTROS GLOBALES ================= #}
+    <form method="GET" id="filtrosDashboardForm" class="mb-8 animate-fade-up delay-3">
+      <input type="hidden" name="tab" value="{{ tab_actual }}">
+      <input type="hidden" name="welcome" value="{% if welcome %}1{% endif %}">
+      <div class="glass-effect rounded-2xl p-5 card-hover">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">🔍</span>
+            <div>
+              <p class="font-bold text-slate-800">Filtros globales Dashboard</p>
+              <p class="text-xs text-slate-500">Personaliza la vista por Local, Temporalidad, Fechas y categoría NPS.</p>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-cbgreen-50 text-cbgreen-700">
+              <i class="fa fa-calendar"></i> {{ temporalidad_label|default:"Mensual" }}
+            </span>
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-cbblue-50 text-cbblue-700">
+              <i class="fa fa-location-dot"></i> {{ ubicacion_label|default:"Comunal" }}
+            </span>
+            {% if filtro_fecha_exacta_obj %}
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-indigo-50 text-indigo-700">
+              <i class="fa fa-circle-dot"></i> Fecha exacta {{ filtro_fecha_exacta_obj|date:"d/m/Y" }}
+            </span>
+            {% endif %}
+            {% if filtro_nps_cat != 'TODOS' %}
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-purple-50 text-purple-700">
+              <i class="fa fa-filter"></i> {{ filtro_nps_cat }}
+            </span>
+            {% endif %}
+            <a href="?tab={{ tab_actual }}" class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+              <i class="fa fa-rotate-left"></i> Limpiar
+            </a>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div>
+            <label class="form-label">
+              <i class="fa fa-store mr-1 text-cbgreen-600"></i>
+              Local
+            </label>
+            <select name="local" class="form-input !bg-white">
+              <option value="">— Todos los locales —</option>
+              {% for loc in locales_disponibles %}
+              <option value="{{ loc.id }}" {% if filtro_local_id == loc.id|stringformat:"s" %}selected{% endif %}>{{ loc.nombre }}</option>
+              {% endfor %}
+            </select>
+            <p class="text-xs text-slate-500 mt-1">Filtra resultados por unidad específica.</p>
+          </div>
+
+          <div>
+            <label class="form-label">
+              <i class="fa fa-calendar-days mr-1 text-cbblue-600"></i>
+              Temporalidad *
+            </label>
+            <select name="temporalidad" class="form-input !bg-white">
+              {% for opt_val, opt_label, opt_days in temporalidad_choices %}
+              <option value="{{ opt_val }}" {% if temporalidad_actual == opt_val %}selected{% endif %}>{{ opt_label }}</option>
+              {% endfor %}
+            </select>
+            <p class="text-xs text-slate-500 mt-1">Periodo cálculo para KPIs (NPS / CSAT / Google).</p>
+          </div>
+
+          <div>
+            <label class="form-label">
+              <i class="fa fa-map mr-1 text-cbgreen-600"></i>
+              Unidad geográfica (Benchmark)
+            </label>
+            <select name="ubicacion" class="form-input !bg-white">
+              {% for opt_val, opt_label, opt_km in ubicacion_choices %}
+              <option value="{{ opt_val }}" {% if ubicacion_actual == opt_val %}selected{% endif %}>{{ opt_label }}</option>
+              {% endfor %}
+            </select>
+            <p class="text-xs text-slate-500 mt-1">Rango geográfico para compararte con la competencia.</p>
+          </div>
+
+          <div>
+            <label class="form-label">
+              <i class="fa fa-thumbs-up mr-1 text-purple-600"></i>
+              Categoría NPS
+            </label>
+            <select name="nps_cat" class="form-input !bg-white">
+              {% for opt_val, opt_label in nps_cat_choices %}
+              <option value="{{ opt_val }}" {% if filtro_nps_cat == opt_val %}selected{% endif %}>{{ opt_label }}</option>
+              {% endfor %}
+            </select>
+            <p class="text-xs text-slate-500 mt-1">Filtrar respuestas QR por tipo de cliente.</p>
+          </div>
+
+          <div>
+            <label class="form-label">
+              <i class="fa fa-calendar-plus mr-1 text-slate-500"></i>
+              Desde (opcional)
+            </label>
+            <input type="text" name="fecha_desde" value="{{ filtro_fecha_desde }}"
+                   placeholder="DD/MM/AAAA" inputmode="numeric"
+                   class="form-input !bg-white" />
+            <p class="text-xs text-slate-500 mt-1">Fecha inicial del rango personalizado.</p>
+          </div>
+
+          <div>
+            <label class="form-label">
+              <i class="fa fa-calendar-minus mr-1 text-slate-500"></i>
+              Hasta (opcional)
+            </label>
+            <input type="text" name="fecha_hasta" value="{{ filtro_fecha_hasta }}"
+                   placeholder="DD/MM/AAAA" inputmode="numeric"
+                   class="form-input !bg-white" />
+            <p class="text-xs text-slate-500 mt-1">Fecha final del rango personalizado.</p>
+          </div>
+
+          <div class="lg:col-span-3">
+            <label class="form-label">
+              <i class="fa fa-bullseye mr-1 text-indigo-600"></i>
+              Fecha exacta (sobrescribe desde/hasta)
+            </label>
+            <div class="flex flex-col md:flex-row gap-3 items-start md:items-end">
+              <input type="text" name="fecha_exacta" value="{{ filtro_fecha_exacta }}"
+                     placeholder="DD/MM/AAAA" inputmode="numeric"
+                     class="form-input !bg-white md:max-w-xs" />
+              <button type="submit"
+                      class="btn-primary !py-3">
+                <i class="fa fa-magnifying-glass"></i> Aplicar filtros
+              </button>
+              <a href="?tab={{ tab_actual }}{% if welcome %}&welcome=1{% endif %}"
+                 class="btn-secondary !py-3">
+                <i class="fa fa-rotate-left"></i> Quitar filtros
+              </a>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">Utiliza esta opción para ver respuestas / reseñas de un día específico. Formatos aceptados: DD/MM/AAAA, DD-MM-AAAA o AAAA-MM-DD.</p>
+          </div>
+        </div>
+      </div>
+    </form>
+    <script>
+    (function(){
+      const form = document.getElementById('filtrosDashboardForm');
+      if (!form) return;
+      const autosubmitSel = ['select[name="temporalidad"]','select[name="ubicacion"]','select[name="local"]','select[name="nps_cat"]'];
+      autosubmitSel.forEach(sel => {
+        const el = form.querySelector(sel);
+        if (el) el.addEventListener('change', () => form.submit());
+      });
+    })();
+    </script>
+    {% endif %}
+
+    {% if negocio %}
+
+    {# ============================================================ #}
+    {#  TAB 1 · RESUMEN KPI                                         #}
+    {# ============================================================ #}
+    {% if tab_actual == 'resumen' %}
+
+    {# ---------------- CARDS DE ESTADO ---------------- #}
     <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10 animate-fade-up delay-3">
       <div class="glass-effect rounded-2xl p-6 card-hover">
         <div class="flex items-center justify-between mb-4">
@@ -123,22 +310,23 @@
 
       <div class="glass-effect rounded-2xl p-6 card-hover">
         <div class="flex items-center justify-between mb-4">
-          <div class="w-10 h-10 rounded-xl bg-cbgreen-50 text-cbgreen-700 flex items-center justify-center text-lg">
+          <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg">
             <i class="fa fa-star"></i>
           </div>
-          <span class="text-xs font-medium text-cbgreen-700 bg-cbgreen-50 px-2 py-0.5 rounded-full">
-            Próximamente
+          <span class="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+            GOOGLE · {{ google_total|default:0 }} reseñas
           </span>
         </div>
         <p class="text-sm text-gray-500 mb-1">Rating promedio Google</p>
         <h3 class="text-2xl font-bold text-slate-900">
-          — <span class="text-sm font-medium text-gray-400">/ 5.0</span>
+          <span class="text-amber-500">{{ google_estrellas }}</span>
+          <span class="ml-2">{{ google_rating_promedio|default:"0.0" }}</span>
+          <span class="text-sm font-medium text-gray-400">/ 5.0</span>
         </h3>
       </div>
     </div>
 
     {# ---------------- MÓDULO ENCUESTAS QR (NPS + CSAT) ---------------- #}
-    {% if negocio %}
     <div class="grid lg:grid-cols-3 gap-6 mb-8 animate-fade-up delay-4">
       <div class="lg:col-span-2 glass-effect p-7 md:p-8 rounded-2xl relative overflow-hidden">
         <div class="absolute -top-16 -right-10 w-40 h-40 bg-gradient-to-br from-cbblue/10 via-cbgreen/10 to-cbblue-700/10 rounded-full blur-2xl pointer-events-none"></div>
@@ -167,7 +355,7 @@
             </div>
             <div class="text-3xl font-black text-slate-900">{{ kpi_total_respuestas|default:0 }}</div>
             <div class="text-xs font-semibold text-cbgreen-600 mt-1">
-              <i class="fa fa-arrow-trend-up"></i> +{{ kpi_respuestas_30d|default:0 }} últimos 30 días
+              <i class="fa fa-arrow-trend-up"></i> +{{ kpi_respuestas_rango|default:0 }} últimos {{ temporalidad_dias|default:30 }} días
             </div>
           </div>
 
@@ -214,11 +402,11 @@
         <div>
           <div class="flex items-center justify-between mb-4">
             <h3 class="font-bold text-slate-800 text-lg">
-              <i class="fa fa-clock-rotate-left mr-1 text-slate-400"></i>Últimas respuestas
+              <i class="fa fa-clock-rotate-left mr-1 text-slate-400"></i>Últimas respuestas QR
             </h3>
-            <div class="text-xs text-slate-500">Muestra las últimas 15 respuestas</div>
+            <div class="text-xs text-slate-500">Muestra las últimas 20 respuestas del filtro aplicado</div>
           </div>
-          <div class="space-y-3 max-h-[440px] overflow-auto pr-2">
+          <div class="space-y-3 max-h-[480px] overflow-auto pr-2">
             {% for r in ultimas_respuestas %}
             <details class="group rounded-2xl border border-slate-100 bg-white/80 overflow-hidden transition hover:shadow-md">
               <summary class="list-none cursor-pointer p-4 select-none flex items-start md:items-center justify-between gap-3">
@@ -236,6 +424,9 @@
                         {% if r.nps_categoria == 'Promotor' %}<i class="fa fa-thumbs-up"></i>{% elif r.nps_categoria == 'Detractor' %}<i class="fa fa-thumbs-down"></i>{% else %}<i class="fa fa-minus"></i>{% endif %}
                         {{ r.nps_categoria }} NPS <b>{{ r.nps_puntaje|default:"-" }}/10</b>
                       </span>
+                      <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-cbblue-50 text-cbblue-700">
+                        <i class="fa fa-qrcode"></i> QR ClientBeat
+                      </span>
                       <span class="text-[11px] font-medium text-slate-500">
                         <i class="fa fa-location-dot mr-0.5"></i>{{ r.local.nombre|default:"Local" }}
                       </span>
@@ -252,37 +443,29 @@
                 </div>
                 <div class="text-right flex-shrink-0">
                   <div class="text-xs font-medium text-slate-500">{{ r.fecha_respuesta|date:"d/m/Y" }}</div>
-                  <div class="text-[11px] text-slate-400">{{ r.fecha_respuesta|date:"H:i" }} · {{ r.get_origen_display|default:"QR" }}</div>
+                  <div class="text-[11px] text-slate-400">{{ r.fecha_respuesta|date:"H:i" }}</div>
                   <i class="fa fa-chevron-down text-slate-300 mt-1 group-open:rotate-180 transition"></i>
                 </div>
               </summary>
               <div class="px-4 pb-4 pt-0 text-sm border-t border-slate-50 bg-slate-50/40">
-                <div class="grid md:grid-cols-2 gap-4 pt-4">
-                  <div>
-                    <div class="text-xs font-semibold text-slate-500 uppercase mb-1">Comentario completo</div>
-                    <p class="text-slate-700 whitespace-pre-wrap bg-white/80 rounded-xl p-3 border border-slate-100">
-                      {% if r.comentario %}{{ r.comentario }}{% else %}<span class="text-slate-400 italic">El cliente no escribió comentario.</span>{% endif %}
-                    </p>
-                  </div>
-                  <div class="space-y-2">
+                <div class="pt-4 space-y-3">
+                  <div class="grid md:grid-cols-2 gap-3">
                     <div class="flex items-center justify-between bg-white/80 rounded-xl p-3 border border-slate-100">
-                      <span class="text-xs text-slate-500">CSAT emoción</span>
-                      <span class="font-bold text-slate-800 text-base">{% if r.csat_emocion %}{{ r.csat_emocion }}{% else %}<span class="text-slate-400">—</span>{% endif %}</span>
+                      <span class="text-xs text-slate-500"><i class="fa fa-calendar mr-1"></i>Fecha y hora</span>
+                      <span class="font-bold text-slate-800 text-sm">{{ r.fecha_respuesta|date:"d/m/Y H:i" }}</span>
                     </div>
                     <div class="flex items-center justify-between bg-white/80 rounded-xl p-3 border border-slate-100">
-                      <span class="text-xs text-slate-500">Origen</span>
-                      <span class="font-semibold text-slate-700">{{ r.get_origen_display|default:"QR impreso" }}</span>
-                    </div>
-                    <div class="flex items-center justify-between bg-white/80 rounded-xl p-3 border border-slate-100">
-                      <span class="text-xs text-slate-500">Email cliente</span>
-                      <span class="font-semibold text-slate-700 text-xs">
-                        {% if r.email_opcional %}{{ r.email_opcional }}{% else %}<span class="text-slate-400 italic">No entregado</span>{% endif %}
+                      <span class="text-xs text-slate-500"><i class="fa fa-face-smile mr-1"></i>CSAT emoción</span>
+                      <span class="font-bold text-slate-800 text-base">
+                        {% if r.csat_emocion %}{{ r.get_csat_emocion_display }}{% else %}<span class="text-slate-400">—</span>{% endif %}
                       </span>
                     </div>
-                    <div class="flex items-center justify-between bg-white/80 rounded-xl p-3 border border-slate-100">
-                      <span class="text-xs text-slate-500">Plantilla usada</span>
-                      <span class="font-semibold text-slate-700 text-xs">{{ r.plantilla.nombre_mostrar|default:"NPS básico" }}</span>
-                    </div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-semibold text-slate-500 uppercase mb-2">Comentario completo</div>
+                    <p class="text-slate-700 whitespace-pre-wrap bg-white/80 rounded-xl p-4 border border-slate-100 leading-relaxed">
+                      {% if r.comentario %}{{ r.comentario }}{% else %}<span class="text-slate-400 italic">El cliente no escribió comentario.</span>{% endif %}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -360,6 +543,503 @@
       </div>
     </div>
 
+    {% endif %}
+
+    {# ============================================================ #}
+    {#  TAB 2 · ENCUESTAS QR                                        #}
+    {# ============================================================ #}
+    {% if tab_actual == 'encuestas' %}
+    <div class="grid lg:grid-cols-3 gap-6 mb-8 animate-fade-up delay-4">
+      <div class="lg:col-span-2 glass-effect p-7 md:p-8 rounded-2xl relative overflow-hidden">
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+          <div>
+            <div class="inline-flex items-center gap-2 bg-cbblue-50 text-cbblue-700 text-xs font-bold px-3 py-1 rounded-full mb-3">
+              <i class="fa fa-square-check mr-1"></i>LISTADO COMPLETO · ENCUESTAS QR
+            </div>
+            <h2 class="text-2xl font-extrabold text-slate-900 mb-1">✅ Todas las respuestas QR</h2>
+            <p class="text-slate-600 text-sm md:text-base">Listado completo con los filtros aplicados (Local, Fechas, Categoría NPS).</p>
+          </div>
+        </div>
+        <div class="space-y-3 max-h-[600px] overflow-auto pr-2">
+          {% for r in ultimas_respuestas %}
+          <details class="group rounded-2xl border border-slate-100 bg-white/80 overflow-hidden transition hover:shadow-md">
+            <summary class="list-none cursor-pointer p-4 select-none flex items-start md:items-center justify-between gap-3">
+              <div class="flex items-start gap-3 flex-1">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 bg-slate-50 border border-slate-100
+                  {% if r.nps_categoria == 'Promotor' %}!bg-cbgreen-50 !border-cbgreen-100{% elif r.nps_categoria == 'Detractor' %}!bg-rose-50 !border-rose-100{% else %}!bg-amber-50 !border-amber-100{% endif %}">
+                  {% if r.csat_emocion == 'MUY_FELIZ' %}😍{% elif r.csat_emocion == 'FELIZ' %}😊{% elif r.csat_emocion == 'NEUTRAL' %}😐{% elif r.csat_emocion == 'INSATISFECHO' %}😞{% elif r.csat_emocion == 'MUY_INSATISFECHO' %}😡{% else %}📊{% endif %}
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-2 mb-1">
+                    <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full
+                      {% if r.nps_categoria == 'Promotor' %}bg-cbgreen-100 text-cbgreen-700
+                      {% elif r.nps_categoria == 'Detractor' %}bg-rose-100 text-rose-700
+                      {% else %}bg-amber-100 text-amber-700{% endif %}">
+                      NPS <b>{{ r.nps_puntaje|default:"-" }}/10</b> · {{ r.nps_categoria }}
+                    </span>
+                    <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-cbblue-50 text-cbblue-700">
+                      <i class="fa fa-qrcode"></i> ClientBeat QR
+                    </span>
+                    <span class="text-[11px] font-medium text-slate-500">
+                      <i class="fa fa-location-dot mr-0.5"></i>{{ r.local.nombre|default:"Local" }}
+                    </span>
+                  </div>
+                  <p class="text-sm text-slate-700 line-clamp-1">
+                    {% if r.comentario %}{{ r.comentario }}{% else %}<span class="text-slate-400 italic">Sin comentario.</span>{% endif %}
+                  </p>
+                </div>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <div class="text-xs font-medium text-slate-500">{{ r.fecha_respuesta|date:"d/m/Y" }}</div>
+                <div class="text-[11px] text-slate-400">{{ r.fecha_respuesta|date:"H:i" }}</div>
+                <i class="fa fa-chevron-down text-slate-300 mt-1 group-open:rotate-180 transition"></i>
+              </div>
+            </summary>
+            <div class="px-4 pb-4 pt-0 text-sm border-t border-slate-50 bg-slate-50/40">
+              <div class="pt-4 space-y-3">
+                <div class="grid md:grid-cols-2 gap-3">
+                  <div class="flex items-center justify-between bg-white/80 rounded-xl p-3 border border-slate-100">
+                    <span class="text-xs text-slate-500"><i class="fa fa-calendar mr-1"></i>Fecha y hora</span>
+                    <span class="font-bold text-slate-800 text-sm">{{ r.fecha_respuesta|date:"d/m/Y H:i" }}</span>
+                  </div>
+                  <div class="flex items-center justify-between bg-white/80 rounded-xl p-3 border border-slate-100">
+                    <span class="text-xs text-slate-500"><i class="fa fa-face-smile mr-1"></i>CSAT emoción</span>
+                    <span class="font-bold text-slate-800 text-base">{% if r.csat_emocion %}{{ r.get_csat_emocion_display }}{% else %}<span class="text-slate-400">—</span>{% endif %}</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="text-xs font-semibold text-slate-500 uppercase mb-2">Comentario completo</div>
+                  <p class="text-slate-700 whitespace-pre-wrap bg-white/80 rounded-xl p-4 border border-slate-100 leading-relaxed">
+                    {% if r.comentario %}{{ r.comentario }}{% else %}<span class="text-slate-400 italic">El cliente no escribió comentario.</span>{% endif %}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </details>
+          {% empty %}
+          <div class="rounded-2xl p-10 text-center bg-white/60 border border-dashed border-slate-200">
+            <div class="text-5xl mb-3">📭</div>
+            <div class="font-bold text-slate-800 mb-1">Sin respuestas con estos filtros</div>
+            <p class="text-slate-600 text-sm mb-4 max-w-lg mx-auto">Prueba limpiando los filtros (arriba a la derecha).</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="space-y-6">
+        <div class="glass-effect rounded-2xl p-6">
+          <h3 class="font-extrabold text-slate-900 mb-4">📊 Respuestas QR en números</h3>
+          <div class="space-y-3 text-sm">
+            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <span class="text-slate-600">Total rango actual</span>
+              <b class="text-slate-900">{{ kpi_respuestas_rango|default:0 }}</b>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-{{ nps_color|default:'amber' }}-50 border border-{{ nps_color|default:'amber' }}-100">
+              <span class="text-slate-700">NPS Score</span>
+              <b class="text-{{ nps_color|default:'amber' }}-700">{% if kpi_nps_score >= 0 %}+{% endif %}{{ kpi_nps_score|default:0 }}</b>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-cbgreen-50 border border-cbgreen-100">
+              <span class="text-slate-700">% CSAT Felices</span>
+              <b class="text-cbgreen-700">{{ kpi_csat_felices_pct|default:0 }}%</b>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <span class="text-slate-600">Categoría NPS actual</span>
+              <span class="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full
+                bg-{{ nps_color|default:'amber' }}-100 text-{{ nps_color|default:'amber' }}-700">{{ nps_badge|default:'-' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ============================================================ #}
+    {#  TAB 3 · RESEÑAS GOOGLE (⭐⭐⭐⭐⭐ + BADGE DIFERENCIADOR)       #}
+    {# ============================================================ #}
+    {% if tab_actual == 'google' %}
+    <div class="grid lg:grid-cols-3 gap-6 mb-8 animate-fade-up delay-4">
+      <div class="lg:col-span-1 space-y-6">
+        <div class="glass-effect rounded-2xl p-7 relative overflow-hidden">
+          <div class="absolute -top-10 -right-10 w-40 h-40 bg-gradient-to-br from-amber-400/20 via-orange-400/10 to-amber-300/20 rounded-full blur-3xl pointer-events-none"></div>
+          <div class="flex items-center gap-2 mb-4 relative">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30">
+              <i class="fa fa-google"></i>
+            </div>
+            <div>
+              <div class="inline-flex items-center gap-1.5 text-[11px] font-black px-3 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 mb-1">
+                <i class="fa fa-star"></i> GOOGLE MY BUSINESS
+              </div>
+              <h3 class="font-extrabold text-slate-900">Rating promedio</h3>
+            </div>
+          </div>
+          <div class="relative mb-5">
+            <div class="text-7xl font-black text-amber-500 leading-none mb-2">{{ google_rating_promedio|default:"0.0" }}</div>
+            <div class="text-4xl text-amber-500 tracking-wider">{{ google_estrellas }}</div>
+            <div class="mt-2 text-sm text-slate-500">sobre <b class="text-slate-800">{{ google_total|default:0 }} reseñas</b> totales en Google</div>
+          </div>
+          <div class="pt-5 border-t border-slate-100 space-y-3">
+            {% for row in google_rating_rows %}
+            <div>
+              <div class="flex items-center justify-between text-sm mb-1">
+                <span class="text-amber-500 tracking-wider">{{ row.estrellas }}</span>
+                <b class="text-slate-800">{{ row.count }}</b>
+              </div>
+              <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-amber-400 to-orange-500"
+                     style="width:{{ row.pct }}%;"></div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="glass-effect rounded-2xl p-6">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-cbblue-50 text-cbblue-700 flex items-center justify-center"><i class="fa fa-filter"></i></div>
+            <div>
+              <h3 class="font-extrabold text-slate-900">Filtros activos Google</h3>
+              <p class="text-xs text-slate-500">Se aplican los mismos filtros de arriba</p>
+            </div>
+          </div>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between p-3 rounded-xl bg-slate-50">
+              <span class="text-slate-600">Reseñas totales negocio</span>
+              <b class="text-slate-900">{{ google_total|default:0 }}</b>
+            </div>
+            <div class="flex justify-between p-3 rounded-xl bg-cbgreen-50">
+              <span class="text-slate-700">En filtro actual</span>
+              <b class="text-cbgreen-700">{{ google_rango|default:0 }}</b>
+            </div>
+            <div class="flex justify-between p-3 rounded-xl bg-cbblue-50">
+              <span class="text-slate-700">Temporalidad</span>
+              <b class="text-cbblue-700">{{ temporalidad_label }}</b>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-2 glass-effect p-7 md:p-8 rounded-2xl">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+          <div>
+            <h2 class="text-2xl font-extrabold text-slate-900 mb-1">⭐ Últimas Reseñas Google</h2>
+            <p class="text-slate-600 text-sm">Listado completo con las estrellas de calificación (Google My Business).</p>
+          </div>
+        </div>
+        <div class="space-y-3 max-h-[680px] overflow-auto pr-2">
+          {% for rg in google_resenas %}
+          <details class="group rounded-2xl border border-slate-100 bg-white/80 overflow-hidden transition hover:shadow-md">
+            <summary class="list-none cursor-pointer p-4 select-none flex items-start md:items-center justify-between gap-3">
+              <div class="flex items-start gap-3 flex-1">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center text-xl flex-shrink-0 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 text-amber-600">
+                  <i class="fa fa-user text-lg"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-2 mb-1">
+                    <span class="inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-100 to-orange-100 text-amber-900 border border-amber-200">
+                      <i class="fa fa-google"></i> GOOGLE
+                    </span>
+                    <span class="text-amber-500 tracking-wide text-lg leading-none">
+                      {% if rg.calificacion == 5 %}★★★★★
+                      {% elif rg.calificacion == 4 %}★★★★☆
+                      {% elif rg.calificacion == 3 %}★★★☆☆
+                      {% elif rg.calificacion == 2 %}★★☆☆☆
+                      {% elif rg.calificacion == 1 %}★☆☆☆☆
+                      {% else %}☆☆☆☆☆{% endif %}
+                    </span>
+                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-full
+                      {% if rg.sentimiento == 'POSITIVO' %}bg-cbgreen-100 text-cbgreen-700
+                      {% elif rg.sentimiento == 'NEGATIVO' %}bg-rose-100 text-rose-700
+                      {% else %}bg-slate-100 text-slate-600{% endif %}">
+                      {{ rg.get_sentimiento_display|default:"—" }}
+                    </span>
+                    <span class="text-[11px] font-medium text-slate-500">
+                      <i class="fa fa-location-dot mr-0.5"></i>{{ rg.local.nombre|default:"Local" }}
+                    </span>
+                  </div>
+                  <div class="font-bold text-slate-900 text-sm mb-0.5">{{ rg.autor_nombre|default:"Usuario Google" }}</div>
+                  <p class="text-sm text-slate-700 line-clamp-1">
+                    {% if rg.comentario %}{{ rg.comentario }}{% else %}<span class="text-slate-400 italic">Sin texto de reseña.</span>{% endif %}
+                  </p>
+                </div>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <div class="text-xs font-medium text-slate-500">{{ rg.fecha_google|date:"d/m/Y" }}</div>
+                <i class="fa fa-chevron-down text-slate-300 mt-2 group-open:rotate-180 transition"></i>
+              </div>
+            </summary>
+            <div class="px-4 pb-4 pt-0 text-sm border-t border-slate-50 bg-slate-50/40">
+              <div class="pt-4 space-y-3">
+                <div class="grid md:grid-cols-3 gap-3">
+                  <div class="flex items-center justify-between bg-white/80 rounded-xl p-3 border border-slate-100">
+                    <span class="text-xs text-slate-500"><i class="fa fa-calendar mr-1"></i>Fecha</span>
+                    <span class="font-bold text-slate-800 text-sm">{{ rg.fecha_google|date:"d/m/Y" }}</span>
+                  </div>
+                  <div class="flex items-center justify-between bg-white/80 rounded-xl p-3 border border-slate-100">
+                    <span class="text-xs text-slate-500"><i class="fa fa-star mr-1 text-amber-500"></i>Calificación</span>
+                    <span class="font-black text-amber-600">
+                      {% if rg.calificacion == 5 %}★★★★★
+                      {% elif rg.calificacion == 4 %}★★★★☆
+                      {% elif rg.calificacion == 3 %}★★★☆☆
+                      {% elif rg.calificacion == 2 %}★★☆☆☆
+                      {% else %}★☆☆☆☆{% endif %}
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between bg-white/80 rounded-xl p-3 border border-slate-100">
+                    <span class="text-xs text-slate-500"><i class="fa fa-face-smile mr-1"></i>Sentimiento</span>
+                    <span class="font-bold
+                      {% if rg.sentimiento == 'POSITIVO' %}text-cbgreen-700
+                      {% elif rg.sentimiento == 'NEGATIVO' %}text-rose-700
+                      {% else %}text-slate-700{% endif %}">
+                      {{ rg.get_sentimiento_display|default:"—" }}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <div class="text-xs font-semibold text-slate-500 uppercase mb-2">Reseña completa</div>
+                  <p class="text-slate-700 whitespace-pre-wrap bg-white/80 rounded-xl p-4 border border-slate-100 leading-relaxed">
+                    {% if rg.comentario %}{{ rg.comentario }}{% else %}<span class="text-slate-400 italic">Reseña sin texto del autor.</span>{% endif %}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </details>
+          {% empty %}
+          <div class="rounded-2xl p-10 text-center bg-white/60 border border-dashed border-slate-200">
+            <div class="text-5xl mb-3">🌐</div>
+            <div class="font-bold text-slate-800 mb-1">Aún no hay reseñas Google</div>
+            <p class="text-slate-600 text-sm mb-4 max-w-lg mx-auto">
+              Próximamente integración con Google Places API para traer todas tus reseñas de forma automática.
+              Mientras tanto puedes agregarlas manualmente desde el Panel Admin.
+            </p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ============================================================ #}
+    {#  TAB 4 · ANÁLISIS LATENCIA & TEMÁTICA                        #}
+    {# ============================================================ #}
+    {% if tab_actual == 'analisis' %}
+    <div class="grid lg:grid-cols-2 gap-6 mb-8 animate-fade-up delay-4">
+      {# PANEL LATENCIA #}
+      <div class="glass-effect rounded-2xl p-7 md:p-8 relative overflow-hidden">
+        <div class="absolute -top-12 -right-8 w-40 h-40 bg-gradient-to-br from-cbblue/15 via-cbgreen/15 to-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="flex items-center gap-2 mb-6 relative">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-cbblue to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-cbblue-500/30">
+            <i class="fa fa-bolt"></i>
+          </div>
+          <div>
+            <div class="inline-flex items-center gap-1.5 text-[11px] font-black px-3 py-1 rounded-full bg-cbblue-100 text-cbblue-800 mb-1">
+              <i class="fa fa-stopwatch"></i> MÓDULO LATENCIA
+            </div>
+            <h3 class="font-extrabold text-slate-900 text-xl">⏱️ Análisis de Latencia</h3>
+            <p class="text-xs text-slate-500">Tiempo entre respuestas QR y distribución temporal</p>
+          </div>
+        </div>
+
+        {% if analisis_latencia %}
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <div class="bg-white/80 rounded-2xl p-5 border border-slate-100 shadow-sm">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tiempo promedio entre respuestas</span>
+              <i class="fa fa-hourglass-half text-cbblue"></i>
+            </div>
+            <div class="text-3xl font-black text-cbblue-700">
+              {% if analisis_latencia.promedio_horas >= 24 %}
+                {{ analisis_latencia.promedio_horas|floatformat:0 }}h
+              {% else %}
+                {{ analisis_latencia.promedio_minutos|floatformat:0 }} min
+              {% endif %}
+            </div>
+            <div class="text-[11px] text-slate-500 mt-1">
+              {{ analisis_latencia.n_intervalos }} intervalos medidos
+            </div>
+          </div>
+          <div class="bg-white/80 rounded-2xl p-5 border border-slate-100 shadow-sm">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Respuestas / día promedio</span>
+              <i class="fa fa-chart-line text-cbgreen"></i>
+            </div>
+            <div class="text-3xl font-black text-cbgreen-700">{{ analisis_latencia.respuestas_por_dia_prom }}</div>
+            <div class="text-[11px] text-slate-500 mt-1">Base {{ temporalidad_dias }} días</div>
+          </div>
+          <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-5 border border-amber-100 shadow-sm">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Hora pico</span>
+              <i class="fa fa-sun text-amber-500"></i>
+            </div>
+            <div class="text-3xl font-black text-amber-700">{{ dist_horas.pico_hora|default:0 }}:00</div>
+            <div class="text-[11px] text-slate-500 mt-1">Hora con más respuestas del día</div>
+          </div>
+          <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-5 border border-purple-100 shadow-sm">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Día pico semana</span>
+              <i class="fa fa-calendar-week text-purple-500"></i>
+            </div>
+            <div class="text-3xl font-black text-purple-700">{{ dist_dias.pico_dia|default:"—" }}</div>
+            <div class="text-[11px] text-slate-500 mt-1">Día con más respuestas</div>
+          </div>
+        </div>
+
+        <div class="mb-5">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-bold text-slate-800"><i class="fa fa-clock mr-1 text-slate-400"></i>Distribución 24 horas</h4>
+            <span class="text-xs text-slate-500">N° respuestas por hora</span>
+          </div>
+          <div class="flex items-end gap-0.5 h-28 bg-slate-50 rounded-xl p-3 border border-slate-100">
+            {% for count in dist_horas.data %}
+              {% widthratio count dist_horas.max_val|default:1 100 as hh %}
+              <div class="flex-1 flex flex-col items-center justify-end gap-1 min-w-0">
+                <div class="w-full rounded-t-sm bg-gradient-to-t from-cbblue to-cbgreen transition-all hover:scale-y-110 origin-bottom"
+                     style="height:{{ hh }}%; min-height:{% if count > 0 %}6{% else %}2{% endif %}px; opacity:{% if count > 0 %}1{% else %}0.2{% endif %};"></div>
+              </div>
+            {% endfor %}
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-400 mt-1 px-3">
+            <span>00</span><span>06</span><span>12</span><span>18</span><span>23</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-bold text-slate-800"><i class="fa fa-calendar-days mr-1 text-slate-400"></i>Distribución por día semana</h4>
+            <span class="text-xs text-slate-500">Lun a Dom</span>
+          </div>
+          <div class="grid grid-cols-7 gap-2">
+            {% for d in dist_dias.rows %}
+              <div class="flex flex-col items-center gap-1">
+                <div class="w-full bg-slate-50 rounded-xl border border-slate-100 flex items-end h-24 p-2 justify-center">
+                  <div class="w-full rounded-t-md bg-gradient-to-t from-purple-500 to-pink-500 transition-all"
+                       style="height:{{ d.pct }}%; min-height:{% if d.count > 0 %}8{% else %}3{% endif %}px;"></div>
+                </div>
+                <div class="text-xs font-bold text-slate-600">{{ d.label }}</div>
+                <div class="text-[11px] text-slate-500">{{ d.count }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% else %}
+        <div class="rounded-2xl p-10 text-center bg-white/60 border border-dashed border-slate-200">
+          <div class="text-5xl mb-3">⏱️</div>
+          <div class="font-bold text-slate-800 mb-1">Necesitamos más respuestas</div>
+          <p class="text-slate-600 text-sm mb-4 max-w-lg mx-auto">
+            Se requieren al menos 2 respuestas QR para calcular la latencia entre ellas. ¡Comparte tu código QR!
+          </p>
+          {% if qr_primer_local %}
+          <button onclick="document.getElementById('qrModal').classList.remove('hidden')" class="btn-primary">
+            <i class="fa fa-qrcode"></i> Ver mi QR
+          </button>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      {# PANEL TEMÁTICAS 4D #}
+      <div class="glass-effect rounded-2xl p-7 md:p-8 relative overflow-hidden">
+        <div class="absolute -top-12 -left-8 w-40 h-40 bg-gradient-to-br from-purple-400/15 via-pink-400/10 to-cbgreen/15 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="flex items-center gap-2 mb-6 relative">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-pink-600 text-white flex items-center justify-center shadow-lg shadow-purple-500/30">
+            <i class="fa fa-brain"></i>
+          </div>
+          <div>
+            <div class="inline-flex items-center gap-1.5 text-[11px] font-black px-3 py-1 rounded-full bg-purple-100 text-purple-800 mb-1">
+              <i class="fa fa-tags"></i> ANÁLISIS TEMÁTICO 4D
+            </div>
+            <h3 class="font-extrabold text-slate-900 text-xl">🧠 Temáticas de las Reseñas</h3>
+            <p class="text-xs text-slate-500">{{ comentarios_analizados }} comentarios analizados · {{ tematicas_total_menciones }} menciones</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          {% for key, dim in tematicas_4d.items %}
+          <div class="bg-{{ dim.color }}-50 rounded-2xl p-5 border border-{{ dim.color }}-100 shadow-sm relative overflow-hidden">
+            <div class="absolute top-3 right-3 w-10 h-10 rounded-xl bg-white/80 flex items-center justify-center text-{{ dim.color }}-600">
+              <i class="fa {{ dim.icono }}"></i>
+            </div>
+            <div class="text-xs font-bold uppercase tracking-wide text-{{ dim.color }}-600 mb-2">{{ dim.nombre }}</div>
+            <div class="text-4xl font-black text-{{ dim.color }}-700 mb-1">{{ dim.menciones }}</div>
+            <div class="text-xs text-slate-500 mb-3">menciones · {{ dim.pct }}% del total</div>
+            <div class="h-2.5 bg-white/70 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-{{ dim.color }}-400 to-{{ dim.color }}-600" style="width:{{ dim.pct }}%;"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="space-y-4">
+          <h4 class="font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa fa-chart-simple mr-1 text-slate-400"></i> Ranking general dimensiones
+          </h4>
+          {% for key, dim in tematicas_ranking %}
+          <div>
+            <div class="flex items-center justify-between text-sm mb-1.5">
+              <span class="font-semibold text-slate-700 inline-flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-{{ dim.color }}-100 text-{{ dim.color }}-700 flex items-center justify-center text-xs">
+                  <i class="fa {{ dim.icono }}"></i>
+                </span>
+                {{ dim.nombre }}
+              </span>
+              <b class="text-slate-800">{{ dim.menciones }} menciones · {{ dim.pct }}%</b>
+            </div>
+            <div class="h-4 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-{{ dim.color }}-400 via-{{ dim.color }}-500 to-{{ dim.color }}-600"
+                   style="width:{{ dim.pct }}%;"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="mt-6 rounded-xl p-4 bg-gradient-to-br from-slate-50 to-cbblue-50 border border-slate-100 text-xs text-slate-600 leading-relaxed">
+          <i class="fa fa-info-circle mr-1 text-cbblue-600"></i>
+          Metodología: Análisis léxico con keywords modismos chilenos sobre comentarios QR y Google.
+          Las 4 dimensiones principales son Atención, Producto/Servicio, Espacio/Ambiente y Limpieza/Higiene.
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ============================================================ #}
+    {#  TAB 5 · BENCHMARK (placeholder futuro)                      #}
+    {# ============================================================ #}
+    {% if tab_actual == 'benchmark' %}
+    <div class="glass-effect rounded-2xl p-10 md:p-16 text-center animate-fade-up delay-4 relative overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-br from-cbblue/5 via-cbgreen/5 to-amber-400/5 pointer-events-none"></div>
+      <div class="relative">
+        <div class="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-cbblue via-cbgreen to-amber-400 text-white text-5xl shadow-2xl mb-6">
+          🏆
+        </div>
+        <h2 class="text-3xl md:text-4xl font-extrabold text-slate-900 mb-3">Benchmark Competitivo</h2>
+        <p class="text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
+          Compara tus indicadores <b>NPS, CSAT y Rating Google</b> con la competencia directa de tu rubro
+          en la unidad geográfica seleccionada (Comunal / Regional / Nacional).
+        </p>
+        <div class="grid md:grid-cols-3 gap-4 max-w-3xl mx-auto mb-10">
+          <div class="bg-white/80 rounded-2xl p-5 border border-slate-100 shadow-sm">
+            <div class="text-3xl mb-2">📊</div>
+            <div class="font-bold text-slate-800 mb-1">Comparativa NPS</div>
+            <div class="text-xs text-slate-500">Promedio vs tu rubro · Percentil rank</div>
+          </div>
+          <div class="bg-white/80 rounded-2xl p-5 border border-slate-100 shadow-sm">
+            <div class="text-3xl mb-2">⭐</div>
+            <div class="font-bold text-slate-800 mb-1">Rating Google</div>
+            <div class="text-xs text-slate-500">Promedio estrellas · N° reseñas vs mercado</div>
+          </div>
+          <div class="bg-white/80 rounded-2xl p-5 border border-slate-100 shadow-sm">
+            <div class="text-3xl mb-2">💬</div>
+            <div class="font-bold text-slate-800 mb-1">Temáticas Top</div>
+            <div class="text-xs text-slate-500">Qué hablan de tus competidores · FODA</div>
+          </div>
+        </div>
+        <div class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-cbblue to-cbgreen text-white font-semibold shadow-lg shadow-cbblue-500/30">
+          <i class="fa fa-gears"></i> Módulo en construcción · Fase 3
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {# ---------------- MODAL QR ---------------- #}
     {% if qr_primer_local %}
     <div id="qrModal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onclick="if(event.target.id==='qrModal')document.getElementById('qrModal').classList.add('hidden')">
       <div class="w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 md:p-8 relative animate-scale-in">
@@ -412,6 +1092,7 @@
       })();
     </script>
     {% endif %}
+
     {% else %}
     <div class="glass-effect p-8 md:p-10 rounded-2xl animate-fade-up delay-4">
       <div class="flex items-start gap-4 mb-6">
