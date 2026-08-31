@@ -1,0 +1,214 @@
+{% extends 'admin_panel/base.html' %}
+{% load humanize %}
+
+{% block admin_subtitle %}
+  Gestiona todas las suscripciones de la plataforma: confirmar manualmente, cancelar con motivo, cambiar plan o extender días de gracia.
+{% endblock %}
+
+{% block admin_header_actions %}
+<a href="{% url 'adminpanel:suscripcion_nueva' %}"
+   class="btn-primary !px-4 !py-2.5 text-sm inline-flex items-center gap-2">
+  <i class="fa fa-plus"></i> Asignar suscripción
+</a>
+{% endblock %}
+
+{% block admin_content %}
+
+{# ====== KPIs MÓDULO ====== #}
+<section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400 mb-1">Total</div>
+    <div class="text-2xl font-extrabold text-slate-800">{{ total }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-emerald-600 mb-1">Activas</div>
+    <div class="text-2xl font-extrabold text-emerald-700">{{ total_activas }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-amber-600 mb-1">Pendientes</div>
+    <div class="text-2xl font-extrabold text-amber-700">{{ total_pendientes }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-rose-600 mb-1">Vencidas</div>
+    <div class="text-2xl font-extrabold text-rose-700">{{ total_vencidas }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-slate-600 mb-1">Canceladas</div>
+    <div class="text-2xl font-extrabold text-slate-700">{{ total_canceladas }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-orange-600 mb-1">Vencen ≤ 7d</div>
+    <div class="text-2xl font-extrabold text-orange-700">{{ vencen_7d }}</div>
+  </div>
+</section>
+
+{# ====== FILTROS ====== #}
+<div class="glass-effect rounded-2xl p-4 mb-6 border border-slate-100">
+  <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Buscar</label>
+      <input type="text" name="q" value="{{ filtros.q|default:'' }}" placeholder="Negocio, RUT, email dueño, ID..."
+             class="input w-full !py-2 text-sm">
+    </div>
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Estado</label>
+      <select name="estado" class="input w-full !py-2 text-sm">
+        <option value="">Todos</option>
+        {% for k, v in estados %}
+          <option value="{{ k }}" {% if filtros.estado == k %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Plan</label>
+      <select name="plan" class="input w-full !py-2 text-sm">
+        <option value="">Todos los planes</option>
+        {% for p in planes %}
+          <option value="{{ p.id }}" {% if filtros.plan == p.id|stringformat:"s" %}selected{% endif %}>{{ p.get_nombre_mostrar }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Renovación auto</label>
+      <select name="renovacion" class="input w-full !py-2 text-sm">
+        <option value="">Todos</option>
+        <option value="1" {% if filtros.renovacion == '1' %}selected{% endif %}>Sí activa</option>
+        <option value="0" {% if filtros.renovacion == '0' %}selected{% endif %}>No desactivada</option>
+      </select>
+    </div>
+    <div class="flex gap-2">
+      <button type="submit" class="btn-primary !py-2 flex-1 text-sm justify-center">
+        <i class="fa fa-search mr-1"></i> Filtrar
+      </button>
+      <a href="{% url 'adminpanel:suscripciones' %}" class="btn-secondary !py-2 text-sm justify-center">
+        <i class="fa fa-times"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
+{# ====== TABLA ====== #}
+<div class="glass-effect rounded-2xl overflow-hidden card-hover">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50/70 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider font-bold">
+        <tr>
+          <th class="px-5 py-3 text-left">Negocio · Dueño</th>
+          <th class="px-3 py-3 text-center">Plan</th>
+          <th class="px-3 py-3 text-center">Inicio</th>
+          <th class="px-3 py-3 text-center">Vencimiento</th>
+          <th class="px-3 py-3 text-center">Pagos</th>
+          <th class="px-3 py-3 text-center">Estado</th>
+          <th class="px-5 py-3 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for s in suscripciones %}
+        <tr class="hover:bg-emerald-50/40 transition">
+          <td class="px-5 py-4">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-fuchsia-500 via-purple-500 to-indigo-500 text-white flex items-center justify-center shrink-0 font-bold text-sm">
+                {{ s.negocio.nombre|slice:":2"|upper }}
+              </div>
+              <div class="min-w-0">
+                <div class="font-bold text-slate-800">{{ s.negocio.nombre|default:"—" }}</div>
+                <div class="text-[11px] text-slate-500">{{ s.negocio.dueño.email|default:"Sin dueño" }}</div>
+                <div class="text-[10px] font-mono text-slate-400 mt-0.5">ID: {{ s.id }}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-3 py-4 text-center">
+            <div class="font-semibold text-slate-800 text-[13px]">{{ s.plan.get_nombre_mostrar|default:"—" }}</div>
+            <div class="text-[11px] text-indigo-600 font-semibold">${{ s.plan.precio_clp|default:0 }} base</div>
+          </td>
+          <td class="px-3 py-4 text-center whitespace-nowrap text-[12px] text-slate-600">
+            {{ s.fecha_inicio|date:"d/m/Y" }}
+          </td>
+          <td class="px-3 py-4 text-center whitespace-nowrap">
+            <div class="text-[12px] font-semibold text-slate-800">{{ s.fecha_vencimiento|date:"d/m/Y" }}</div>
+            {% if s.estado == 'ACTIVA' %}
+              {% now "Y-m-d" as hoy %}
+              {% if s.fecha_vencimiento|date:"Y-m-d" <= hoy %}
+                <span class="text-[10px] font-bold text-rose-600">⚠️ Vencida</span>
+              {% else %}
+                <span class="text-[10px] font-semibold text-slate-500">faltan {{ s.fecha_vencimiento|timeuntil|slice:":6" }}</span>
+              {% endif %}
+            {% endif %}
+          </td>
+          <td class="px-3 py-4 text-center">
+            <span class="inline-flex items-center justify-center min-w-[36px] h-8 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-700">
+              {{ s.pagos.count }}
+            </span>
+          </td>
+          <td class="px-3 py-4 text-center">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
+                         {% if s.estado == 'ACTIVA' %}bg-emerald-100 text-emerald-700
+                         {% elif s.estado == 'PENDIENTE' %}bg-amber-100 text-amber-700
+                         {% elif s.estado == 'VENCIDA' %}bg-orange-100 text-orange-700
+                         {% elif s.estado == 'SUSPENDIDA' %}bg-slate-200 text-slate-700
+                         {% elif s.estado == 'CANCELADA' %}bg-rose-100 text-rose-700
+                         {% else %}bg-slate-100 text-slate-700{% endif %}">
+              <span class="w-1.5 h-1.5 rounded-full
+                           {% if s.estado == 'ACTIVA' %}bg-emerald-500 animate-pulse
+                           {% elif s.estado == 'PENDIENTE' %}bg-amber-500
+                           {% elif s.estado == 'VENCIDA' %}bg-orange-500
+                           {% elif s.estado == 'SUSPENDIDA' %}bg-slate-500
+                           {% elif s.estado == 'CANCELADA' %}bg-rose-500
+                           {% else %}bg-slate-400{% endif %}"></span>
+              {{ s.get_estado_display }}
+            </span>
+            {% if s.renovacion_automatica %}
+              <div class="text-[9px] font-semibold text-emerald-600 mt-1 uppercase tracking-wide">↻ Auto-renueva</div>
+            {% endif %}
+          </td>
+          <td class="px-5 py-4 text-right whitespace-nowrap">
+            <a href="{% url 'adminpanel:suscripcion_detalle' s.pk %}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cbblue-50 text-cbblue-700 hover:bg-cbblue-100 text-xs font-semibold transition">
+              <i class="fa fa-eye"></i> Gestionar
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="px-6 py-16 text-center text-slate-500">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-3xl">
+              <i class="fa fa-credit-card"></i>
+            </div>
+            <div class="text-lg font-bold text-slate-600 mb-1">No hay suscripciones con estos filtros.</div>
+            <div class="text-sm mb-6">Prueba quitar filtros o asignar una suscripción nueva a un negocio.</div>
+            <a href="{% url 'adminpanel:suscripcion_nueva' %}" class="btn-primary !px-5 !py-2.5 text-sm inline-flex items-center gap-2">
+              <i class="fa fa-plus"></i> Asignar suscripción
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_paginated %}
+  <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-3">
+    <div class="text-xs text-slate-500">
+      Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }} · {{ page_obj.paginator.count }} suscripciones
+    </div>
+    <div class="flex items-center gap-1">
+      {% if page_obj.has_previous %}
+        <a href="?{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}&page={{ page_obj.previous_page_number }}"
+           class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition">
+          ← Anterior
+        </a>
+      {% endif %}
+      <span class="px-3 py-1.5 rounded-lg bg-cbblue-100 text-cbblue-700 text-xs font-bold">
+        {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+      </span>
+      {% if page_obj.has_next %}
+        <a href="?{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}&page={{ page_obj.next_page_number }}"
+           class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition">
+          Siguiente →
+        </a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

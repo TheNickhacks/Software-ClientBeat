@@ -1,0 +1,143 @@
+{% extends 'admin_panel/base.html' %}
+{% load humanize %}
+
+{% block admin_subtitle %}
+  Historial completo de cobros y pagos de la plataforma vía Flow API o confirmaciones manuales.
+{% endblock %}
+
+{% block admin_content %}
+
+<section class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400 mb-1">Aprobados 30d</div>
+    <div class="text-2xl font-extrabold text-emerald-700">{{ total_aprobados_30d }}</div>
+    <div class="text-[11px] text-slate-500 mt-0.5">${{ monto_aprobado_30d|intcomma }} CLP</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-amber-500 mb-1">Pendientes</div>
+    <div class="text-2xl font-extrabold text-amber-700">{{ pendientes }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-rose-500 mb-1">Rechazados 30d</div>
+    <div class="text-2xl font-extrabold text-rose-700">{{ rechazados_30d }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-indigo-500 mb-1">Ticket medio</div>
+    <div class="text-2xl font-extrabold text-indigo-700">
+      ${{ ticket_medio|default:0|intcomma }}
+    </div>
+  </div>
+</section>
+
+<div class="glass-effect rounded-2xl p-4 mb-6 border border-slate-100">
+  <form method="GET" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Buscar</label>
+      <input type="text" name="q" value="{{ filtros.q|default:'' }}" placeholder="Order ID, negocio, email..."
+             class="input w-full !py-2 text-sm">
+    </div>
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Estado pago</label>
+      <select name="estado" class="input w-full !py-2 text-sm">
+        <option value="">Todos</option>
+        {% for k, v in estados %}
+          <option value="{{ k }}" {% if filtros.estado == k %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex gap-2">
+      <button type="submit" class="btn-primary !py-2 flex-1 text-sm justify-center">
+        <i class="fa fa-search mr-1"></i> Filtrar
+      </button>
+      <a href="{% url 'adminpanel:pagos' %}" class="btn-secondary !py-2 text-sm justify-center">
+        <i class="fa fa-times"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
+<div class="glass-effect rounded-2xl overflow-hidden card-hover">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50/70 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider font-bold">
+        <tr>
+          <th class="px-5 py-3 text-left">Fecha</th>
+          <th class="px-3 py-3 text-left">Flow Order ID</th>
+          <th class="px-3 py-3 text-left">Negocio · Plan</th>
+          <th class="px-3 py-3 text-right">Monto</th>
+          <th class="px-3 py-3 text-center">Estado</th>
+          <th class="px-5 py-3 text-center">Origen</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for p in pagos %}
+        <tr class="hover:bg-green-50/40 transition">
+          <td class="px-5 py-4 whitespace-nowrap">
+            <div class="text-[12px] font-semibold text-slate-700">{{ p.fecha_pago|default:p.fecha_creacion|date:"d/m/Y" }}</div>
+            <div class="text-[10px] text-slate-500">{{ p.fecha_pago|default:p.fecha_creacion|date:"H:i" }}</div>
+          </td>
+          <td class="px-3 py-4 font-mono text-[11px] text-slate-600 max-w-[180px] truncate">
+            {{ p.flow_order_id|default:"—" }}
+          </td>
+          <td class="px-3 py-4">
+            <div class="font-semibold text-slate-800 text-[13px]">{{ p.suscripcion.negocio.nombre|default:"—" }}</div>
+            <div class="text-[11px] text-slate-500">{{ p.suscripcion.plan.get_nombre_mostrar|default:"" }}</div>
+          </td>
+          <td class="px-3 py-4 text-right whitespace-nowrap">
+            <div class="font-extrabold text-slate-900">${{ p.monto|intcomma }}</div>
+            <div class="text-[10px] text-slate-500">{{ p.moneda }}</div>
+          </td>
+          <td class="px-3 py-4 text-center">
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold
+                         {% if p.estado == 'APROBADO' or p.estado == 'EXITOSO' %}bg-emerald-100 text-emerald-700
+                         {% elif p.estado == 'PENDIENTE' %}bg-amber-100 text-amber-700
+                         {% elif p.estado == 'RECHAZADO' or p.estado == 'FALLIDO' %}bg-rose-100 text-rose-700
+                         {% elif p.estado == 'CANCELADO' %}bg-slate-100 text-slate-600
+                         {% else %}bg-indigo-100 text-indigo-700{% endif %}">
+              {{ p.get_estado_display }}
+            </span>
+          </td>
+          <td class="px-5 py-4 text-center text-[12px]">
+            {% if p.flow_order_id and p.flow_order_id|slice:":7" == "MANUAL-" %}
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 text-[11px] font-bold">
+                <i class="fa fa-hand-pointer"></i> Manual
+              </span>
+            {% else %}
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-100 text-blue-700 text-[11px] font-bold">
+                <i class="fa fa-credit-card"></i> Flow API
+              </span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="px-6 py-16 text-center text-slate-500">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-3xl">
+              <i class="fa fa-receipt"></i>
+            </div>
+            <div class="text-lg font-bold text-slate-600 mb-1">Sin pagos aún con estos filtros.</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_paginated %}
+  <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-3">
+    <div class="text-xs text-slate-500">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</div>
+    <div class="flex gap-1">
+      {% if page_obj.has_previous %}
+        <a href="?{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}&page={{ page_obj.previous_page_number }}"
+           class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold">← Ant.</a>
+      {% endif %}
+      <span class="px-3 py-1.5 rounded-lg bg-cbblue-100 text-cbblue-700 text-xs font-bold">{{ page_obj.number }}</span>
+      {% if page_obj.has_next %}
+        <a href="?{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}&page={{ page_obj.next_page_number }}"
+           class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold">Sig. →</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

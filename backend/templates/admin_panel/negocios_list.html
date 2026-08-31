@@ -1,0 +1,197 @@
+{% extends 'admin_panel/base.html' %}
+{% load humanize %}
+
+{% block admin_subtitle %}
+  Listado completo de negocios clientes. Filtra por estado, onboarding, rubro y gestiona cada uno.
+{% endblock %}
+
+{% block admin_header_actions %}
+<a href="{% url 'adminpanel:suscripcion_nueva' %}" class="btn-primary !py-2 !px-4 text-sm inline-flex items-center gap-2">
+  <i class="fa fa-plus"></i> Asignar suscripción
+</a>
+{% endblock %}
+
+{% block admin_content %}
+
+<section class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400 mb-1">Total negocios</div>
+    <div class="text-2xl font-extrabold text-slate-800">{{ total }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-emerald-600 mb-1">Activos</div>
+    <div class="text-2xl font-extrabold text-emerald-700">{{ total_activos }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-amber-600 mb-1">Onboarding incompleto</div>
+    <div class="text-2xl font-extrabold text-amber-700">{{ onboarding_incompleto }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-rose-600 mb-1">Sin suscripción activa</div>
+    <div class="text-2xl font-extrabold text-rose-700">{{ sin_suscripcion_activa }}</div>
+  </div>
+</section>
+
+<div class="glass-effect rounded-2xl p-4 mb-6 border border-slate-100">
+  <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Buscar</label>
+      <input type="text" name="q" value="{{ filtros.q|default:'' }}"
+             placeholder="Nombre, RUT, email dueño..."
+             class="input w-full !py-2 text-sm">
+    </div>
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Estado</label>
+      <select name="estado" class="input w-full !py-2 text-sm">
+        <option value="">Todos</option>
+        {% for k, v in estados_negocio %}
+          <option value="{{ k }}" {% if filtros.estado == k %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Onboarding</label>
+      <select name="onboarding" class="input w-full !py-2 text-sm">
+        <option value="">Todos</option>
+        <option value="completo" {% if filtros.onboarding == 'completo' %}selected{% endif %}>✅ Completo (3/3)</option>
+        <option value="incompleto" {% if filtros.onboarding == 'incompleto' %}selected{% endif %}>⏳ Incompleto</option>
+      </select>
+    </div>
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Rubro</label>
+      <select name="rubro" class="input w-full !py-2 text-sm">
+        <option value="">Todos</option>
+        {% for r in rubros %}
+          <option value="{{ r.id }}" {% if filtros.rubro_id == r.id|stringformat:"s" %}selected{% endif %}>{{ r.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex gap-2">
+      <button type="submit" class="btn-primary !py-2 flex-1 text-sm justify-center">
+        <i class="fa fa-search mr-1"></i> Filtrar
+      </button>
+      <a href="{% url 'adminpanel:negocios' %}" class="btn-secondary !py-2 text-sm justify-center">
+        <i class="fa fa-times"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
+<div class="glass-effect rounded-2xl overflow-hidden card-hover">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50/70 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider font-bold">
+        <tr>
+          <th class="px-5 py-3 text-left">Negocio</th>
+          <th class="px-3 py-3 text-center">Estado</th>
+          <th class="px-3 py-3 text-center">Onboarding</th>
+          <th class="px-3 py-3 text-center">Locales</th>
+          <th class="px-3 py-3 text-center">Miembros</th>
+          <th class="px-3 py-3 text-left">Rubro</th>
+          <th class="px-3 py-3 text-right">Creado</th>
+          <th class="px-5 py-3 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for n in negocios %}
+        <tr class="hover:bg-fuchsia-50/40 transition">
+          <td class="px-5 py-4">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-fuchsia-500 via-purple-500 to-pink-500 text-white flex items-center justify-center font-bold shrink-0">
+                {{ n.nombre|slice:":1" }}
+              </div>
+              <div class="min-w-0">
+                <div class="font-bold text-slate-800">{{ n.nombre }}</div>
+                <div class="text-[11px] text-slate-500 truncate">
+                  <i class="fa fa-user mr-0.5"></i> {{ n.dueño.email|default:"sin dueño" }}
+                </div>
+                {% if n.rut %}
+                  <div class="text-[10px] font-mono text-slate-400">RUT {{ n.rut }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </td>
+          <td class="px-3 py-4 text-center">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold
+                         {% if n.estado == 'ACTIVO' %}bg-emerald-100 text-emerald-700
+                         {% elif n.estado == 'SUSPENDIDO' %}bg-amber-100 text-amber-700
+                         {% else %}bg-slate-100 text-slate-600{% endif %}">
+              <span class="w-1.5 h-1.5 rounded-full
+                           {% if n.estado == 'ACTIVO' %}bg-emerald-500 animate-pulse
+                           {% elif n.estado == 'SUSPENDIDO' %}bg-amber-500
+                           {% else %}bg-slate-400{% endif %}"></span>
+              {{ n.get_estado_display }}
+            </span>
+          </td>
+          <td class="px-3 py-4 text-center">
+            <div class="flex items-center justify-center gap-0.5">
+              <span class="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold
+                           {% if n.onboarding_paso1_completo %}bg-emerald-100 text-emerald-700{% else %}bg-slate-100 text-slate-400{% endif %}">
+                1{% if n.onboarding_paso1_completo %}<i class="fa fa-check text-[9px] ml-0.5"></i>{% endif %}
+              </span>
+              <span class="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold
+                           {% if n.onboarding_paso2_completo %}bg-emerald-100 text-emerald-700{% else %}bg-slate-100 text-slate-400{% endif %}">
+                2{% if n.onboarding_paso2_completo %}<i class="fa fa-check text-[9px] ml-0.5"></i>{% endif %}
+              </span>
+              <span class="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold
+                           {% if n.onboarding_paso3_completo %}bg-emerald-100 text-emerald-700{% else %}bg-slate-100 text-slate-400{% endif %}">
+                3{% if n.onboarding_paso3_completo %}<i class="fa fa-check text-[9px] ml-0.5"></i>{% endif %}
+              </span>
+            </div>
+          </td>
+          <td class="px-3 py-4 text-center">
+            <span class="inline-flex items-center justify-center min-w-[36px] h-8 rounded-lg text-xs font-bold bg-fuchsia-100 text-fuchsia-700">
+              {{ n.cant_locales|default:0 }}
+            </span>
+          </td>
+          <td class="px-3 py-4 text-center">
+            <span class="inline-flex items-center justify-center min-w-[36px] h-8 rounded-lg text-xs font-bold bg-blue-100 text-blue-700">
+              {{ n.cant_miembros|default:0 }}
+            </span>
+          </td>
+          <td class="px-3 py-4 text-[12px] font-medium text-slate-700">
+            {{ n.rubro.nombre|default:"—" }}
+          </td>
+          <td class="px-3 py-4 text-right text-[12px] text-slate-600 whitespace-nowrap">
+            {{ n.fecha_creacion|date:"d/m/Y" }}
+          </td>
+          <td class="px-5 py-4 text-right whitespace-nowrap">
+            <a href="{% url 'adminpanel:negocio_detalle' n.pk %}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-fuchsia-50 text-fuchsia-700 hover:bg-fuchsia-100 text-xs font-semibold transition">
+              <i class="fa fa-eye"></i> Gestionar
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="px-6 py-16 text-center text-slate-500">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-3xl">
+              <i class="fa fa-store"></i>
+            </div>
+            <div class="text-lg font-bold text-slate-600 mb-1">Sin negocios con estos filtros.</div>
+            <div class="text-sm">Prueba quitar los filtros actuales.</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_paginated %}
+  <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-3">
+    <div class="text-xs text-slate-500">Página {{ page_obj.number }} · {{ page_obj.paginator.count }} negocios</div>
+    <div class="flex gap-1">
+      {% if page_obj.has_previous %}
+        <a href="?{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}&page={{ page_obj.previous_page_number }}"
+           class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold">← Ant.</a>
+      {% endif %}
+      <span class="px-3 py-1.5 rounded-lg bg-cbblue-100 text-cbblue-700 text-xs font-bold">{{ page_obj.number }}</span>
+      {% if page_obj.has_next %}
+        <a href="?{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}&page={{ page_obj.next_page_number }}"
+           class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold">Sig. →</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

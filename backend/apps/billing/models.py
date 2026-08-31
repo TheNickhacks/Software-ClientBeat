@@ -1,4 +1,5 @@
 import uuid
+from django.conf import settings
 from django.db import models
 from django.db.models import TextChoices
 
@@ -274,3 +275,57 @@ class RegistroCobranza(models.Model):
 
     def __str__(self):
         return f'{self.tipo} - {self.suscripcion.id}'
+
+
+class MotivoCambioPlanChoices(TextChoices):
+    UPGRADE_ADMIN = 'UPGRADE_ADMIN', 'Upgrade manual por Admin Soporte'
+    DOWNGRADE_ADMIN = 'DOWNGRADE_ADMIN', 'Downgrade manual por Admin Soporte'
+    CAMBIO_LOC_AUTO = 'CAMBIO_LOC_AUTO', 'Cambio automático por ajuste de locales'
+    SOLICITUD_DUENO = 'SOLICITUD_DUENO', 'Solicitud del dueño del negocio'
+    BONIFICACION = 'BONIFICACION', 'Bonificación / regalo ClientBeat'
+    CORRECION_ADMIN = 'CORRECION_ADMIN', 'Corrección administrativa'
+    OTRO = 'OTRO', 'Otro (especificar en notas)'
+
+
+class CambioPlan(models.Model):
+    """Historial completo de todos los cambios de plan de una suscripción."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    suscripcion = models.ForeignKey(Suscripcion, on_delete=models.CASCADE, related_name='cambios_plan')
+    plan_anterior = models.ForeignKey(
+        Plan,
+        on_delete=models.PROTECT,
+        related_name='cambios_desde',
+        null=True,
+        blank=True,
+    )
+    plan_nuevo = models.ForeignKey(
+        Plan,
+        on_delete=models.PROTECT,
+        related_name='cambios_hacia',
+    )
+    motivo = models.CharField(max_length=30, choices=MotivoCambioPlanChoices.choices, default=MotivoCambioPlanChoices.CORRECION_ADMIN)
+    notas = models.TextField(blank=True, null=True, help_text='Notas internas Admin Soporte. No visible al cliente.')
+    fecha_cambio = models.DateTimeField(auto_now_add=True)
+    precio_antes_clp = models.IntegerField(null=True, blank=True, help_text='Monto que pagaba antes del cambio')
+    precio_despues_clp = models.IntegerField(null=True, blank=True, help_text='Monto que pasa a pagar')
+    dias_prorrateo = models.IntegerField(default=0, help_text='Días de prorrata aplicados en este cambio')
+    realizado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL if 'AUTH_USER_MODEL' in dir() else 'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cambios_plan_realizados',
+    )
+
+    class Meta:
+        verbose_name = 'Cambio de Plan'
+        verbose_name_plural = 'Cambios de Plan'
+        ordering = ['-fecha_cambio']
+        indexes = [
+            models.Index(fields=['suscripcion', 'fecha_cambio']),
+            models.Index(fields=['motivo', 'fecha_cambio']),
+        ]
+
+    def __str__(self):
+        antes = self.plan_anterior.nombre if self.plan_anterior else '(Sin plan anterior)'
+        return f'{antes} → {self.plan_nuevo.nombre} ({self.get_motivo_display()})'

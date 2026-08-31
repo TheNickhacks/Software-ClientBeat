@@ -1,0 +1,162 @@
+{% extends 'admin_panel/base.html' %}
+{% load humanize %}
+
+{% block admin_subtitle %}
+  Gestión de rubros (41 rubros con geografía 4D). Activa o desactiva rubros para limitar qué aparecen en onboarding.
+{% endblock %}
+
+{% block admin_content %}
+
+<section class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400 mb-1">Total rubros</div>
+    <div class="text-2xl font-extrabold text-slate-800">{{ total }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-emerald-600 mb-1">Activos (visibles)</div>
+    <div class="text-2xl font-extrabold text-emerald-700">{{ activos }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-rose-500 mb-1">Inactivos</div>
+    <div class="text-2xl font-extrabold text-rose-600">{{ inactivos|default:0 }}</div>
+  </div>
+</section>
+
+<div class="glass-effect rounded-2xl p-4 mb-6 border border-slate-100">
+  <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Buscar rubro</label>
+      <input type="text" name="q" value="{{ filtros.q|default:'' }}"
+             placeholder="Nombre, slug..." class="input w-full !py-2 text-sm">
+    </div>
+    {% if tipos_rubro %}
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Tipo rubro</label>
+      <select name="tipo" class="input w-full !py-2 text-sm">
+        <option value="">Todos</option>
+        {% for k, v in tipos_rubro %}
+          <option value="{{ k }}" {% if filtros.tipo == k %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Activo</label>
+      <select name="activo" class="input w-full !py-2 text-sm">
+        <option value="">Todos</option>
+        <option value="1" {% if filtros.activo == '1' %}selected{% endif %}>✅ Activos</option>
+        <option value="0" {% if filtros.activo == '0' %}selected{% endif %}>🚫 Inactivos</option>
+      </select>
+    </div>
+    <div class="flex gap-2">
+      <button type="submit" class="btn-primary !py-2 flex-1 text-sm justify-center">
+        <i class="fa fa-search mr-1"></i> Filtrar
+      </button>
+      <a href="{% url 'adminpanel:rubros' %}" class="btn-secondary !py-2 text-sm justify-center">
+        <i class="fa fa-times"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
+<div class="glass-effect rounded-2xl overflow-hidden card-hover">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50/70 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider font-bold">
+        <tr>
+          <th class="px-5 py-3 text-left">Rubro</th>
+          <th class="px-3 py-3 text-center">Orden</th>
+          <th class="px-3 py-3 text-center">Negocios usándolo</th>
+          <th class="px-3 py-3 text-center">Planes que lo incluyen</th>
+          <th class="px-3 py-3 text-center">Estado</th>
+          <th class="px-5 py-3 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for r in rubros %}
+        <tr class="hover:bg-rose-50/40 transition {% if not r.activo %}opacity-60{% endif %}">
+          <td class="px-5 py-4">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 via-red-500 to-orange-500 text-white flex items-center justify-center shrink-0">
+                <i class="fa fa-list-ul"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="font-bold text-slate-800 text-[13px]">{{ r.nombre }}</div>
+                <div class="text-[10px] font-mono text-slate-400 mt-0.5">slug: {{ r.slug }}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-3 py-4 text-center">
+            <span class="inline-flex items-center justify-center min-w-[38px] h-8 rounded-lg text-xs font-bold bg-slate-100 text-slate-700">
+              #{{ r.orden|default:"—" }}
+            </span>
+          </td>
+          <td class="px-3 py-4 text-center">
+            <span class="inline-flex items-center justify-center min-w-[38px] h-8 rounded-lg text-xs font-bold bg-fuchsia-100 text-fuchsia-700">
+              {{ r.total_negocios|default:0 }}
+            </span>
+          </td>
+          <td class="px-3 py-4 text-center">
+            <span class="inline-flex items-center justify-center min-w-[38px] h-8 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-700">
+              {{ r.total_planes|default:0 }}
+            </span>
+          </td>
+          <td class="px-3 py-4 text-center">
+            <form method="POST" action="{% url 'adminpanel:rubro_toggle_activo' r.pk %}" class="inline">
+              {% csrf_token %}
+              <button type="submit"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition
+                             {% if r.activo %}bg-emerald-100 text-emerald-700 hover:bg-emerald-200
+                             {% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                <span class="w-1.5 h-1.5 rounded-full bg-{{ r.activo|yesno:'emerald,slate' }}-500
+                             {% if r.activo %}animate-pulse{% endif %}"></span>
+                {{ r.activo|yesno:"Activo,Inactivo" }}
+              </button>
+            </form>
+          </td>
+          <td class="px-5 py-4 text-right whitespace-nowrap">
+            <form method="POST" action="{% url 'adminpanel:rubro_toggle_activo' r.pk %}" class="inline"
+                  onsubmit="return confirm('¿Seguro que quieres {% if r.activo %}DESACTIVAR{% else %}ACTIVAR{% endif %} este rubro?');">
+              {% csrf_token %}
+              <button type="submit"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition
+                             {% if r.activo %}bg-amber-50 text-amber-700 hover:bg-amber-100
+                             {% else %}bg-cbgreen-50 text-cbgreen-700 hover:bg-cbgreen-100{% endif %}">
+                <i class="fa fa-{{ r.activo|yesno:'pause,play' }}-circle"></i>
+                {{ r.activo|yesno:"Desactivar,Activar" }}
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="px-6 py-16 text-center text-slate-500">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-3xl">
+              <i class="fa fa-list-ul"></i>
+            </div>
+            <div class="text-lg font-bold text-slate-600 mb-1">Sin rubros con estos filtros.</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_paginated %}
+  <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-3">
+    <div class="text-xs text-slate-500">Página {{ page_obj.number }} · {{ page_obj.paginator.count }} rubros</div>
+    <div class="flex gap-1">
+      {% if page_obj.has_previous %}
+        <a href="?{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}&page={{ page_obj.previous_page_number }}"
+           class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold">← Ant.</a>
+      {% endif %}
+      <span class="px-3 py-1.5 rounded-lg bg-cbblue-100 text-cbblue-700 text-xs font-bold">{{ page_obj.number }}</span>
+      {% if page_obj.has_next %}
+        <a href="?{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}&page={{ page_obj.next_page_number }}"
+           class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold">Sig. →</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,207 @@
+{% extends 'admin_panel/base.html' %}
+{% load humanize %}
+
+{% block admin_subtitle %}
+  Valida las fórmulas de cálculo de ClientBeat contra datos reales de cualquier negocio. Todo transparente, sin caja negra.
+{% endblock %}
+
+{% block admin_content %}
+
+<section class="glass-effect rounded-2xl p-6 mb-6 border border-slate-100">
+  <form method="GET" class="grid grid-cols-1 md:grid-cols-3 gap-5 items-end">
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+        Seleccionar negocio (validar con data real)
+      </label>
+      <select name="negocio" onchange="this.form.submit()" class="input w-full !py-3 text-sm">
+        <option value="">— Seleccionar para validar en vivo —</option>
+        {% for n in negocios %}
+          <option value="{{ n.id }}" {% if negocio_id == n.id|stringformat:"s" %}selected{% endif %}>
+            {{ n.nombre }} · {{ n.rubro.nombre|default:"sin rubro" }}
+          </option>
+        {% empty %}
+          <option value="" disabled>Sin negocios activos aún.</option>
+        {% endfor %}
+      </select>
+      <p class="text-[11px] text-slate-500 mt-1.5">⚠️ Si seleccionas un negocio, TODAS las fórmulas de abajo se calculan paso a paso con su data REAL.</p>
+    </div>
+    <div class="md:col-span-2 flex items-end gap-3 flex-wrap">
+      {% if negocio_sel %}
+        <div class="rounded-xl bg-gradient-to-r from-cbgreen-50 to-emerald-50 border border-cbgreen-200 p-4 flex-1 min-w-[280px]">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-cbgreen-700 mb-1">
+            ✅ Validando live con negocio
+          </div>
+          <div class="text-lg font-black gradient-text">{{ negocio_sel.nombre }}</div>
+          <div class="text-[12px] text-slate-600 mt-0.5">
+            <i class="fa fa-store mr-1"></i> {{ negocio_sel.rubro.nombre|default:"—" }} ·
+            <i class="fa fa-user mr-1"></i> {{ negocio_sel.dueño.email|default:"sin dueño" }}
+          </div>
+        </div>
+        <a href="{% url 'adminpanel:metodologia' %}" class="btn-secondary !py-2.5 !px-4 text-sm">
+          <i class="fa fa-times"></i> Limpiar selección
+        </a>
+      {% else %}
+        <div class="rounded-xl bg-slate-50 border border-slate-200 p-4 flex-1 min-w-[280px]">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+            ℹ️ Modo fórmulas teóricas
+          </div>
+          <div class="text-sm text-slate-700">Selecciona un negocio arriba para ejecutar las fórmulas con sus datos reales y validar.</div>
+        </div>
+      {% endif %}
+    </div>
+  </form>
+</section>
+
+{# ====== 6 FÓRMULAS METODOLOGÍA ====== #}
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
+  {% for nombre, formula, detalle, nota in metodologia.formulas %}
+  <div class="glass-effect rounded-2xl p-5 border border-slate-100 card-hover">
+    <div class="flex items-start gap-3 mb-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+        <i class="fa fa-ruler-combined"></i>
+      </div>
+      <div class="flex-1">
+        <h3 class="font-black text-slate-900 text-base">{{ nombre }}</h3>
+        <div class="text-[12px] text-slate-500">Fórmula aplicada en dashboard y reportes</div>
+      </div>
+    </div>
+    <div class="rounded-lg bg-slate-900 text-slate-50 font-mono text-[12px] p-4 mb-3 leading-relaxed overflow-x-auto">
+      <div class="text-emerald-400 font-bold mb-1"># Fórmula</div>
+      <div>{{ formula }}</div>
+      <div class="text-cyan-300 font-bold mt-2 mb-1"># Detalle</div>
+      <div class="text-slate-200">{{ detalle }}</div>
+    </div>
+    <div class="text-[12px] text-slate-600 leading-relaxed bg-amber-50/60 border border-amber-100 rounded-lg p-3">
+      <i class="fa fa-lightbulb text-amber-500 mr-1"></i> <strong>Nota:</strong> {{ nota }}
+    </div>
+
+    {% if negocio_sel %}
+      {% if forloop.counter == 1 and nps_score is not None %}
+      <div class="mt-4 rounded-xl border-2 border-cbblue-200 bg-cbblue-50/50 p-4">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-cbblue-700 mb-2">
+          📊 Resultado LIVE para este negocio
+        </div>
+        <table class="w-full text-[12px]">
+          {% for label, valor in nps_calc %}
+          <tr class="{% if not forloop.last %}border-b border-cbblue-100{% endif %}">
+            <td class="py-1.5 text-slate-700 font-medium pr-3">{{ label }}</td>
+            <td class="py-1.5 text-right font-bold text-slate-900">{{ valor }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+        <div class="mt-3 text-center">
+          <span class="inline-flex items-center justify-center w-24 h-24 rounded-full font-black text-3xl shadow-lg
+                       {% if nps_score >= 50 %}bg-gradient-to-br from-emerald-100 to-green-200 text-emerald-700 border-4 border-emerald-300
+                       {% elif nps_score >= 0 %}bg-gradient-to-br from-amber-100 to-yellow-200 text-amber-700 border-4 border-amber-300
+                       {% else %}bg-gradient-to-br from-rose-100 to-red-200 text-rose-700 border-4 border-rose-300{% endif %}">
+            {% if nps_score > 0 %}+{% endif %}{{ nps_score }}
+          </span>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if forloop.counter == 2 and csat_total %}
+      <div class="mt-4 rounded-xl border-2 border-emerald-200 bg-emerald-50/50 p-4">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-700 mb-2">
+          📊 CSAT LIVE ({{ csat_total }} respuestas)
+        </div>
+        <div class="grid grid-cols-1 gap-1.5 mb-3">
+          {% for emocion, cnt, pct in csat_distribucion %}
+          <div class="flex items-center gap-2 text-[12px]">
+            <span class="w-28 font-medium text-slate-700">{{ emocion }}</span>
+            <div class="flex-1 h-5 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-emerald-400 to-cbgreen rounded-full" style="width: {{ pct }}%;"></div>
+            </div>
+            <span class="text-right font-bold text-slate-800 w-20 whitespace-nowrap">{{ cnt }} · {{ pct }}%</span>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="rounded-lg bg-white p-3 border border-emerald-200 text-center">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">% Felices (Muy Satisfecho)</div>
+          <div class="text-3xl font-black gradient-text">{{ csat_pct_felices }}%</div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if forloop.counter == 3 and desglose_metodologia and sus_activa %}
+      <div class="mt-4 rounded-xl border-2 border-indigo-200 bg-indigo-50/50 p-4">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-indigo-700 mb-2">
+          🧮 Costo mensual real ({{ cant_locales_actual }} locales activos)
+        </div>
+        <div class="space-y-1.5 text-[12px] mb-3">
+          <div class="flex justify-between"><span class="text-slate-600">Plan: {{ sus_activa.plan.get_nombre_mostrar }}</span><span class="font-bold">${{ desglose_metodologia.base_clp|intcomma }}</span></div>
+          <div class="flex justify-between"><span class="text-slate-600">Locales extra: {{ desglose_metodologia.local_extra_cantidad }} × ${{ sus_activa.plan.costo_local_adicional_clp|default:0|intcomma }}</span><span class="font-bold text-indigo-700">${{ desglose_metodologia.local_extra_clp|default:0|intcomma }}</span></div>
+          <div class="flex justify-between"><span class="text-slate-600">Rubros extra: {{ desglose_metodologia.rubro_extra_cantidad }}</span><span class="font-bold text-purple-700">${{ desglose_metodologia.rubro_extra_clp|default:0|intcomma }}</span></div>
+          <div class="h-px bg-indigo-200 my-1.5"></div>
+          <div class="flex justify-between text-base"><span class="font-black">TOTAL / mes</span><span class="gradient-text font-black">${{ desglose_metodologia.total_clp|intcomma }}</span></div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if forloop.counter == 4 and latencia_prom_min %}
+      <div class="mt-4 rounded-xl border-2 border-purple-200 bg-purple-50/50 p-4">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-purple-700 mb-2">
+          ⏱️ Latencia entre respuestas
+        </div>
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div class="rounded-lg bg-white p-3 text-center border border-purple-100">
+            <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Promedio</div>
+            <div class="text-2xl font-black gradient-text">{{ latencia_prom_horas }}h</div>
+            <div class="text-[10px] text-slate-400">({{ latencia_prom_min }} min)</div>
+          </div>
+          <div class="rounded-lg bg-white p-3 text-center border border-purple-100">
+            <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Hora pico</div>
+            <div class="text-2xl font-black text-purple-700">{{ dist_horas_pico.0 }}:00</div>
+            <div class="text-[10px] text-slate-400">{{ dist_horas_pico.1 }} respuestas</div>
+          </div>
+        </div>
+        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Distribución por día</div>
+        <div class="grid grid-cols-7 gap-1">
+          {% for dia, cnt in dist_dias %}
+          <div class="text-center">
+            <div class="text-[10px] font-bold text-slate-500 mb-1">{{ dia }}</div>
+            <div class="rounded-md bg-gradient-to-t from-purple-500 to-purple-300 text-white text-[11px] font-bold py-1.5 min-h-[36px] flex items-end justify-center"
+                 style="height: {% widthratio cnt dist_dias_pico.1 36 %}px;">
+              {{ cnt }}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="text-[11px] text-slate-500 mt-2 text-center">
+          📅 Día pico: <strong class="text-purple-700">{{ dist_dias_pico.0 }}</strong> con {{ dist_dias_pico.1 }} respuestas
+        </div>
+      </div>
+      {% endif %}
+
+      {% if forloop.counter == 5 and tematicas %}
+      <div class="mt-4 rounded-xl border-2 border-fuchsia-200 bg-fuchsia-50/50 p-4">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-fuchsia-700 mb-2">
+          🧠 Temáticas 4D ({{ comentarios_analizados }} comentarios · {{ tematicas_total }} menciones)
+        </div>
+        <div class="space-y-2 mb-2">
+          {% for dim, menc, pct in tematicas %}
+          <div>
+            <div class="flex items-center justify-between text-[12px] mb-1">
+              <span class="font-bold text-slate-800">{{ dim }}</span>
+              <span class="text-slate-600">{{ menc }} menciones · {{ pct }}%</span>
+            </div>
+            <div class="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-fuchsia-500 via-purple-500 to-indigo-500 rounded-full transition-all" style="width: {{ pct }}%;"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+
+{% if error_calculo %}
+<div class="rounded-xl bg-rose-50 border border-rose-200 p-4 text-sm text-rose-700">
+  <i class="fa fa-exclamation-circle mr-1"></i>
+  <strong>Error en cálculo live:</strong> {{ error_calculo }}
+</div>
+{% endif %}
+{% endblock %}

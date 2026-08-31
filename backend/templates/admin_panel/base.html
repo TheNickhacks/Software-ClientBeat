@@ -77,7 +77,12 @@
           <span class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 text-cbblue shadow-sm">
             <i class="fa {{ item.icono }} text-xs"></i>
           </span>
-          <span>{{ item.label }}</span>
+          <span class="flex-1">{{ item.label }}</span>
+          {% if item.badge %}
+            <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-gradient-to-r from-cbblue to-cbgreen text-white shadow-sm animate-pulse">
+              {{ item.badge }}
+            </span>
+          {% endif %}
         </a>
         {% endfor %}
 

@@ -1,0 +1,156 @@
+{% extends 'admin_panel/base.html' %}
+{% load humanize %}
+
+{% block admin_subtitle %}
+  Plantillas predefinidas de notificaciones automáticas (22 plantillas en 6 categorías). Activa o desactiva cada plantilla.
+{% endblock %}
+
+{% block admin_content %}
+
+<section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+  {% for key, info in categorias_totales.items %}
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-1">{{ info.label|truncatechars:18 }}</div>
+    <div class="text-xl font-extrabold text-slate-800">{{ info.activas }}<span class="text-sm text-slate-400"> / {{ info.total }}</span></div>
+    <div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-2">
+      <div class="h-full bg-gradient-to-r from-cbblue to-cbgreen rounded-full transition-all"
+           style="width: {% widthratio info.activas info.total 100 %}%;"></div>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+
+<div class="glass-effect rounded-2xl p-4 mb-6 border border-slate-100">
+  <form method="GET" class="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Filtrar por categoría</label>
+      <select name="cat" class="input w-full !py-2 text-sm">
+        <option value="">Todas las categorías</option>
+        {% for k, v in categorias %}
+          <option value="{{ k }}" {% if filtros.cat == k %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex gap-2">
+      <button type="submit" class="btn-primary !py-2 flex-1 text-sm justify-center">
+        <i class="fa fa-filter mr-1"></i> Filtrar
+      </button>
+      <a href="{% url 'adminpanel:plantillas_notificaciones' %}" class="btn-secondary !py-2 text-sm justify-center">
+        <i class="fa fa-times"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
+<div class="glass-effect rounded-2xl overflow-hidden card-hover">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50/70 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider font-bold">
+        <tr>
+          <th class="px-5 py-3 text-left">Plantilla</th>
+          <th class="px-3 py-3 text-left">Categoría</th>
+          <th class="px-3 py-3 text-center">Canal</th>
+          <th class="px-3 py-3 text-center">Trigger</th>
+          <th class="px-3 py-3 text-center">Estado</th>
+          <th class="px-5 py-3 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for p in plantillas %}
+        <tr class="hover:bg-cyan-50/40 transition">
+          <td class="px-5 py-4">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-sky-500 text-white flex items-center justify-center shrink-0">
+                <i class="fa fa-envelope-open-text"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="font-bold text-slate-800 text-[13px]">{{ p.nombre }}</div>
+                <div class="text-[10px] font-mono text-slate-400 mt-0.5">Código: {{ p.codigo_unico }}</div>
+                {% if p.asunto_email %}
+                  <div class="text-[11px] text-slate-500 mt-1 line-clamp-1">📧 {{ p.asunto_email }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </td>
+          <td class="px-3 py-4 text-[12px]">
+            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-cyan-100 text-cyan-700 text-[11px] font-bold">
+              {{ p.get_categoria_display }}
+            </span>
+          </td>
+          <td class="px-3 py-4 text-center text-[12px] font-medium text-slate-700">
+            <i class="fa fa-envelope text-cbblue mr-1"></i> Email
+          </td>
+          <td class="px-3 py-4 text-center text-[11px] text-slate-600 max-w-[180px]">
+            {% if p.variables_esperadas %}
+              <span class="inline-flex flex-wrap gap-1 items-center justify-center">
+                {% for v in p.variables_esperadas|slice:":3" %}
+                  <code class="px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-mono text-slate-600">{{ v }}</code>
+                {% endfor %}
+                {% if p.variables_esperadas|length > 3 %}
+                  <span class="text-slate-400">+{{ p.variables_esperadas|length|add:"-3" }}</span>
+                {% endif %}
+              </span>
+            {% else %}
+              <span class="text-slate-400 italic">Sin vars</span>
+            {% endif %}
+          </td>
+          <td class="px-3 py-4 text-center">
+            <form method="POST" action="{% url 'adminpanel:plantilla_notif_toggle_activa' p.pk %}" class="inline">
+              {% csrf_token %}
+              <button type="submit"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition
+                             {% if p.activo %}bg-emerald-100 text-emerald-700 hover:bg-emerald-200
+                             {% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                <span class="w-1.5 h-1.5 rounded-full bg-{{ p.activo|yesno:'emerald,slate' }}-500
+                             {% if p.activo %}animate-pulse{% endif %}"></span>
+                {{ p.activo|yesno:"Activa,Desactivada" }}
+              </button>
+            </form>
+          </td>
+          <td class="px-5 py-4 text-right whitespace-nowrap">
+            <form method="POST" action="{% url 'adminpanel:plantilla_notif_toggle_activa' p.pk %}" class="inline"
+                  onsubmit="return confirm('¿Seguro que quieres {% if p.activo %}DESACTIVAR{% else %}ACTIVAR{% endif %} esta plantilla?');">
+              {% csrf_token %}
+              <button type="submit"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition
+                             {% if p.activo %}bg-amber-50 text-amber-700 hover:bg-amber-100
+                             {% else %}bg-emerald-50 text-emerald-700 hover:bg-emerald-100{% endif %}">
+                <i class="fa fa-{{ p.activo|yesno:'pause,play' }}-circle"></i>
+                {{ p.activo|yesno:"Desactivar,Activar" }}
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="px-6 py-16 text-center text-slate-500">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-3xl">
+              <i class="fa fa-envelope-open-text"></i>
+            </div>
+            <div class="text-lg font-bold text-slate-600 mb-1">Sin plantillas con este filtro.</div>
+            <div class="text-sm">Ejecuta seed_notificaciones para generar las 22 plantillas predefinidas.</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_paginated %}
+  <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-3">
+    <div class="text-xs text-slate-500">Página {{ page_obj.number }}</div>
+    <div class="flex gap-1">
+      {% if page_obj.has_previous %}
+        <a href="?{% if filtros.cat %}cat={{ filtros.cat }}&{% endif %}page={{ page_obj.previous_page_number }}"
+           class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold">← Ant.</a>
+      {% endif %}
+      <span class="px-3 py-1.5 rounded-lg bg-cbblue-100 text-cbblue-700 text-xs font-bold">{{ page_obj.number }}</span>
+      {% if page_obj.has_next %}
+        <a href="?{% if filtros.cat %}cat={{ filtros.cat }}&{% endif %}page={{ page_obj.next_page_number }}"
+           class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold">Sig. →</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

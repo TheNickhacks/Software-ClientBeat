@@ -1,0 +1,122 @@
+{% extends 'admin_panel/base.html' %}
+{% load humanize %}
+
+{% block admin_subtitle %}
+  Simula el costo mensual para cualquier combinación de locales y rubros online, comparando todos los planes activos lado a lado con matriz de feature flags.
+{% endblock %}
+
+{% block admin_content %}
+
+<section class="glass-effect rounded-2xl p-6 mb-6 border border-slate-100">
+  <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-5 items-end">
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+        Cantidad de locales
+      </label>
+      <input type="number" name="locales" value="{{ cant_locales }}" min="1" max="100"
+             class="input w-full !py-3 text-lg font-bold text-center">
+      <p class="text-[11px] text-slate-500 mt-1 text-center">Ej: café con 5 sucursales = 5</p>
+    </div>
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+        Rubros online extra
+      </label>
+      <input type="number" name="rubros_online" value="{{ cant_rubros }}" min="0" max="20"
+             class="input w-full !py-3 text-lg font-bold text-center">
+      <p class="text-[11px] text-slate-500 mt-1 text-center">Sobre lo incluido gratis en el plan</p>
+    </div>
+    <div class="md:col-span-2 flex items-end gap-3">
+      <button type="submit" class="btn-primary flex-1 !py-3 text-base justify-center">
+        <i class="fa fa-calculator mr-2"></i> Recalcular matriz
+      </button>
+      <a href="?locales=3&rubros_online=0" class="btn-secondary !py-3 flex-1 text-center justify-center">
+        Resetear valores
+      </a>
+    </div>
+  </form>
+</section>
+
+{# ==== RESUMEN COMPARATIVO (TOTALES) ==== #}
+<section class="glass-effect rounded-2xl p-5 mb-6 border border-slate-100">
+  <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-4">
+    💰 Precios totales para {{ cant_locales }} local{{ cant_locales|pluralize:",es" }}{% if cant_rubros > 0 %} + {{ cant_rubros }} rubro{{ cant_rubros|pluralize:",es" }} online{% endif %}
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-{{ filas|length|add:1|default:3 }} xl:grid-cols-5 gap-4">
+    {% for f in filas %}
+    <div class="rounded-2xl border-2 {% if f.plan.es_plan_default %}border-cbgreen shadow-lg shadow-cbgreen/10{% else %}border-slate-200{% endif %} p-5 bg-gradient-to-b {% if f.plan.es_plan_default %}from-cbgreen-50 via-white to-white{% else %}from-white to-slate-50{% endif %} relative card-hover">
+      {% if f.plan.es_plan_default %}
+      <span class="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r from-cbgreen to-cbgreen-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-md">
+        ⭐ Plan default onboarding
+      </span>
+      {% endif %}
+      <div class="text-center mb-4 mt-2">
+        <h3 class="font-black text-slate-900 text-lg">{{ f.plan.get_nombre_mostrar }}</h3>
+        {% if f.plan.descripcion %}
+          <div class="text-[11px] text-slate-500 mt-1 line-clamp-2">{{ f.plan.descripcion }}</div>
+        {% endif %}
+      </div>
+      <div class="text-center mb-4">
+        <div class="text-4xl font-black gradient-text leading-none">{{ f.total_formateado }}</div>
+        <div class="text-[11px] text-slate-500 mt-1">CLP / mes</div>
+      </div>
+      <div class="text-[11px] font-mono space-y-1 bg-slate-50 rounded-xl p-3 border border-slate-100 mb-4">
+        <div class="flex justify-between"><span>Base:</span><span class="font-bold">${{ f.desglose.base_clp|intcomma }}</span></div>
+        {% if f.desglose.local_extra_cantidad > 0 %}
+        <div class="flex justify-between text-indigo-700"><span>Locales ext. ({{ f.desglose.local_extra_cantidad }}):</span><span class="font-bold">${{ f.desglose.local_extra_clp|intcomma }}</span></div>
+        {% endif %}
+        {% if f.desglose.rubro_extra_cantidad > 0 %}
+        <div class="flex justify-between text-purple-700"><span>Rubros ext. ({{ f.desglose.rubro_extra_cantidad }}):</span><span class="font-bold">${{ f.desglose.rubro_extra_clp|intcomma }}</span></div>
+        {% endif %}
+      </div>
+      <div class="space-y-1.5 text-[12px] mb-3 max-h-64 overflow-y-auto pr-1">
+        {% for nombre, valor in f.flags %}
+        <div class="flex items-start justify-between gap-2 py-0.5">
+          <span class="text-slate-700 flex-1 leading-snug">{{ nombre }}</span>
+          {% if valor is True %}
+            <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] font-bold flex-shrink-0">✓</span>
+          {% elif valor > 0 and valor is not True %}
+            <span class="inline-flex items-center justify-center h-5 px-1.5 rounded-full bg-indigo-100 text-indigo-700 font-bold text-[10px] flex-shrink-0">{{ valor }}</span>
+          {% else %}
+            <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-400 text-[10px] font-bold flex-shrink-0">✗</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <a href="{% url 'adminpanel:plan_update' f.plan.id %}"
+         class="btn-secondary w-full !py-2 text-xs justify-center mt-1">
+        <i class="fa fa-edit mr-1"></i> Editar límites / flags
+      </a>
+    </div>
+    {% empty %}
+    <div class="md:col-span-full px-6 py-12 text-center text-sm text-slate-500 italic">
+      Sin planes activos. Crea uno desde Gestión de Planes.
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="font-bold text-slate-700 mb-2 flex items-center gap-2"><i class="fa fa-lightbulb text-amber-500"></i> ¿Para qué sirve?</div>
+    <ul class="space-y-1.5 text-slate-600">
+      <li><i class="fa fa-check-circle text-green-500 mr-1.5"></i>Cotizar rápidamente a un cliente en llamada telefónica.</li>
+      <li><i class="fa fa-check-circle text-green-500 mr-1.5"></i>Justificar upgrade: "Agregar 2 locales extra = +$X CLP".</li>
+      <li><i class="fa fa-check-circle text-green-500 mr-1.5"></i>Validar precios antes de crear suscripción manual.</li>
+    </ul>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="font-bold text-slate-700 mb-2 flex items-center gap-2"><i class="fa fa-calculator text-indigo-500"></i> Fórmula exacta</div>
+    <div class="bg-slate-50 rounded-lg p-3 font-mono text-[11px] leading-relaxed border border-slate-100 text-slate-600 whitespace-pre-wrap">Total = base
+  + max(0, {{ cant_locales }} - locales_gratis) × costo_local
+  + max(0, {{ cant_rubros }} - rubros_gratis) × costo_rubro</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="font-bold text-slate-700 mb-2 flex items-center gap-2"><i class="fa fa-tags text-emerald-500"></i> Tips planes</div>
+    <ul class="space-y-1.5 text-slate-600">
+      <li><strong>MVP:</strong> 1 local gratis, perfecto para microempresas.</li>
+      <li><strong>Plan 2:</strong> 3 locales, ideal para sucursales medianas.</li>
+      <li><strong>Profesional:</strong> 5+ locales, todas las feature flags.</li>
+    </ul>
+  </div>
+</section>
+{% endblock %}

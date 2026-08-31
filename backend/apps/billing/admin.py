@@ -2,7 +2,10 @@ from django.contrib import admin
 from django.db.models import Q
 from django.contrib import messages
 from apps.accounts.admin_mixins import SuperUserOnlyAdminMixin
-from .models import Plan, Suscripcion, Pago, RegistroCobranza
+from .models import (
+    Plan, Suscripcion, Pago, RegistroCobranza,
+    CambioPlan, MotivoCambioPlanChoices,
+)
 
 
 @admin.register(Plan)
@@ -173,3 +176,28 @@ class RegistroCobranzaAdmin(SuperUserOnlyAdminMixin, admin.ModelAdmin):
     search_fields = ['destinatario', 'asunto']
     readonly_fields = ['id']
     raw_id_fields = ['suscripcion']
+
+
+@admin.register(CambioPlan)
+class CambioPlanAdmin(SuperUserOnlyAdminMixin, admin.ModelAdmin):
+    list_display = [
+        'fecha_cambio',
+        'suscripcion',
+        'plan_anterior',
+        'plan_nuevo',
+        'motivo',
+        'precio_antes_clp',
+        'precio_despues_clp',
+        'dias_prorrateo',
+        'realizado_por',
+    ]
+    list_filter = ['motivo', ('realizado_por', admin.RelatedOnlyFieldListFilter)]
+    search_fields = [
+        'suscripcion__negocio__nombre',
+        'plan_anterior__nombre',
+        'plan_nuevo__nombre',
+        'notas',
+    ]
+    readonly_fields = ['id', 'fecha_cambio']
+    raw_id_fields = ['suscripcion', 'plan_anterior', 'plan_nuevo', 'realizado_por']
+    date_hierarchy = 'fecha_cambio'

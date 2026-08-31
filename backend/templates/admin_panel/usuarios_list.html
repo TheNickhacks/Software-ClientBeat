@@ -1,0 +1,188 @@
+{% extends 'admin_panel/base.html' %}
+{% load humanize %}
+
+{% block admin_subtitle %}
+  Gestión de usuarios de plataforma: cambiar roles globales, activar / desactivar acceso o resetear contraseñas.
+{% endblock %}
+
+{% block admin_content %}
+
+<section class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400 mb-1">Total usuarios</div>
+    <div class="text-2xl font-extrabold text-slate-800">{{ total }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-cbblue-600 mb-1">Admin Soporte</div>
+    <div class="text-2xl font-extrabold text-cbblue-700">{{ admin_soporte }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-fuchsia-600 mb-1">Dueños negocio</div>
+    <div class="text-2xl font-extrabold text-fuchsia-700">{{ duenos }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-slate-500 mb-1">Inactivos</div>
+    <div class="text-2xl font-extrabold text-slate-600">{{ inactivos }}</div>
+  </div>
+</section>
+
+<div class="glass-effect rounded-2xl p-4 mb-6 border border-slate-100">
+  <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Buscar</label>
+      <input type="text" name="q" value="{{ filtros.q|default:'' }}"
+             placeholder="Email, nombre, username..."
+             class="input w-full !py-2 text-sm">
+    </div>
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Rol global</label>
+      <select name="rol" class="input w-full !py-2 text-sm">
+        <option value="">Todos</option>
+        {% for k, v in roles %}
+          <option value="{{ k }}" {% if filtros.rol == k %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Activo</label>
+      <select name="activo" class="input w-full !py-2 text-sm">
+        <option value="">Todos</option>
+        <option value="1" {% if filtros.activo == '1' %}selected{% endif %}>✅ Activos</option>
+        <option value="0" {% if filtros.activo == '0' %}selected{% endif %}🚫 Inactivos</option>
+      </select>
+    </div>
+    <div class="flex gap-2">
+      <button type="submit" class="btn-primary !py-2 flex-1 text-sm justify-center">
+        <i class="fa fa-search mr-1"></i> Filtrar
+      </button>
+      <a href="{% url 'adminpanel:usuarios' %}" class="btn-secondary !py-2 text-sm justify-center">
+        <i class="fa fa-times"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
+<div class="glass-effect rounded-2xl overflow-hidden card-hover">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50/70 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider font-bold">
+        <tr>
+          <th class="px-5 py-3 text-left">Usuario</th>
+          <th class="px-3 py-3 text-center">Rol global</th>
+          <th class="px-3 py-3 text-center">Estado</th>
+          <th class="px-3 py-3 text-right">Creado</th>
+          <th class="px-5 py-3 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for u in usuarios %}
+        <tr class="hover:bg-orange-50/40 transition {% if u.is_superuser %}bg-gradient-to-r from-rose-50/50{% endif %}">
+          <td class="px-5 py-4">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-500 text-white flex items-center justify-center font-bold shrink-0 text-sm">
+                {{ u.email|slice:":2"|upper }}
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-bold text-slate-800">{{ u.get_full_name|default:u.email }}</span>
+                  {% if u.is_superuser %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700">
+                      <i class="fa fa-crown"></i> SuperUser
+                    </span>
+                  {% endif %}
+                </div>
+                <div class="text-[12px] text-slate-500 font-medium">{{ u.email }}</div>
+                {% if u.last_login %}
+                  <div class="text-[10px] text-slate-400 mt-0.5">Último login: {{ u.last_login|date:"d/m/Y H:i" }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </td>
+          <td class="px-3 py-4">
+            <form method="POST" action="{% url 'adminpanel:usuario_cambiar_rol' u.pk %}"
+                  onsubmit="return confirm('¿Seguro que quieres cambiar el rol de {{ u.email }}?');"
+                  class="flex items-center gap-1">
+              {% csrf_token %}
+              <select name="rol" onchange="this.form.submit()"
+                      class="input !py-1.5 text-[12px] min-w-[140px]"
+                      {% if u.is_superuser and not user.is_superuser %}disabled title="No puedes cambiar el rol de un SuperUser"{% endif %}>
+                {% for k, v in roles %}
+                  <option value="{{ k }}" {% if u.rol == k %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+              </select>
+            </form>
+          </td>
+          <td class="px-3 py-4 text-center">
+            <form method="POST" action="{% url 'adminpanel:usuario_cambiar_estado' u.pk %}" class="inline">
+              {% csrf_token %}
+              <button type="submit"
+                      onclick="return confirm('¿Seguro que quieres {% if u.is_active %}DESACTIVAR{% else %}ACTIVAR{% endif %} a {{ u.email }}?');"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition
+                             {% if u.is_active %}bg-emerald-100 text-emerald-700 hover:bg-emerald-200
+                             {% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}
+                             {% if u.is_superuser and not user.is_superuser %}opacity-30 cursor-not-allowed{% endif %}"
+                      {% if u.is_superuser and not user.is_superuser %}disabled{% endif %}>
+                <span class="w-1.5 h-1.5 rounded-full bg-{{ u.is_active|yesno:'emerald,slate' }}-500
+                             {% if u.is_active %}animate-pulse{% endif %}"></span>
+                {{ u.is_active|yesno:"Activo,Inactivo" }}
+              </button>
+            </form>
+          </td>
+          <td class="px-3 py-4 text-right text-[12px] text-slate-600 whitespace-nowrap">
+            {{ u.fecha_creacion|default:u.date_joined|date:"d/m/Y" }}
+          </td>
+          <td class="px-5 py-4 text-right whitespace-nowrap">
+            <form method="POST" action="{% url 'adminpanel:usuario_reset_clave' u.pk %}" class="inline"
+                  onsubmit="return confirm('⚠️ ¿Seguro que quieres resetear la contraseña de {{ u.email }}? La nueva será: ClienBeat2026!');">
+              {% csrf_token %}
+              <button type="submit"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs font-semibold transition
+                             {% if u.is_superuser and not user.is_superuser %}opacity-30 cursor-not-allowed{% endif %}"
+                      {% if u.is_superuser and not user.is_superuser %}disabled{% endif %}>
+                <i class="fa fa-key"></i> Reset clave
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="px-6 py-16 text-center text-slate-500">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-3xl">
+              <i class="fa fa-users"></i>
+            </div>
+            <div class="text-lg font-bold text-slate-600 mb-1">Sin usuarios con estos filtros.</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_paginated %}
+  <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-3">
+    <div class="text-xs text-slate-500">Página {{ page_obj.number }} · {{ page_obj.paginator.count }} usuarios</div>
+    <div class="flex gap-1">
+      {% if page_obj.has_previous %}
+        <a href="?{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}&page={{ page_obj.previous_page_number }}"
+           class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold">← Ant.</a>
+      {% endif %}
+      <span class="px-3 py-1.5 rounded-lg bg-cbblue-100 text-cbblue-700 text-xs font-bold">{{ page_obj.number }}</span>
+      {% if page_obj.has_next %}
+        <a href="?{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}&page={{ page_obj.next_page_number }}"
+           class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold">Sig. →</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="mt-6 text-xs text-slate-500 italic flex items-start gap-2">
+  <i class="fa fa-shield-alt text-rose-500 mt-0.5"></i>
+  <div>
+    <strong class="text-slate-700">Reglas de seguridad:</strong>
+    1) Un Admin Soporte regular NO puede cambiar el rol, desactivar ni resetear la clave de un SuperUser Django (solo SuperUser → SuperUser).
+    2) Reset de clave pone <code>ClienBeat2026!</code> por defecto (se puede sobrescribir desde la vista POST si se desea).
+    3) Toda acción se registra automáticamente en <strong>Auditoría Admin</strong>.
+  </div>
+</div>
+{% endblock %}

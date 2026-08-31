@@ -1,0 +1,366 @@
+{% extends 'admin_panel/base.html' %}
+{% load humanize %}
+
+{% block admin_subtitle %}
+  Detalle completo de la suscripción, pagos, historial de cambios de plan y feature flags activos.
+{% endblock %}
+
+{% block admin_header_actions %}
+<a href="{% url 'adminpanel:suscripciones' %}" class="btn-secondary !py-2 !px-4 text-sm">
+  <i class="fa fa-arrow-left"></i> Volver a suscripciones
+</a>
+{% endblock %}
+
+{% block admin_content %}
+
+{# ====== CARD SUPERIOR: DATOS SUSCRIPCIÓN ====== #}
+<section class="glass-effect rounded-2xl p-6 mb-6 border border-slate-100">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2">
+      <div class="flex items-start justify-between mb-5 gap-4 flex-wrap">
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h2 class="text-2xl font-extrabold text-slate-900">{{ sus.negocio.nombre|default:"Negocio sin nombre" }}</h2>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold
+                         {% if sus.estado == 'ACTIVA' %}bg-emerald-100 text-emerald-700
+                         {% elif sus.estado == 'PENDIENTE' %}bg-amber-100 text-amber-700
+                         {% elif sus.estado == 'VENCIDA' %}bg-orange-100 text-orange-700
+                         {% elif sus.estado == 'SUSPENDIDA' %}bg-slate-200 text-slate-700
+                         {% elif sus.estado == 'CANCELADA' %}bg-rose-100 text-rose-700
+                         {% else %}bg-slate-100 text-slate-700{% endif %}">
+              <span class="w-2 h-2 rounded-full
+                           {% if sus.estado == 'ACTIVA' %}bg-emerald-500
+                           {% elif sus.estado == 'PENDIENTE' %}bg-amber-500
+                           {% elif sus.estado == 'VENCIDA' %}bg-orange-500
+                           {% elif sus.estado == 'SUSPENDIDA' %}bg-slate-500
+                           {% elif sus.estado == 'CANCELADA' %}bg-rose-500
+                           {% else %}bg-slate-400{% endif %}
+                           {% if sus.estado == 'ACTIVA' %}animate-pulse{% endif %}"></span>
+              {{ sus.get_estado_display }}
+            </span>
+            {% if sus.renovacion_automatica %}
+              <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">↻ Auto-renueva</span>
+            {% endif %}
+          </div>
+          <div class="text-sm text-slate-500 mt-2">
+            <i class="fa fa-user mr-1"></i> {{ sus.negocio.dueño.get_full_name|default:sus.negocio.dueño.email }} ·
+            <i class="fa fa-id-card mr-1"></i> RUT {{ sus.negocio.rut|default:"—" }} ·
+            <i class="fa fa-location-dot mr-1"></i> {{ sus.negocio.comuna.nombre|default:"—" }}
+          </div>
+          <div class="text-[11px] font-mono text-slate-400 mt-1">ID Suscripción: {{ sus.id }}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Plan actual</div>
+          <div class="text-2xl font-extrabold gradient-text">{{ sus.plan.get_nombre_mostrar|default:"—" }}</div>
+          <div class="text-xs text-slate-500 mt-1">${{ sus.plan.precio_clp|default:0 }} CLP / mes base</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="rounded-xl bg-slate-50 p-3 border border-slate-100">
+          <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">Fecha inicio</div>
+          <div class="text-sm font-extrabold text-slate-800">{{ sus.fecha_inicio|date:"d/m/Y" }}</div>
+        </div>
+        <div class="rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 p-3 border border-amber-100">
+          <div class="text-[10px] font-bold uppercase tracking-wider text-amber-600 mb-0.5">Vence el</div>
+          <div class="text-sm font-extrabold text-amber-800">{{ sus.fecha_vencimiento|date:"d/m/Y" }}</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-3 border border-slate-100">
+          <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">Locales activos</div>
+          <div class="text-sm font-extrabold text-slate-800">{{ cant_locales_actual }}</div>
+        </div>
+        <div class="rounded-xl bg-indigo-50 p-3 border border-indigo-100">
+          <div class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 mb-0.5">Monto mensual real</div>
+          <div class="text-sm font-extrabold text-indigo-800">
+            {% if desglose %}
+              ${{ desglose.total_clp|default:0|intcomma }}
+            {% else %}
+              $0
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% if sus.motivo_cancelacion %}
+      <div class="mt-4 rounded-xl bg-rose-50 border border-rose-200 p-4">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-rose-600 mb-1">Motivo de cancelación</div>
+        <div class="text-sm text-rose-800 font-medium">{{ sus.motivo_cancelacion }}</div>
+        {% if sus.cancelada_en %}
+          <div class="text-[11px] text-rose-500 mt-1">Cancelada el {{ sus.cancelada_en|date:"d/m/Y H:i" }}</div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    {# ====== COLUMNA ACCIONES RÁPIDAS ====== #}
+    <div class="space-y-3">
+      <div class="rounded-2xl border border-slate-100 p-4 bg-white">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-3">Acciones rápidas</div>
+        <div class="space-y-2">
+          {% if sus.estado == 'PENDIENTE' %}
+            <form method="POST" action="{% url 'adminpanel:suscripcion_confirmar' sus.pk %}" class="space-y-2">
+              {% csrf_token %}
+              <label class="text-[11px] font-semibold text-slate-600 block">Días (default {{ sus.plan.dias_prueba_gratis|default:30 }})</label>
+              <input type="number" name="dias" value="{{ sus.plan.dias_prueba_gratis|default:30 }}"
+                     class="input w-full !py-2 text-sm" min="1">
+              <textarea name="notas" rows="2" placeholder="Notas internas (opcional)" class="input w-full !py-2 text-sm"></textarea>
+              <button type="submit" class="btn-primary w-full !py-2 text-sm justify-center">
+                <i class="fa fa-check-circle mr-1"></i> Confirmar suscripción
+              </button>
+            </form>
+          {% endif %}
+
+          <form method="POST" action="{% url 'adminpanel:suscripcion_extender' sus.pk %}" class="space-y-2">
+            {% csrf_token %}
+            <label class="text-[11px] font-semibold text-slate-600 block">Días a extender</label>
+            <div class="flex gap-2">
+              <input type="number" name="dias" value="30" min="1" class="input flex-1 !py-2 text-sm">
+              <button type="submit" class="btn-secondary !py-2 text-sm whitespace-nowrap">
+                <i class="fa fa-clock"></i> Extender
+              </button>
+            </div>
+          </form>
+
+          <form method="POST" action="{% url 'adminpanel:suscripcion_cambiar_plan' sus.pk %}" class="space-y-2">
+            {% csrf_token %}
+            <label class="text-[11px] font-semibold text-slate-600 block">Cambiar a plan</label>
+            <select name="plan_nuevo_id" required class="input w-full !py-2 text-sm">
+              <option value="">Seleccionar nuevo plan...</option>
+              {% for p in planes %}
+                <option value="{{ p.id }}" {% if sus.plan.id == p.id %}selected{% endif %}>
+                  {{ p.get_nombre_mostrar }} · ${{ p.precio_clp|intcomma }}
+                </option>
+              {% empty %}
+                <option value="" disabled>No hay planes activos</option>
+              {% endfor %}
+            </select>
+            <label class="text-[11px] font-semibold text-slate-600 block">Motivo cambio</label>
+            <select name="motivo" class="input w-full !py-2 text-sm">
+              <option value="CORRECION_ADMIN">Corrección Admin Soporte</option>
+              <option value="UPGRADE_ADMIN">Upgrade solicitado</option>
+              <option value="DOWNGRADE_ADMIN">Downgrade solicitado</option>
+              <option value="SOLICITUD_DUENO">Solicitud explícita dueño</option>
+              <option value="BONIFICACION">Bonificación / Regalo</option>
+              <option value="CAMBIO_LOC_AUTO">Ajuste automático locales</option>
+              <option value="OTRO">Otro</option>
+            </select>
+            <button type="submit" class="btn-secondary w-full !py-2 text-sm justify-center">
+              <i class="fa fa-exchange-alt mr-1"></i> Cambiar plan
+            </button>
+          </form>
+
+          {% if sus.estado != 'CANCELADA' %}
+            <form method="POST" action="{% url 'adminpanel:suscripcion_cancelar' sus.pk %}" class="space-y-2"
+                  onsubmit="return confirm('⚠️ ¿Estás 100% seguro de cancelar esta suscripción? Esta acción requiere motivo obligatorio.');">
+              {% csrf_token %}
+              <textarea name="motivo" rows="2" placeholder="* Motivo cancelación (OBLIGATORIO)" required
+                        class="input w-full !py-2 text-sm border-rose-200 focus:ring-rose-500"></textarea>
+              <button type="submit"
+                      class="inline-flex items-center justify-center w-full gap-1.5 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold shadow-sm transition">
+                <i class="fa fa-ban"></i> Cancelar suscripción
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+
+      <a href="{% url 'adminpanel:negocio_detalle' sus.negocio.id %}"
+         class="block text-center rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-indigo-700 hover:bg-indigo-100 transition text-sm font-semibold">
+        <i class="fa fa-store mr-1"></i> Ver detalle negocio completo
+      </a>
+    </div>
+  </div>
+
+  {# ====== TABS: PAGOS · CAMBIOS PLAN · FEATURE FLAGS · DESGLOSES ====== #}
+  <div class="mt-8 border-b border-slate-200 flex items-center gap-1 overflow-x-auto">
+    <button onclick="switchTab(this, 'pagos')" class="tab-btn active text-xs font-bold uppercase tracking-wider px-4 py-3">
+      💳 Pagos ({{ sus.pagos.count }})
+    </button>
+    <button onclick="switchTab(this, 'cambios')" class="tab-btn text-xs font-bold uppercase tracking-wider px-4 py-3">
+      🔀 Cambios plan
+    </button>
+    <button onclick="switchTab(this, 'flags')" class="tab-btn text-xs font-bold uppercase tracking-wider px-4 py-3">
+      🚩 Feature flags
+    </button>
+    <button onclick="switchTab(this, 'calc')" class="tab-btn text-xs font-bold uppercase tracking-wider px-4 py-3">
+      🧮 Desglose metodología
+    </button>
+  </div>
+
+  <div id="tab-pagos" class="tab-content pt-5">
+    {% with pagos=sus.pagos.all %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 font-bold">
+          <tr>
+            <th class="px-4 py-2 text-left">Fecha pago</th>
+            <th class="px-4 py-2 text-left">Flow Order ID</th>
+            <th class="px-4 py-2 text-right">Monto</th>
+            <th class="px-4 py-2 text-center">Estado</th>
+            <th class="px-4 py-2 text-left">Método</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for p in pagos|dictsortreversed:"fecha_creacion" %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-4 py-3 whitespace-nowrap text-[12px] text-slate-700 font-medium">
+              {{ p.fecha_pago|default:p.fecha_creacion|date:"d/m/Y H:i" }}
+            </td>
+            <td class="px-4 py-3 font-mono text-[11px] text-slate-600">{{ p.flow_order_id|default:"—"|slice:":28" }}{% if p.flow_order_id|length > 28 %}…{% endif %}</td>
+            <td class="px-4 py-3 text-right font-bold text-slate-800">${{ p.monto|intcomma }} {{ p.moneda }}</td>
+            <td class="px-4 py-3 text-center">
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold
+                           {% if p.estado == 'APROBADO' %}bg-emerald-100 text-emerald-700
+                           {% elif p.estado == 'PENDIENTE' %}bg-amber-100 text-amber-700
+                           {% elif p.estado == 'RECHAZADO' %}bg-rose-100 text-rose-700
+                           {% elif p.estado == 'CANCELADO' %}bg-slate-200 text-slate-700
+                           {% else %}bg-slate-100 text-slate-600{% endif %}">
+                {{ p.get_estado_display }}
+              </span>
+            </td>
+            <td class="px-4 py-3 text-[12px] text-slate-600">
+              {% if p.flow_order_id|slice:":7" == "MANUAL-" %}
+                <span class="text-purple-700 font-semibold"><i class="fa fa-hand-pointer"></i> Confirmación manual</span>
+              {% else %}
+                <i class="fa fa-credit-card"></i> Flow API
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="px-4 py-8 text-center text-sm text-slate-500 italic">
+              Sin pagos registrados.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endwith %}
+  </div>
+
+  <div id="tab-cambios" class="tab-content pt-5 hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 font-bold">
+          <tr>
+            <th class="px-4 py-2 text-left">Fecha cambio</th>
+            <th class="px-4 py-2 text-left">Plan anterior → Nuevo</th>
+            <th class="px-4 py-2 text-left">Motivo</th>
+            <th class="px-4 py-2 text-right">$ Antes / Después</th>
+            <th class="px-4 py-2 text-left">Realizado por</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for c in cambios_plan %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-4 py-3 whitespace-nowrap text-[12px] text-slate-700 font-medium">
+              {{ c.fecha_cambio|date:"d/m/Y H:i" }}
+            </td>
+            <td class="px-4 py-3 text-[13px]">
+              <div class="font-semibold text-slate-800">
+                {{ c.plan_anterior.nombre|default:"(sin plan)" }} → <span class="text-indigo-700">{{ c.plan_nuevo.nombre }}</span>
+              </div>
+            </td>
+            <td class="px-4 py-3 text-[12px] text-slate-700">
+              <div class="font-semibold">{{ c.get_motivo_display }}</div>
+              {% if c.notas %}<div class="text-[11px] text-slate-500 italic mt-0.5">{{ c.notas }}</div>{% endif %}
+            </td>
+            <td class="px-4 py-3 text-right text-[12px] font-semibold">
+              <div class="text-slate-500">${{ c.precio_antes_clp|intcomma }}</div>
+              <div class="text-indigo-700">${{ c.precio_despues_clp|intcomma }}</div>
+            </td>
+            <td class="px-4 py-3 text-[12px] text-slate-600">
+              {{ c.realizado_por.email|default:"sistema" }}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="px-4 py-8 text-center text-sm text-slate-500 italic">
+              Sin cambios de plan registrados aún.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-flags" class="tab-content pt-5 hidden">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {% for flag_nombre, flag_valor in feature_flags %}
+      <div class="rounded-xl p-3.5 border border-slate-100 flex items-start justify-between gap-3
+                  {% if flag_valor %}bg-emerald-50/50{% else %}bg-slate-50/50{% endif %}">
+        <div class="text-[13px] font-semibold text-slate-800 flex-1">{{ flag_nombre }}</div>
+        {% if flag_valor is True or flag_valor > 0 %}
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-bold">
+            <i class="fa fa-check"></i>
+            {% if flag_valor is True %}Activo{% else %}{{ flag_valor }} preguntas{% endif %}
+          </span>
+        {% else %}
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-200 text-slate-600 text-[11px] font-bold">
+            <i class="fa fa-times"></i> No incluido
+          </span>
+        {% endif %}
+      </div>
+      {% empty %}
+      <div class="text-sm text-slate-500 italic md:col-span-2">Este plan no tiene feature flags definidos.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div id="tab-calc" class="tab-content pt-5 hidden">
+    {% if desglose %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="rounded-2xl p-5 border border-slate-100 bg-white">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-3">Desglose detallado</div>
+        <div class="space-y-2 text-[13px]">
+          <div class="flex items-center justify-between">
+            <span class="text-slate-600">Precio base plan</span>
+            <span class="font-semibold text-slate-800">${{ desglose.base_clp|intcomma }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-slate-600">Locales extra ({{ desglose.local_extra_cantidad|default:0 }} × ${{ sus.plan.costo_local_adicional_clp|default:0|intcomma }})</span>
+            <span class="font-semibold text-indigo-700">${{ desglose.local_extra_clp|default:0|intcomma }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-slate-600">Rubros extra ({{ desglose.rubro_extra_cantidad|default:0 }})</span>
+            <span class="font-semibold text-purple-700">${{ desglose.rubro_extra_clp|default:0|intcomma }}</span>
+          </div>
+          <div class="h-px bg-slate-200 my-2"></div>
+          <div class="flex items-center justify-between">
+            <span class="text-slate-900 font-extrabold text-base">TOTAL MENSUAL</span>
+            <span class="gradient-text font-black text-lg">${{ desglose.total_clp|intcomma }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="rounded-2xl p-5 border border-slate-100 bg-gradient-to-br from-slate-50 to-indigo-50/40">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-3">Fórmula</div>
+        <pre class="text-[11px] font-mono text-slate-700 leading-relaxed whitespace-pre-wrap">Total = precio_base
+  + max(0, {{ cant_locales_actual }} - {{ sus.plan.locales_gratis_incluidos|default:0 }}) × costo_local_extra
+  + max(0, rubros_online - {{ sus.plan.rubros_gratis_incluidos|default:0 }}) × costo_rubro_extra</pre>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<script>
+function switchTab(btn, tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + tab).classList.remove('hidden');
+}
+</script>
+<style>
+.tab-btn {
+  border-bottom: 2px solid transparent;
+  color: #64748b;
+}
+.tab-btn.active {
+  border-bottom-color: #0B3EA6;
+  color: #0B3EA6;
+}
+</style>
+{% endblock %}

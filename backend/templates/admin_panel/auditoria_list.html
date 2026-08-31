@@ -1,0 +1,192 @@
+{% extends 'admin_panel/base.html' %}
+{% load humanize %}
+
+{% block admin_subtitle %}
+  Registro completo y auditado de TODAS las acciones de Admin Soporte. Nada se escapa, sin entrar al Django Admin técnico.
+{% endblock %}
+
+{% block admin_content %}
+
+<section class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400 mb-1">Total auditorías</div>
+    <div class="text-2xl font-extrabold text-slate-800">{{ total }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-cbblue-600 mb-1">Últimos 7 días</div>
+    <div class="text-2xl font-extrabold text-cbblue-700">{{ total_7d }}</div>
+  </div>
+  <div class="glass-effect rounded-xl p-4 card-hover">
+    <div class="text-[11px] uppercase tracking-wider font-bold text-indigo-600 mb-1">Top admins (7d)</div>
+    <div class="mt-1 space-y-1">
+      {% for tu in top_admins_7d %}
+      <div class="flex items-center justify-between text-[11px]">
+        <span class="text-slate-600 truncate max-w-[140px]" title="{{ tu.usuario_email|default:'sistema' }}">
+          {{ tu.usuario_email|default:"sistema"|truncatechars:20 }}
+        </span>
+        <span class="font-bold text-indigo-700 ml-2">{{ tu.total }}</span>
+      </div>
+      {% empty %}
+      <div class="text-[11px] text-slate-400 italic">Sin actividad aún.</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<div class="glass-effect rounded-2xl p-4 mb-6 border border-slate-100">
+  <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Buscar</label>
+      <input type="text" name="q" value="{{ filtros.q|default:'' }}"
+             placeholder="Descripción, entidad, ID..."
+             class="input w-full !py-2 text-sm">
+    </div>
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Módulo</label>
+      <select name="modulo" class="input w-full !py-2 text-sm">
+        <option value="">Todos</option>
+        {% for k, v in modulos %}
+          <option value="{{ k }}" {% if filtros.modulo == k %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Acción</label>
+      <select name="accion" class="input w-full !py-2 text-sm">
+        <option value="">Todas</option>
+        {% for k, v in acciones %}
+          <option value="{{ k }}" {% if filtros.accion == k %}selected{% endif %}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Admin email</label>
+      <input type="text" name="usuario" value="{{ filtros.usuario|default:'' }}"
+             placeholder="admin@clientbeat.cl"
+             class="input w-full !py-2 text-sm">
+    </div>
+    <div class="flex gap-2">
+      <button type="submit" class="btn-primary !py-2 flex-1 text-sm justify-center">
+        <i class="fa fa-search mr-1"></i> Filtrar
+      </button>
+      <a href="{% url 'adminpanel:auditoria' %}" class="btn-secondary !py-2 text-sm justify-center">
+        <i class="fa fa-times"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
+<div class="glass-effect rounded-2xl overflow-hidden card-hover">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50/70 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider font-bold">
+        <tr>
+          <th class="px-4 py-3 text-left">Fecha · Hora</th>
+          <th class="px-3 py-3 text-left">Admin</th>
+          <th class="px-3 py-3 text-left">Módulo</th>
+          <th class="px-3 py-3 text-left">Acción</th>
+          <th class="px-3 py-3 text-left">Entidad · Descripción</th>
+          <th class="px-3 py-3 text-left">IP</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for a in auditorias %}
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-4 py-3 whitespace-nowrap">
+            <div class="text-[12px] font-semibold text-slate-700">{{ a.fecha_hora|date:"d/m/Y" }}</div>
+            <div class="text-[10px] text-slate-500 font-mono">{{ a.fecha_hora|date:"H:i:s" }}</div>
+          </td>
+          <td class="px-3 py-3">
+            <div class="text-[12px] font-semibold text-slate-800">
+              {% if a.usuario_email %}
+                {{ a.usuario_email|truncatechars:28 }}
+              {% else %}
+                <span class="text-slate-400 italic">sistema</span>
+              {% endif %}
+            </div>
+            {% if a.usuario %}
+              <div class="text-[10px] text-slate-500">{{ a.usuario.get_full_name|default:""|truncatechars:24 }}</div>
+            {% endif %}
+          </td>
+          <td class="px-3 py-3 text-[11px]">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold">
+              {{ a.get_modulo_display|default:a.modulo }}
+            </span>
+          </td>
+          <td class="px-3 py-3 text-[11px]">
+            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold
+                         {% if a.accion == 'CREAR' or a.accion == 'CONFIRMAR' or a.accion == 'ACTIVAR' or a.accion == 'MARCAR_DEFAULT' %}
+                           bg-emerald-100 text-emerald-700
+                         {% elif a.accion == 'ELIMINAR' or a.accion == 'CANCELAR' or a.accion == 'DESACTIVAR' or a.accion == 'SUSPENDER' %}
+                           bg-rose-100 text-rose-700
+                         {% elif a.accion == 'EDITAR' or a.accion == 'CAMBIAR_PLAN' or a.accion == 'CAMBIAR_ROL' or a.accion == 'REASIGNAR_DUENO' %}
+                           bg-indigo-100 text-indigo-700
+                         {% elif a.accion == 'EXTENDER_DIAS' or a.accion == 'REINICIAR_ONBOARDING' or a.accion == 'RESETEAR_CLAVE' %}
+                           bg-amber-100 text-amber-700
+                         {% else %}
+                           bg-slate-100 text-slate-700
+                         {% endif %}">
+              <i class="fa fa-{% if a.accion == 'CREAR' %}plus
+                {% elif a.accion == 'ELIMINAR' %}trash
+                {% elif a.accion == 'EDITAR' %}edit
+                {% elif a.accion == 'CONFIRMAR' or a.accion == 'ACTIVAR' or a.accion == 'MARCAR_DEFAULT' %}check-circle
+                {% elif a.accion == 'CANCELAR' or a.accion == 'DESACTIVAR' or a.accion == 'SUSPENDER' %}ban
+                {% elif a.accion == 'CAMBIAR_PLAN' or a.accion == 'CAMBIAR_ROL' or a.accion == 'REASIGNAR_DUENO' %}exchange-alt
+                {% elif a.accion == 'EXTENDER_DIAS' %}clock
+                {% elif a.accion == 'REINICIAR_ONBOARDING' %}rotate-left
+                {% elif a.accion == 'RESETEAR_CLAVE' %}key
+                {% else %}cogs{% endif %} mr-0.5 text-[9px]"></i>
+              {{ a.get_accion_display|default:a.accion }}
+            </span>
+          </td>
+          <td class="px-3 py-3">
+            <div class="text-[12px] font-semibold text-slate-800 line-clamp-1">
+              {{ a.entidad_tipo|default:"—" }}
+              {% if a.entidad_id %}
+                <span class="font-mono text-slate-400 text-[10px]">#{{ a.entidad_id|truncatechars:10 }}</span>
+              {% endif %}
+            </div>
+            <div class="text-[11px] text-slate-600 line-clamp-1">{{ a.entidad_descripcion|default:"—"|truncatechars:80 }}</div>
+            {% if a.notas_internas %}
+              <div class="text-[10px] text-slate-400 italic mt-0.5 line-clamp-1">📝 {{ a.notas_internas|truncatechars:60 }}</div>
+            {% endif %}
+          </td>
+          <td class="px-3 py-3 text-[11px] font-mono text-slate-500 whitespace-nowrap">
+            {{ a.ip_origen|default:"—" }}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="px-6 py-16 text-center text-slate-500">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-3xl">
+              <i class="fa fa-clipboard-list"></i>
+            </div>
+            <div class="text-lg font-bold text-slate-600 mb-1">Sin auditorías con estos filtros.</div>
+            <div class="text-sm">Realiza cualquier acción en el panel y aparecerá registrada aquí automáticamente.</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_paginated %}
+  <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-3">
+    <div class="text-xs text-slate-500">
+      Página {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} · {{ page_obj.paginator.count }} registros
+    </div>
+    <div class="flex gap-1">
+      {% if page_obj.has_previous %}
+        <a href="?{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}&page={{ page_obj.previous_page_number }}"
+           class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold">← Ant.</a>
+      {% endif %}
+      <span class="px-3 py-1.5 rounded-lg bg-cbblue-100 text-cbblue-700 text-xs font-bold">{{ page_obj.number }}</span>
+      {% if page_obj.has_next %}
+        <a href="?{% for k, v in filtros.items %}{% if v %}&{{ k }}={{ v }}{% endif %}{% endfor %}&page={{ page_obj.next_page_number }}"
+           class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold">Sig. →</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

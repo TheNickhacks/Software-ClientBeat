@@ -15,8 +15,8 @@
 {% endblock %}
 
 {% block admin_content %}
-{# ====== KPIs (8 tarjetas: extendido Lote 5 métricas dinámicas) ====== #}
-<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+{# ====== KPIs (12 tarjetas Fase3: Panel Admin Soporte Completo) ====== #}
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-8">
   {% for kpi in kpis %}
   <div class="glass-effect rounded-2xl p-5 card-hover">
     <div class="flex items-start justify-between mb-3">
@@ -348,7 +348,7 @@
 </section>
 
 {# ====== Planes activos ====== #}
-<section class="glass-effect rounded-2xl p-6 border border-slate-100">
+<section class="glass-effect rounded-2xl p-6 border border-slate-100 mb-8">
   <div class="flex items-center justify-between mb-5">
     <h3 class="font-bold text-slate-800 flex items-center gap-2 text-lg">
       <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
@@ -423,5 +423,146 @@
     No hay planes activos. Crea uno desde Gestión de Planes.
   </div>
   {% endif %}
+</section>
+
+{# ====== 2 COLUMNAS FINALES: TRAZABILIDAD (Auditoría + Cambios Plan) ====== #}
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+  {# === COLUMNA 1: ÚLTIMAS AUDITORÍAS ADMIN (Trazabilidad total) === #}
+  <div class="glass-effect rounded-2xl overflow-hidden border border-slate-100">
+    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="font-bold text-slate-800 flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-slate-800 text-white flex items-center justify-center">
+          <i class="fa fa-shield-halved text-sm"></i>
+        </span>
+        Auditoría Admin · últimas 10 acciones
+      </h3>
+      <a href="/admin-panel/auditoria/" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+        Ver todas →
+      </a>
+    </div>
+    {% if auditorias_recientes %}
+    <div class="divide-y divide-slate-100 max-h-[520px] overflow-y-auto">
+      {% for a in auditorias_recientes %}
+      <div class="px-5 py-3 hover:bg-slate-50 transition-colors">
+        <div class="flex items-start gap-3">
+          <div class="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center text-sm
+            {% if a.accion == 'CREAR' or a.accion == 'CONFIRMAR' %}bg-green-100 text-green-600
+            {% elif a.accion == 'ELIMINAR' or a.accion == 'CANCELAR' or a.accion == 'SUSPENDER' %}bg-rose-100 text-rose-600
+            {% elif a.accion == 'EDITAR' or a.accion == 'CAMBIAR_PLAN' or a.accion == 'REASIGNAR_DUENO' or a.accion == 'REINICIAR_ONBOARDING' %}bg-amber-100 text-amber-600
+            {% else %}bg-slate-100 text-slate-500{% endif %}">
+            <i class="fa {% if a.accion == 'CREAR' %}fa-plus
+                      {% elif a.accion == 'ELIMINAR' %}fa-trash
+                      {% elif a.accion == 'EDITAR' %}fa-pen
+                      {% elif a.accion == 'CONFIRMAR' %}fa-check
+                      {% elif a.accion == 'CANCELAR' %}fa-ban
+                      {% elif a.accion == 'CAMBIAR_PLAN' %}fa-arrow-right-arrow-left
+                      {% elif a.accion == 'SUSPENDER' %}fa-pause
+                      {% elif a.accion == 'REASIGNAR_DUENO' %}fa-user-shield
+                      {% elif a.accion == 'REINICIAR_ONBOARDING' %}fa-rotate-right
+                      {% else %}fa-gear{% endif %}"></i>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center justify-between gap-3 mb-0.5">
+              <span class="text-[11px] font-bold uppercase tracking-wide
+                {% if a.accion == 'CREAR' or a.accion == 'CONFIRMAR' %}text-green-700
+                {% elif a.accion == 'ELIMINAR' or a.accion == 'CANCELAR' or a.accion == 'SUSPENDER' %}text-rose-700
+                {% elif a.accion == 'EDITAR' or a.accion == 'CAMBIAR_PLAN' or a.accion == 'REASIGNAR_DUENO' %}text-amber-700
+                {% else %}text-slate-600{% endif %}">
+                {{ a.accion }} · {{ a.modulo }}
+              </span>
+              <span class="text-[10px] font-semibold text-slate-400 whitespace-nowrap">
+                {{ a.fecha_accion|date:"d/m H:i" }}
+              </span>
+            </div>
+            <div class="text-[13px] font-semibold text-slate-800 truncate mb-0.5">
+              {{ a.entidad_tipo }} · {{ a.entidad_id|slice:":8" }}…
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-[11px] text-slate-500 truncate">
+                <i class="fa fa-user mr-1"></i>{{ a.usuario_email|default:"sistema" }}
+              </span>
+              <span class="text-[10px] text-slate-400 whitespace-nowrap">
+                <i class="fa fa-location-dot mr-1"></i>{{ a.ip_address|default:"s/d" }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="px-5 py-10 text-center text-sm text-slate-500 italic">
+      Sin auditorías aún. La trazabilidad comienza a registrar acciones desde ahora.
+    </div>
+    {% endif %}
+  </div>
+
+  {# === COLUMNA 2: ÚLTIMOS CAMBIOS DE PLAN (historial snapshot precios) === #}
+  <div class="glass-effect rounded-2xl overflow-hidden border border-slate-100">
+    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="font-bold text-slate-800 flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center">
+          <i class="fa fa-arrow-right-arrow-left text-sm"></i>
+        </span>
+        Cambios Plan · últimos 10 (snapshot precios)
+      </h3>
+      <a href="/admin-panel/suscripciones/" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+        Gestionar suscripciones →
+      </a>
+    </div>
+    {% if cambios_plan_recientes %}
+    <div class="divide-y divide-slate-100 max-h-[520px] overflow-y-auto">
+      {% for cp in cambios_plan_recientes %}
+      <div class="px-5 py-3.5 hover:bg-slate-50 transition-colors">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">
+            {{ cp.suscripcion.negocio.nombre|slice:":2" }}
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="text-[13px] font-bold text-slate-800 truncate">
+              {{ cp.suscripcion.negocio.nombre }}
+            </div>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                {{ cp.get_motivo_display }}
+              </span>
+              <span class="text-[10px] text-slate-400 whitespace-nowrap">
+                <i class="fa fa-calendar mr-1"></i>{{ cp.fecha_cambio|date:"d/m/Y" }}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 pl-12">
+          <div class="flex-1 text-right">
+            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Plan Anterior</div>
+            <div class="text-[12px] font-semibold text-slate-600">{{ cp.plan_anterior.get_nombre_mostrar|default:"—" }}</div>
+            <div class="text-[12px] font-extrabold text-slate-700">${{ cp.precio_antes_clp|intcomma }}</div>
+          </div>
+          <div class="flex-shrink-0 w-9 h-9 rounded-full bg-violet-50 flex items-center justify-center text-violet-500">
+            <i class="fa fa-arrow-right text-sm"></i>
+          </div>
+          <div class="flex-1">
+            <div class="text-[10px] uppercase tracking-wider text-green-500 font-bold">Plan Nuevo</div>
+            <div class="text-[12px] font-semibold text-slate-800">{{ cp.plan_nuevo.get_nombre_mostrar }}</div>
+            <div class="text-[12px] font-extrabold gradient-text">${{ cp.precio_despues_clp|intcomma }}</div>
+          </div>
+        </div>
+        {% if cp.realizado_por %}
+        <div class="pl-12 mt-1.5">
+          <span class="text-[10px] text-slate-400">
+            <i class="fa fa-user-check mr-1"></i>{{ cp.realizado_por.email }}
+          </span>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="px-5 py-10 text-center text-sm text-slate-500 italic">
+      Sin cambios de plan aún. El historial se genera automáticamente al cambiar suscripciones.
+    </div>
+    {% endif %}
+  </div>
 </section>
 {% endblock %}
