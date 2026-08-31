@@ -137,6 +137,19 @@ class AdminPanelDashboardView(AdminSoporteRequiredMixin, TemplateView):
         audits_7d = AuditoriaAdmin.objects.filter(fecha_hora__gte=desde_7d).count()
         # Cambios de plan 30 días
         cambios_plan = CambioPlan.objects.filter(fecha_cambio__gte=desde_30d).count()
+        # Benchmark / Reputación KPIs
+        google_total = 0
+        benchmark_7d = 0
+        locales_gpid_pct = 0
+        locales_con_gpid = 0
+        try:
+            from apps.reputation.models import ResenaGoogle, Benchmark
+            google_total = ResenaGoogle.objects.count()
+            benchmark_7d = Benchmark.objects.filter(fecha_generacion__gte=desde_7d).count()
+            locales_con_gpid = Local.objects.exclude(google_place_id__isnull=True).exclude(google_place_id='').count()
+            locales_gpid_pct = int(round(100.0 * locales_con_gpid / max(1, locales_total))) if locales_total else 0
+        except Exception:
+            pass
 
         ctx['kpis'] = [
             ('Negocios activos', negocios_activos, 'text-fuchsia-700', 'bg-fuchsia-100', 'fa-store', f'+{neg_nuevos_7d} esta semana' if neg_nuevos_7d else ''),
@@ -151,6 +164,9 @@ class AdminPanelDashboardView(AdminSoporteRequiredMixin, TemplateView):
             ('Pagos pendientes', pagos_pendientes, 'text-orange-700', 'bg-orange-100', 'fa-hourglass-half', ''),
             ('Auditorías 7d', audits_7d, 'text-slate-700', 'bg-slate-100', 'fa-clipboard-check', ''),
             ('Rubros activos', rubros_activos, 'text-teal-700', 'bg-teal-100', 'fa-list-check', ''),
+            ('Reseñas Google', google_total, 'text-yellow-700', 'bg-yellow-100', 'fa-star', ''),
+            ('Benchmarks 7d', benchmark_7d, 'text-lime-700', 'bg-lime-100', 'fa-trophy', ''),
+            ('Locales c/ Google ID', locales_gpid_pct, 'text-cyan-700', 'bg-cyan-100', 'fa-map-location-dot', '%s/%s' % (locales_con_gpid, locales_total) if locales_total else ''),
         ]
 
         # 2) Rubros Top

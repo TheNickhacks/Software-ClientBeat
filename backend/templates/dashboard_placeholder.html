@@ -1001,41 +1001,256 @@
     {% endif %}
 
     {# ============================================================ #}
-    {#  TAB 5 · BENCHMARK (placeholder futuro)                      #}
+    {#  TAB 5 · BENCHMARK COMPETITIVO GOOGLE                        #}
     {# ============================================================ #}
     {% if tab_actual == 'benchmark' %}
-    <div class="glass-effect rounded-2xl p-10 md:p-16 text-center animate-fade-up delay-4 relative overflow-hidden">
-      <div class="absolute inset-0 bg-gradient-to-br from-cbblue/5 via-cbgreen/5 to-amber-400/5 pointer-events-none"></div>
-      <div class="relative">
-        <div class="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-cbblue via-cbgreen to-amber-400 text-white text-5xl shadow-2xl mb-6">
-          🏆
-        </div>
-        <h2 class="text-3xl md:text-4xl font-extrabold text-slate-900 mb-3">Benchmark Competitivo</h2>
-        <p class="text-slate-600 text-base md:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
-          Compara tus indicadores <b>NPS, CSAT y Rating Google</b> con la competencia directa de tu rubro
-          en la unidad geográfica seleccionada (Comunal / Regional / Nacional).
-        </p>
-        <div class="grid md:grid-cols-3 gap-4 max-w-3xl mx-auto mb-10">
-          <div class="bg-white/80 rounded-2xl p-5 border border-slate-100 shadow-sm">
-            <div class="text-3xl mb-2">📊</div>
-            <div class="font-bold text-slate-800 mb-1">Comparativa NPS</div>
-            <div class="text-xs text-slate-500">Promedio vs tu rubro · Percentil rank</div>
+    <div class="animate-fade-up delay-4 space-y-6">
+
+      {# HEADER GLASS #}
+      <div class="glass-effect rounded-3xl p-6 md:p-8 relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-cbblue/10 via-transparent to-amber-400/10 pointer-events-none"></div>
+        <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div class="flex items-start gap-4">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-cbblue via-cbgreen to-amber-400 text-white text-3xl shadow-2xl shrink-0">🏆</div>
+            <div>
+              <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 mb-1">Benchmark Competitivo</h2>
+              <p class="text-slate-600 text-sm md:text-base max-w-2xl leading-relaxed">
+                Compara tu <b class="text-cbblue">Rating Google</b> con la competencia directa de tu rubro.
+                Datos actualizados vía sincronización diaria automática.
+              </p>
+            </div>
           </div>
-          <div class="bg-white/80 rounded-2xl p-5 border border-slate-100 shadow-sm">
-            <div class="text-3xl mb-2">⭐</div>
-            <div class="font-bold text-slate-800 mb-1">Rating Google</div>
-            <div class="text-xs text-slate-500">Promedio estrellas · N° reseñas vs mercado</div>
+          <div class="flex flex-col md:flex-row items-stretch md:items-center gap-2">
+            {% if benchmark_locales|length > 1 %}
+            <select onchange="const u=new URL(window.location);u.searchParams.set('local',this.value);u.searchParams.set('tab','benchmark');window.location=u.toString();"
+                    class="form-input md:w-auto rounded-xl font-semibold bg-white/90">
+              {% for bl in benchmark_locales %}
+              <option value="{{ bl.local_id }}" {% if benchmark_local_activo_id == bl.local_id %}selected{% endif %}>📍 {{ bl.local_nombre }}</option>
+              {% endfor %}
+            </select>
+            {% endif %}
+            <span class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold shadow">
+              <i class="fa fa-location-dot"></i>
+              {{ benchmark_locales_con_benchmark }}/{{ benchmark_total_locales }} locales con benchmark
+            </span>
           </div>
-          <div class="bg-white/80 rounded-2xl p-5 border border-slate-100 shadow-sm">
-            <div class="text-3xl mb-2">💬</div>
-            <div class="font-bold text-slate-800 mb-1">Temáticas Top</div>
-            <div class="text-xs text-slate-500">Qué hablan de tus competidores · FODA</div>
-          </div>
-        </div>
-        <div class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-cbblue to-cbgreen text-white font-semibold shadow-lg shadow-cbblue-500/30">
-          <i class="fa fa-gears"></i> Módulo en construcción · Fase 3
         </div>
       </div>
+
+      {% if benchmark_activo and benchmark_activo.tiene_benchmark %}
+
+      {# 6 KPIs CARDS #}
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div class="glass-effect rounded-2xl p-4 md:p-5 border border-cbblue-50 shadow-sm hover:shadow-md transition">
+          <div class="flex items-center justify-between mb-2">
+            <span class="inline-flex w-9 h-9 rounded-xl bg-cbblue/10 text-cbblue items-center justify-center"><i class="fa fa-star"></i></span>
+            {% if benchmark_activo.delta_color == 'emerald' %}<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">▲ SOBRE PROM</span>
+            {% elif benchmark_activo.delta_color == 'rose' %}<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">▼ BAJO PROM</span>
+            {% else %}<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">● EN PROM</span>{% endif %}
+          </div>
+          <div class="text-3xl md:text-4xl font-black text-slate-900 leading-none mb-1">{{ benchmark_activo.rating_local|floatformat:1 }}<span class="text-lg text-slate-400 font-bold">/5</span></div>
+          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Rating Local</div>
+          <div class="mt-2 text-[11px] font-bold text-{{ benchmark_activo.delta_color }}-600">{{ benchmark_activo.delta_label }}</div>
+        </div>
+        <div class="glass-effect rounded-2xl p-4 md:p-5 border border-purple-50 shadow-sm hover:shadow-md transition">
+          <div class="flex items-center justify-between mb-2"><span class="inline-flex w-9 h-9 rounded-xl bg-purple-100 text-purple-700 items-center justify-center"><i class="fa fa-ranking-star"></i></span></div>
+          <div class="text-3xl md:text-4xl font-black text-slate-900 leading-none mb-1">#{{ benchmark_activo.posicion_local }}<span class="text-base text-slate-400 font-bold">/{{ benchmark_activo.total_evaluados }}</span></div>
+          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Posición Rubro</div>
+          <div class="mt-2 text-[11px] font-bold text-purple-600">Top {{ benchmark_activo.total_evaluados|yesno:"1," }}% del ranking</div>
+        </div>
+        <div class="glass-effect rounded-2xl p-4 md:p-5 border border-emerald-50 shadow-sm hover:shadow-md transition">
+          <div class="flex items-center justify-between mb-2"><span class="inline-flex w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 items-center justify-center"><i class="fa fa-chart-line"></i></span></div>
+          <div class="text-3xl md:text-4xl font-black text-slate-900 leading-none mb-1">{{ benchmark_activo.promedio_rubro|floatformat:1 }}<span class="text-lg text-slate-400 font-bold">/5</span></div>
+          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Promedio Rubro</div>
+          <div class="mt-2 text-[11px] font-bold text-emerald-600">{{ benchmark_activo.total_evaluados }} locales evaluados</div>
+        </div>
+        <div class="glass-effect rounded-2xl p-4 md:p-5 border border-amber-50 shadow-sm hover:shadow-md transition">
+          <div class="flex items-center justify-between mb-2"><span class="inline-flex w-9 h-9 rounded-xl bg-amber-100 text-amber-700 items-center justify-center"><i class="fa fa-crown"></i></span></div>
+          <div class="text-3xl md:text-4xl font-black text-slate-900 leading-none mb-1">{{ benchmark_activo.top25_promedio|floatformat:1 }}<span class="text-lg text-slate-400 font-bold">/5</span></div>
+          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Top 25% Rubro</div>
+          <div class="mt-2 text-[11px] font-bold text-amber-600">Percentil p75: {{ benchmark_activo.percentiles.p75|default:"—" }}</div>
+        </div>
+        <div class="glass-effect rounded-2xl p-4 md:p-5 border border-rose-50 shadow-sm hover:shadow-md transition">
+          <div class="flex items-center justify-between mb-2"><span class="inline-flex w-9 h-9 rounded-xl bg-rose-100 text-rose-700 items-center justify-center"><i class="fa fa-arrow-trend-down"></i></span></div>
+          <div class="text-3xl md:text-4xl font-black text-slate-900 leading-none mb-1">{{ benchmark_activo.bottom25_promedio|floatformat:1 }}<span class="text-lg text-slate-400 font-bold">/5</span></div>
+          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Bottom 25% Rubro</div>
+          <div class="mt-2 text-[11px] font-bold text-rose-600">Percentil p25: {{ benchmark_activo.percentiles.p25|default:"—" }}</div>
+        </div>
+        <div class="glass-effect rounded-2xl p-4 md:p-5 border border-slate-100 shadow-sm hover:shadow-md transition">
+          <div class="flex items-center justify-between mb-2"><span class="inline-flex w-9 h-9 rounded-xl bg-slate-100 text-slate-700 items-center justify-center"><i class="fa fa-divide"></i></span></div>
+          <div class="text-3xl md:text-4xl font-black text-slate-900 leading-none mb-1">P{{ benchmark_activo.percentiles.p50|default:"50" }}</div>
+          <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Mediana (p50)</div>
+          <div class="mt-2 text-[11px] font-bold text-slate-500">Valor Mediana Rubro: {{ benchmark_activo.percentiles.p50|default:"—" }}</div>
+        </div>
+      </div>
+
+      {# GRÁFICO COMPARATIVO #}
+      <div class="glass-effect rounded-3xl p-6 md:p-8 shadow-sm">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h3 class="text-xl md:text-2xl font-black text-slate-900 mb-1">📊 Comparativa Percentiles Rubro</h3>
+            <p class="text-sm text-slate-500">Tu rating vs distribución del mercado (p25 · p50 · p75)</p>
+          </div>
+          {% if benchmark_activo.fecha_generacion %}
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider hidden md:inline">Actualizado: {{ benchmark_activo.fecha_generacion|date:"d/m/Y H:i" }}</span>
+          {% endif %}
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-6 items-end min-h-[200px]">
+          {% with local_val=benchmark_activo.rating_local prom_val=benchmark_activo.promedio_rubro p25_val=benchmark_activo.percentiles.p25|default:0 p50_val=benchmark_activo.percentiles.p50|default:0 p75_val=benchmark_activo.percentiles.p75|default:0 max_val_fake=5 %}
+          {% if local_val %}{% widthratio local_val 5 100 as h1 %}{% else %}{% with h1="10" %}{% endwith %}{% endif %}
+          {% if prom_val %}{% widthratio prom_val 5 100 as h2 %}{% else %}{% with h2="10" %}{% endwith %}{% endif %}
+          {% if p25_val %}{% widthratio p25_val 5 100 as h3 %}{% else %}{% with h3="10" %}{% endwith %}{% endif %}
+          {% if p50_val %}{% widthratio p50_val 5 100 as h4 %}{% else %}{% with h4="10" %}{% endwith %}{% endif %}
+          {% if p75_val %}{% widthratio p75_val 5 100 as h5 %}{% else %}{% with h5="10" %}{% endwith %}{% endif %}
+
+          {# 1 · TU RATING LOCAL #}
+          <div class="flex flex-col items-center justify-end gap-2 relative">
+            <div class="text-xs md:text-sm font-black text-cbblue leading-none mb-1 z-10">{{ local_val|floatformat:1 }}<span class="text-[10px] text-slate-400 font-bold">/5</span></div>
+            <div class="absolute -top-0.5 left-1/2 -translate-x-1/2 -translate-y-full inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black text-cbblue bg-cbblue-50 border border-cbblue-100 shadow-sm whitespace-nowrap">
+              <i class="fa fa-location-dot"></i> TU LOCAL
+            </div>
+            <div class="w-full h-[160px] md:h-[190px] flex items-end justify-center bg-white/50 rounded-2xl border border-cbblue-50 p-2 md:p-3 overflow-hidden">
+              <div class="w-10 md:w-14 rounded-t-xl transition-all duration-500 ease-out bg-gradient-to-t from-cbblue via-cbblue-500 to-cbblue-300 shadow-md shadow-cbblue-200"
+                   style="height:{% if local_val %}{% widthratio local_val 5 100 %}{% else %}10{% endif %}%; min-height:10px;"></div>
+            </div>
+            <div class="text-[10px] md:text-xs font-bold uppercase tracking-wider text-slate-500 text-center leading-tight">Tu Rating</div>
+          </div>
+
+          {# 2 · PROMEDIO RUBRO #}
+          <div class="flex flex-col items-center justify-end gap-2">
+            <div class="text-xs md:text-sm font-black text-emerald-700 leading-none mb-1">{{ prom_val|floatformat:1 }}<span class="text-[10px] text-slate-400 font-bold">/5</span></div>
+            <div class="w-full h-[160px] md:h-[190px] flex items-end justify-center bg-white/50 rounded-2xl border border-emerald-50 p-2 md:p-3 overflow-hidden">
+              <div class="w-10 md:w-14 rounded-t-xl transition-all duration-500 ease-out bg-gradient-to-t from-emerald-500 via-emerald-400 to-emerald-300"
+                   style="height:{% if prom_val %}{% widthratio prom_val 5 100 %}{% else %}10{% endif %}%; min-height:10px;"></div>
+            </div>
+            <div class="text-[10px] md:text-xs font-bold uppercase tracking-wider text-slate-500 text-center leading-tight">Prom. Rubro</div>
+          </div>
+
+          {# 3 · P25 · BOTTOM 25% #}
+          <div class="flex flex-col items-center justify-end gap-2">
+            <div class="text-xs md:text-sm font-black text-rose-700 leading-none mb-1">{{ p25_val|floatformat:1 }}<span class="text-[10px] text-slate-400 font-bold">/5</span></div>
+            <div class="w-full h-[160px] md:h-[190px] flex items-end justify-center bg-white/50 rounded-2xl border border-rose-50 p-2 md:p-3 overflow-hidden">
+              <div class="w-10 md:w-14 rounded-t-xl transition-all duration-500 ease-out bg-gradient-to-t from-rose-500 via-rose-400 to-rose-300"
+                   style="height:{% if p25_val %}{% widthratio p25_val 5 100 %}{% else %}10{% endif %}%; min-height:10px;"></div>
+            </div>
+            <div class="text-[10px] md:text-xs font-bold uppercase tracking-wider text-slate-500 text-center leading-tight">P25 · Bottom 25%</div>
+          </div>
+
+          {# 4 · P50 · MEDIANA #}
+          <div class="flex flex-col items-center justify-end gap-2">
+            <div class="text-xs md:text-sm font-black text-slate-700 leading-none mb-1">{{ p50_val|floatformat:1 }}<span class="text-[10px] text-slate-400 font-bold">/5</span></div>
+            <div class="w-full h-[160px] md:h-[190px] flex items-end justify-center bg-white/50 rounded-2xl border border-slate-100 p-2 md:p-3 overflow-hidden">
+              <div class="w-10 md:w-14 rounded-t-xl transition-all duration-500 ease-out bg-gradient-to-t from-slate-500 via-slate-400 to-slate-300"
+                   style="height:{% if p50_val %}{% widthratio p50_val 5 100 %}{% else %}10{% endif %}%; min-height:10px;"></div>
+            </div>
+            <div class="text-[10px] md:text-xs font-bold uppercase tracking-wider text-slate-500 text-center leading-tight">P50 · Mediana</div>
+          </div>
+
+          {# 5 · P75 · TOP 25% #}
+          <div class="flex flex-col items-center justify-end gap-2">
+            <div class="text-xs md:text-sm font-black text-amber-700 leading-none mb-1">{{ p75_val|floatformat:1 }}<span class="text-[10px] text-slate-400 font-bold">/5</span></div>
+            <div class="w-full h-[160px] md:h-[190px] flex items-end justify-center bg-white/50 rounded-2xl border border-amber-50 p-2 md:p-3 overflow-hidden">
+              <div class="w-10 md:w-14 rounded-t-xl transition-all duration-500 ease-out bg-gradient-to-t from-amber-500 via-amber-400 to-amber-300"
+                   style="height:{% if p75_val %}{% widthratio p75_val 5 100 %}{% else %}10{% endif %}%; min-height:10px;"></div>
+            </div>
+            <div class="text-[10px] md:text-xs font-bold uppercase tracking-wider text-slate-500 text-center leading-tight">P75 · Top 25%</div>
+          </div>
+
+          {% endwith %}
+        </div>
+      </div>
+
+      {# TABLA COMPETIDORES TOP 10 #}
+      <div class="glass-effect rounded-3xl overflow-hidden shadow-sm">
+        <div class="flex items-center justify-between p-6 md:px-8 md:py-5 border-b border-slate-100 bg-gradient-to-r from-white/60 to-slate-50/60">
+          <div>
+            <h3 class="text-xl md:text-2xl font-black text-slate-900 mb-1">🏁 Top Competidores {{ benchmark_activo.local_nombre }}</h3>
+            <p class="text-sm text-slate-500">{{ benchmark_activo.competidores_rows|length }} competidores · Mismo rubro y zona geográfica</p>
+          </div>
+          <span class="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-slate-700 font-bold text-xs border border-slate-200 shadow-sm">
+            <i class="fa fa-shuffle text-cbblue"></i> 3 reglas desempate: Rating &gt; Opiniones &gt; Antigüedad
+          </span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[760px]">
+            <thead>
+              <tr class="bg-slate-50/70 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <th class="px-5 md:px-8 py-4 text-left">#</th>
+                <th class="px-4 py-4 text-left">Competidor</th>
+                <th class="px-4 py-4 text-left w-52">Rating Google</th>
+                <th class="px-4 py-4 text-right">Opiniones</th>
+                <th class="px-4 py-4 text-left hidden md:table-cell">Dirección</th>
+                <th class="px-5 md:px-8 py-4 text-right">Categoría</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              {% for c in benchmark_activo.competidores_rows %}
+              <tr class="hover:bg-white/80 transition-colors">
+                <td class="px-5 md:px-8 py-4 font-black text-slate-400 text-lg md:text-xl">{{ c.pos }}</td>
+                <td class="px-4 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center shrink-0 border border-slate-100">
+                      <i class="fa fa-store text-slate-500"></i>
+                    </div>
+                    <div>
+                      <div class="font-bold text-slate-900 leading-tight">{{ c.nombre }}</div>
+                      {% if c.place_id %}<div class="text-[10px] font-mono text-slate-400 truncate max-w-[180px]">{{ c.place_id }}</div>{% endif %}
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="font-black text-xl leading-none text-slate-900">{{ c.puntuacion|floatformat:1 }}</div>
+                    <div class="flex-1 min-w-[110px]">
+                      <div class="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                        <div class="h-full rounded-full bg-gradient-to-r from-rose-400 via-amber-400 to-emerald-400" style="width:{{ c.pct_bar }}%"></div>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-4 text-right font-bold text-slate-700 tabular-nums">{{ c.opiniones }}</td>
+                <td class="px-4 py-4 text-sm text-slate-500 hidden md:table-cell">{{ c.direccion|default:"—" }}</td>
+                <td class="px-5 md:px-8 py-4 text-right">
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold
+                        {% if c.badge_color == 'amber' %}bg-amber-100 text-amber-700
+                        {% elif c.badge_color == 'blue' %}bg-blue-100 text-blue-700
+                        {% else %}bg-slate-100 text-slate-600{% endif %}">
+                    {% if c.badge_color == 'amber' %}👑{% elif c.badge_color == 'blue' %}📈{% else %}📉{% endif %}
+                    {{ c.badge }}
+                  </span>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="6" class="px-8 py-16 text-center">
+                  <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 mb-4 text-2xl"><i class="fa fa-magnifying-glass"></i></div>
+                  <div class="font-bold text-slate-700 mb-1">Sin competidores registrados aún</div>
+                  <div class="text-sm text-slate-400 max-w-md mx-auto">Ejecuta <code class="text-[11px] px-2 py-0.5 bg-slate-50 rounded border border-slate-200">python manage.py sincronizar_google_places</code> para poblar el benchmark.</div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {% else %}
+      <div class="glass-effect rounded-3xl p-10 md:p-16 text-center relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-cbblue/5 via-transparent to-amber-400/5 pointer-events-none"></div>
+        <div class="relative">
+          <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-slate-100 text-slate-400 text-4xl mb-5"><i class="fa fa-wifi-slash"></i></div>
+          <h3 class="text-2xl md:text-3xl font-black text-slate-900 mb-3">Aún no tienes benchmark para este local</h3>
+          <p class="text-slate-500 text-sm md:text-base max-w-xl mx-auto leading-relaxed mb-8">
+            El módulo sincroniza datos con Google Places de forma automática cada noche.
+            Puedes forzar la sincronización desde Admin Soporte o ejecutando el comando a continuación:
+          </p>
+          <div class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-900 text-white font-mono text-sm shadow-xl">
+            $ python manage.py sincronizar_google_places
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
     </div>
     {% endif %}
 

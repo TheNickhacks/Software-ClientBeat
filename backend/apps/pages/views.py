@@ -557,6 +557,123 @@ def dashboard(request):
         ctx['tematicas_ranking'] = tematicas_list
 
         # ==========================================================
+        #  BENCHMARK (datos por Local + Top competidores)
+        # ==========================================================
+        from apps.reputation.models import Benchmark
+        benchmark_locales_data = []
+        locales_negocio = negocio.locales.filter(estado='ACTIVO').order_by('fecha_creacion')
+        total_locales = locales_negocio.count()
+        locales_con_benchmark = 0
+        rating_promedio_acum = 0.0
+        posicion_promedio_acum = 0
+        diferencia_vs_rubro_acum = 0.0
+        benchmark_local_activo_id = None
+        try:
+            benchmark_local_activo_id = int(filtro_local_id) if filtro_local_id else None
+        except (ValueError, TypeError):
+            benchmark_local_activo_id = None
+
+        for local_obj in locales_negocio:
+            ult_b = Benchmark.objects.filter(local=local_obj).order_by('-fecha_generacion').first()
+            entry = {
+                'local_id': local_obj.id,
+                'local_nombre': local_obj.nombre,
+                'tiene_benchmark': ult_b is not None,
+                'benchmark': ult_b,
+                'fecha_generacion': ult_b.fecha_generacion if ult_b else None,
+                'rating_local': float(ult_b.puntuacion_local) if ult_b else None,
+                'posicion_local': ult_b.posicion_local if ult_b else None,
+                'total_evaluados': ult_b.total_evaluados if ult_b else None,
+                'promedio_rubro': float(ult_b.puntuacion_promedio_rubro) if ult_b else None,
+                'top25_promedio': float(ult_b.top25_promedio) if ult_b else None,
+                'bottom25_promedio': float(ult_b.bottom25_promedio) if ult_b else None,
+                'percentiles': {},
+                'competidores_rows': [],
+                'diferencia_vs_rubro': None,
+                'delta_label': None,
+                'delta_color': 'slate',
+            }
+            if ult_b:
+                locales_con_benchmark += 1
+                rating_promedio_acum += entry['rating_local']
+                posicion_promedio_acum += entry['posicion_local']
+                diff = entry['rating_local'] - entry['promedio_rubro']
+                entry['diferencia_vs_rubro'] = round(diff, 2)
+                if diff > 0:
+                    entry['delta_label'] = "+%.2f vs rubro" % entry['diferencia_vs_rubro']
+                    entry['delta_color'] = 'emerald'
+                elif diff < 0:
+                    entry['delta_label'] = "%.2f vs rubro" % entry['diferencia_vs_rubro']
+                    entry['delta_color'] = 'rose'
+                else:
+                    entry['delta_label'] = '= al promedio rubro'
+                    entry['delta_color'] = 'amber'
+                diferencia_vs_rubro_acum += diff
+                datos_b = ult_b.datos or {}
+                entry['percentiles'] = datos_b.get('percentiles', {}) or {}
+                competidores_raw = datos_b.get('competidores', []) or []
+                comp_rows = []
+                for idx, c in enumerate(competidores_raw[:10], start=1):
+                    puntuacion = c.get('puntuacion') or c.get('rating') or 0
+                    opiniones = c.get('opiniones') or c.get('numero_opiniones') or 0
+                    try:
+                        puntuacion_f = round(float(puntuacion), 1)
+                    except Exception:
+                        puntuacion_f = 0.0
+                    try:
+                        opiniones_i = int(opiniones)
+                    except Exception:
+                        opiniones_i = 0
+                    pct_bar = int(max(0, min(100, (puntuacion_f / 5.0) * 100))) if puntuacion_f else 0
+                    if entry['rating_local'] and puntuacion_f >= entry['rating_local']:
+                        badge = 'Top competidor'
+                        badge_color = 'amber'
+                    elif entry['promedio_rubro'] and puntuacion_f >= entry['promedio_rubro']:
+                        badge = 'Sobre promedio'
+                        badge_color = 'blue'
+                    else:
+                        badge = 'Bajo promedio'
+                        badge_color = 'slate'
+                    comp_rows.append({
+                        'pos': idx,
+                        'nombre': c.get('nombre') or c.get('place_nombre') or 'Competidor',
+                        'puntuacion': puntuacion_f,
+                        'opiniones': opiniones_i,
+                        'pct_bar': pct_bar,
+                        'badge': badge,
+                        'badge_color': badge_color,
+                        'direccion': c.get('direccion') or c.get('place_direccion') or '',
+                        'place_id': c.get('place_id') or '',
+                    })
+                entry['competidores_rows'] = comp_rows
+                if benchmark_local_activo_id is None:
+                    benchmark_local_activo_id = local_obj.id
+            benchmark_locales_data.append(entry)
+
+        ctx['benchmark_locales'] = benchmark_locales_data
+        ctx['benchmark_total_locales'] = total_locales
+        ctx['benchmark_locales_con_benchmark'] = locales_con_benchmark
+
+        if locales_con_benchmark > 0:
+            ctx['benchmark_rating_promedio'] = round(rating_promedio_acum / locales_con_benchmark, 1)
+            ctx['benchmark_posicion_promedio'] = round(posicion_promedio_acum / locales_con_benchmark, 1)
+            ctx['benchmark_diferencia_vs_rubro_promedio'] = round(diferencia_vs_rubro_acum / locales_con_benchmark, 2)
+        else:
+            ctx['benchmark_rating_promedio'] = 0
+            ctx['benchmark_posicion_promedio'] = 0
+            ctx['benchmark_diferencia_vs_rubro_promedio'] = 0
+
+        ctx['benchmark_local_activo_id'] = benchmark_local_activo_id
+        activo_entry = None
+        for e in benchmark_locales_data:
+            if e['local_id'] == benchmark_local_activo_id:
+                activo_entry = e
+                break
+        if activo_entry is None and benchmark_locales_data:
+            activo_entry = benchmark_locales_data[0]
+        ctx['benchmark_activo'] = activo_entry
+
+        # ==========================================================
         #  EXPORT EXCEL
         # ==========================================================
         puede_exportar = request.user.is_superuser or (
