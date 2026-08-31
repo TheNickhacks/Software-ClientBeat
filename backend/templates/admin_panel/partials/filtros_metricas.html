@@ -1,0 +1,47 @@
+{# Reusable Metric Filters Component: Temporal & Geographic & Submit Button #}
+<form method="GET" action="" class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
+  <div class="flex items-center gap-2">
+    <div class="w-8 h-8 rounded-lg bg-cbblue/10 text-cbblue flex items-center justify-center font-semibold text-xs">
+      <i class="fa fa-filter"></i>
+    </div>
+    <div>
+      <div class="text-xs font-bold text-slate-700 uppercase tracking-wider">Filtros de Análisis Metodológico</div>
+      <div class="text-[11px] text-slate-500">Aplica estos parámetros para recalcular métricas e informes</div>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap items-center gap-3">
+    {# Filtro Temporal #}
+    <div class="flex items-center gap-2">
+      <label for="filtro_temporal" class="text-xs font-medium text-slate-600 flex items-center gap-1.5">
+        <i class="fa fa-calendar-alt text-cbblue"></i> Temporal:
+      </label>
+      <select id="filtro_temporal" name="filtro_temporal"
+              class="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-lg focus:ring-cbblue focus:border-cbblue p-2 font-medium">
+        <option value="SEMANAL" {% if filtro_temporal == 'SEMANAL' %}selected{% endif %}>Semanal (últimos 7 días)</option>
+        <option value="MENSUAL" {% if filtro_temporal == 'MENSUAL' or not filtro_temporal %}selected{% endif %}>Mensual (últimos 30 días)</option>
+        <option value="SEMESTRAL" {% if filtro_temporal == 'SEMESTRAL' %}selected{% endif %}>Semestral (últimos 6 meses)</option>
+        <option value="ANUAL" {% if filtro_temporal == 'ANUAL' %}selected{% endif %}>Anual (últimos 12 meses)</option>
+      </select>
+    </div>
+
+    {# Filtro Geográfico #}
+    <div class="flex items-center gap-2">
+      <label for="filtro_geografico" class="text-xs font-medium text-slate-600 flex items-center gap-1.5">
+        <i class="fa fa-map-marker-alt text-cbgreen-600"></i> Geográfico:
+      </label>
+      <select id="filtro_geografico" name="filtro_geografico"
+              class="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-lg focus:ring-cbblue focus:border-cbblue p-2 font-medium">
+        <option value="5KM" {% if filtro_geografico == '5KM' %}selected{% endif %}>Hasta 5 km</option>
+        <option value="COMUNAL" {% if filtro_geografico == 'COMUNAL' or not filtro_geografico %}selected{% endif %}>Comunal</option>
+        <option value="REGIONAL" {% if filtro_geografico == 'REGIONAL' %}selected{% endif %}>Regional</option>
+        <option value="NACIONAL" {% if filtro_geografico == 'NACIONAL' %}selected{% endif %}>Nacional</option>
+      </select>
+    </div>
+
+    {# Botón Recalcular / Aplicar #}
+    <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 bg-cbblue text-white rounded-lg text-xs font-bold hover:bg-cbblue/90 transition shadow-sm cursor-pointer">
+      <i class="fa fa-sync-alt"></i> Actualizar Filtros
+    </button>
+  </div>
+</form>

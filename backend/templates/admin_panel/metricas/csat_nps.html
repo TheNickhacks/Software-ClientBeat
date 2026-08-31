@@ -1,0 +1,100 @@
+{% extends 'admin_panel/base.html' %}
+{% block admin_subtitle %}3.2 Configuración de parámetros y criterios metodológicos de cálculo CSAT y NPS{% endblock %}
+
+{% block admin_content %}
+{% include 'admin_panel/partials/filtros_metricas.html' with filtro_temporal=config.csat_nps_filtro_temporal_default filtro_geografico=config.csat_nps_filtro_geografico_default %}
+
+<form method="POST" action="">
+  {% csrf_token %}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
+    <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+      <div>
+        <h2 class="text-lg font-bold text-slate-900">Criterios Metodológicos de CSAT y NPS</h2>
+        <p class="text-xs text-slate-500 mt-0.5">Parámetros de cálculo y filtros mínimos para encuestas de satisfacción directa</p>
+      </div>
+      <button type="submit" class="px-5 py-2.5 bg-cbblue text-white rounded-xl text-xs font-bold hover:bg-cbblue/90 transition-all shadow-sm flex items-center gap-2">
+        <i class="fa fa-save"></i> Guardar Criterios CSAT / NPS
+      </button>
+    </div>
+
+    {# Criterio Metodológico Textual #}
+    <div class="mb-6">
+      <label for="csat_nps_criterio_metodologico" class="block text-xs font-bold text-slate-700 mb-1">
+        Criterios Metodológicos de Cálculo
+      </label>
+      <textarea id="csat_nps_criterio_metodologico" name="csat_nps_criterio_metodologico" rows="3"
+                class="w-full p-3 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" required>{{ config.csat_nps_criterio_metodologico }}</textarea>
+      <p class="text-[11px] text-slate-400 mt-1">Fórmula y descripción metodológica oficial para el cálculo de CSAT y NPS en la plataforma.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      {# Mínimo empresas benchmark #}
+      <div>
+        <label for="csat_nps_min_empresas_benchmark" class="block text-xs font-bold text-slate-700 mb-1">
+          Cantidad Mínima de Empresas para Benchmark por Rubro
+        </label>
+        <input type="number" id="csat_nps_min_empresas_benchmark" name="csat_nps_min_empresas_benchmark" value="{{ config.csat_nps_min_empresas_benchmark }}" min="1"
+               class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" required />
+      </div>
+
+      {# Mínimo valoraciones para aparecer #}
+      <div>
+        <label for="csat_nps_min_valoraciones" class="block text-xs font-bold text-slate-700 mb-1">
+          Cantidad Mínima de Valoraciones para Aparecer en Benchmark
+        </label>
+        <input type="number" id="csat_nps_min_valoraciones" name="csat_nps_min_valoraciones" value="{{ config.csat_nps_min_valoraciones }}" min="1"
+               class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" required />
+      </div>
+
+      {# Días sin valoraciones para excluir #}
+      <div>
+        <label for="csat_nps_dias_sin_valoraciones_excluir" class="block text-xs font-bold text-slate-700 mb-1">
+          Rango de Tiempo Sin Valoraciones para Excluir (Días)
+        </label>
+        <input type="number" id="csat_nps_dias_sin_valoraciones_excluir" name="csat_nps_dias_sin_valoraciones_excluir" value="{{ config.csat_nps_dias_sin_valoraciones_excluir }}" min="1"
+               class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" required />
+      </div>
+
+      {# Criterio desempate #}
+      <div>
+        <label for="csat_nps_criterio_desempate" class="block text-xs font-bold text-slate-700 mb-1">
+          Criterio de Desempate
+        </label>
+        <select id="csat_nps_criterio_desempate" name="csat_nps_criterio_desempate"
+                class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">
+          <option value="DECIMAS" {% if config.csat_nps_criterio_desempate == 'DECIMAS' %}selected{% endif %}>Décimas de puntuación</option>
+          <option value="POSITIVAS_PERIODO" {% if config.csat_nps_criterio_desempate == 'POSITIVAS_PERIODO' %}selected{% endif %}>Valoraciones positivas del último mes/semestre</option>
+        </select>
+      </div>
+
+      {# Filtro temporal #}
+      <div>
+        <label for="csat_nps_filtro_temporal_default" class="block text-xs font-bold text-slate-700 mb-1">
+          Filtro Temporal Predeterminado
+        </label>
+        <select id="csat_nps_filtro_temporal_default" name="csat_nps_filtro_temporal_default"
+                class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">
+          <option value="SEMANAL" {% if config.csat_nps_filtro_temporal_default == 'SEMANAL' %}selected{% endif %}>Semanal</option>
+          <option value="MENSUAL" {% if config.csat_nps_filtro_temporal_default == 'MENSUAL' %}selected{% endif %}>Mensual</option>
+          <option value="SEMESTRAL" {% if config.csat_nps_filtro_temporal_default == 'SEMESTRAL' %}selected{% endif %}>Semestral</option>
+          <option value="ANUAL" {% if config.csat_nps_filtro_temporal_default == 'ANUAL' %}selected{% endif %}>Anual</option>
+        </select>
+      </div>
+
+      {# Filtro geográfico #}
+      <div>
+        <label for="csat_nps_filtro_geografico_default" class="block text-xs font-bold text-slate-700 mb-1">
+          Filtro Geográfico Predeterminado
+        </label>
+        <select id="csat_nps_filtro_geografico_default" name="csat_nps_filtro_geografico_default"
+                class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">
+          <option value="5KM" {% if config.csat_nps_filtro_geografico_default == '5KM' %}selected{% endif %}>Hasta 5 km</option>
+          <option value="COMUNAL" {% if config.csat_nps_filtro_geografico_default == 'COMUNAL' %}selected{% endif %}>Comunal</option>
+          <option value="REGIONAL" {% if config.csat_nps_filtro_geografico_default == 'REGIONAL' %}selected{% endif %}>Regional</option>
+          <option value="NACIONAL" {% if config.csat_nps_filtro_geografico_default == 'NACIONAL' %}selected{% endif %}>Nacional</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

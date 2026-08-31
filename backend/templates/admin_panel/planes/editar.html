@@ -1,0 +1,85 @@
+{% extends 'admin_panel/base.html' %}
+{% load humanize %}
+{% block admin_subtitle %}4.1 Editar catálogo de planes, modificar precios, características y estados{% endblock %}
+
+{% block admin_header_actions %}
+  <a href="{% url 'adminpanel:plan_create' %}" class="px-4 py-2 bg-cbblue text-white rounded-lg text-xs font-bold hover:bg-cbblue/90 transition-all flex items-center gap-1.5 shadow-sm">
+    <i class="fa fa-plus"></i> Agregar Nuevo Plan
+  </a>
+{% endblock %}
+
+{% block admin_content %}
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="text-lg font-bold text-slate-900">Catálogo de Planes de Servicio ClientBeat</h2>
+      <p class="text-xs text-slate-500 mt-0.5">Gestión de tarifas, límites de locales por plan y disponibilidad comercial</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for plan in planes %}
+    <div class="border rounded-2xl p-5 flex flex-col justify-between transition-all {% if plan.activo %}border-slate-200 bg-white hover:shadow-md{% else %}border-slate-200 bg-slate-50 opacity-75{% endif %}">
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full {% if plan.activo %}bg-cbblue/10 text-cbblue{% else %}bg-slate-200 text-slate-600{% endif %}">
+            {{ plan.codigo|default:plan.nombre }}
+          </span>
+          <div class="flex items-center gap-1">
+            {% if plan.es_default %}
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800">Default</span>
+            {% endif %}
+            {% if plan.activo %}
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Activo</span>
+            {% else %}
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-600">Inactivo</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <h3 class="text-xl font-extrabold text-slate-900 mb-1">{{ plan.nombre }}</h3>
+        <p class="text-xs text-slate-500 mb-4 min-h-[36px] line-clamp-2">{{ plan.descripcion|default:"Sin descripción." }}</p>
+
+        <div class="border-y border-slate-100 py-3 mb-4 space-y-1.5 text-xs text-slate-600">
+          <div class="flex justify-between">
+            <span>Precio Mensual:</span>
+            <span class="font-extrabold text-slate-900">${{ plan.precio_mensual|intcomma }} {{ plan.moneda }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Precio Anual:</span>
+            <span class="font-bold text-slate-700">${{ plan.precio_anual|intcomma }} {{ plan.moneda }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Límite Locales:</span>
+            <span class="font-bold text-cbblue">{{ plan.limite_locales|default:"Ilimitados" }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-2 pt-2">
+        <div class="flex gap-2">
+          <a href="{% url 'adminpanel:plan_update' plan.pk %}"
+             class="flex-1 text-center py-2 bg-slate-100 hover:bg-cbblue hover:text-white text-slate-700 rounded-lg text-xs font-bold transition-colors">
+            <i class="fa fa-edit mr-1"></i> Editar
+          </a>
+          <form method="POST" action="{% url 'adminpanel:plan_toggle_activo' plan.pk %}" class="inline flex-1">
+            {% csrf_token %}
+            <button type="submit" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors">
+              {% if plan.activo %}Desactivar{% else %}Activar{% endif %}
+            </button>
+          </form>
+        </div>
+        <form method="POST" action="{% url 'adminpanel:plan_delete' plan.pk %}" onsubmit="return confirm('¿Estás seguro de eliminar este plan?');">
+          {% csrf_token %}
+          <button type="submit" class="w-full py-1.5 text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-semibold transition-colors">
+            <i class="fa fa-trash-alt mr-1"></i> Eliminar Plan
+          </button>
+        </form>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-span-3 py-12 text-center text-slate-400 italic">No hay planes de servicio configurados.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

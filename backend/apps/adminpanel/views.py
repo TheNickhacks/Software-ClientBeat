@@ -15,7 +15,9 @@ from .models import (
     AuditoriaAdmin,
     AccionAuditoriaChoices,
     ModuloAuditoriaChoices,
+    ConfiguracionMetricas,
 )
+
 from apps.billing.models import (
     Plan,
     Suscripcion,
@@ -71,26 +73,63 @@ def _estado_pago_color(e):
 
 
 def modulos_menu(request):
-    """Sidebar Admin Soporte completo: 13 módulos + 2 de solo SuperUsuario."""
-    items = [
-        {'label': 'Dashboard', 'url': reverse_lazy('adminpanel:dashboard'), 'icono': 'fa-tachometer-alt', 'color': 'blue', 'key': 'Dashboard'},
-        {'label': 'Suscripciones', 'url': reverse_lazy('adminpanel:suscripciones'), 'icono': 'fa-credit-card', 'color': 'emerald', 'key': 'Suscripciones', 'badge': 'nuevo'},
-        {'label': 'Pagos y Cobranza', 'url': reverse_lazy('adminpanel:pagos'), 'icono': 'fa-money-bill-wave', 'color': 'green', 'key': 'Pagos'},
-        {'label': 'Planes y Precios', 'url': reverse_lazy('adminpanel:planes'), 'icono': 'fa-tags', 'color': 'indigo', 'key': 'Planes'},
-        {'label': 'Simulador Precios', 'url': reverse_lazy('adminpanel:simulador_planes'), 'icono': 'fa-calculator', 'color': 'purple', 'key': 'Simulador', 'badge': 'nuevo'},
-        {'label': 'Negocios / Clientes', 'url': reverse_lazy('adminpanel:negocios'), 'icono': 'fa-store', 'color': 'fuchsia', 'key': 'Negocios'},
-        {'label': 'Usuarios Plataforma', 'url': reverse_lazy('adminpanel:usuarios'), 'icono': 'fa-users-cog', 'color': 'orange', 'key': 'Usuarios'},
-        {'label': 'Plantillas Encuestas', 'url': reverse_lazy('adminpanel:plantillas'), 'icono': 'fa-file-alt', 'color': 'sky', 'key': 'Plantillas Encuestas'},
-        {'label': 'Plantillas Notificaciones', 'url': reverse_lazy('adminpanel:plantillas_notificaciones'), 'icono': 'fa-envelope-open-text', 'color': 'cyan', 'key': 'Plantillas Notif', 'badge': 'nuevo'},
-        {'label': 'Rubros y Geografía', 'url': reverse_lazy('adminpanel:rubros'), 'icono': 'fa-list-ul', 'color': 'rose', 'key': 'Rubros'},
-        {'label': 'Metodología Cálculos', 'url': reverse_lazy('adminpanel:metodologia'), 'icono': 'fa-ruler-combined', 'color': 'amber', 'key': 'Metodología', 'badge': 'nuevo'},
-        {'label': 'Auditoría Admin', 'url': reverse_lazy('adminpanel:auditoria'), 'icono': 'fa-clipboard-list', 'color': 'slate', 'key': 'Auditoría', 'badge': 'nuevo'},
-        {'label': 'Solicitudes ARCOPB', 'url': reverse_lazy('adminpanel:solicitudes_arco'), 'icono': 'fa-shield-alt', 'color': 'red', 'key': 'ARCOPB'},
+    """Menú jerárquico unificado de administración de servicios."""
+    return [
+        {
+            'section': 'Reportería',
+            'key': 'reporteria',
+            'icono': 'fa-chart-pie',
+            'submodulos': [
+                {'label': '1.1 Listado de clientes', 'url': reverse_lazy('adminpanel:reporteria_clientes'), 'icono': 'fa-users', 'key': 'reporteria_clientes'},
+                {'label': '1.2 Benchmark por rubro', 'url': reverse_lazy('adminpanel:reporteria_benchmark_rubro'), 'icono': 'fa-chart-line', 'key': 'reporteria_benchmark_rubro'},
+                {'label': '1.3 Tendencias en reseñas', 'url': reverse_lazy('adminpanel:reporteria_tendencias_resenas'), 'icono': 'fa-comments', 'key': 'reporteria_tendencias_resenas'},
+                {'label': '1.4 Reportes de Planes', 'url': reverse_lazy('adminpanel:reporteria_planes'), 'icono': 'fa-tags', 'key': 'reporteria_planes'},
+            ]
+        },
+        {
+            'section': 'Data Google',
+            'key': 'data_google',
+            'icono': 'fa-database',
+            'submodulos': [
+                {'label': '2.1 Rubros y Preguntas', 'url': reverse_lazy('adminpanel:datagoogle_rubros'), 'icono': 'fa-layer-group', 'key': 'datagoogle_rubros'},
+            ]
+        },
+        {
+            'section': 'Métricas',
+            'key': 'metricas',
+            'icono': 'fa-sliders-h',
+            'submodulos': [
+                {'label': '3.1 Criterios de Benchmark', 'url': reverse_lazy('adminpanel:metricas_criterios_benchmark'), 'icono': 'fa-balance-scale', 'key': 'metricas_criterios_benchmark'},
+                {'label': '3.2 CSAT y NPS', 'url': reverse_lazy('adminpanel:metricas_csat_nps'), 'icono': 'fa-smile', 'key': 'metricas_csat_nps'},
+                {'label': '3.3 Reseñas Google', 'url': reverse_lazy('adminpanel:metricas_resenas_google'), 'icono': 'fa-star', 'key': 'metricas_resenas_google'},
+            ]
+        },
+        {
+            'section': 'Planes',
+            'key': 'planes',
+            'icono': 'fa-cubes',
+            'submodulos': [
+                {'label': '4.1 Editar Planes', 'url': reverse_lazy('adminpanel:planes_editar'), 'icono': 'fa-edit', 'key': 'planes_editar'},
+            ]
+        },
+        {
+            'section': 'Recursos',
+            'key': 'recursos',
+            'icono': 'fa-award',
+            'submodulos': [
+                {'label': '5.1 Programa de Reconocimiento', 'url': reverse_lazy('adminpanel:recursos_reconocimiento'), 'icono': 'fa-award', 'key': 'recursos_reconocimiento'},
+            ]
+        },
+        {
+            'section': 'Notificaciones',
+            'key': 'notificaciones',
+            'icono': 'fa-bell',
+            'submodulos': [
+                {'label': '6.1 Editar y Emitir', 'url': reverse_lazy('adminpanel:notificaciones'), 'icono': 'fa-paper-plane', 'key': 'notificaciones'},
+            ]
+        },
     ]
-    # Solo para SuperUser: Salud Técnica
-    if hasattr(request, 'user') and getattr(request.user, 'is_superuser', False):
-        items.append({'label': '🔧 Salud Técnica', 'url': reverse_lazy('adminpanel:super_salud'), 'icono': 'fa-heart-pulse', 'color': 'red', 'key': 'Salud Técnica', 'super': True})
-    return items
+
 
 
 # ==============================
@@ -1565,3 +1604,438 @@ class SuperSaludView(SuperUserRequiredMixin, TemplateView):
             ctx['CELERY_BROKER_URL_OK'] = False
         ctx['INSTALLED_APPS'] = [a for a in settings.INSTALLED_APPS if a.startswith('apps.')]
         return ctx
+
+
+# ==============================
+# 1. REPORTERÍA VIEWS
+# ==============================
+class ReporteriaClientesView(AdminSoporteRequiredMixin, ListView):
+    """1.1 Listado de clientes (Negocios registrados en la plataforma)."""
+    template_name = 'admin_panel/reporteria/clientes.html'
+    context_object_name = 'negocios'
+    paginate_by = 25
+
+    def get_queryset(self):
+        qs = Negocio.objects.select_related('dueño', 'comuna', 'rubro').annotate(
+            total_locales=Count('locales', distinct=True)
+        ).order_by('-fecha_creacion')
+        q = self.request.GET.get('q')
+        if q:
+            qs = qs.filter(Q(nombre__icontains=q) | Q(rut__icontains=q) | Q(dueño__email__icontains=q))
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['menu'] = modulos_menu(self.request)
+        ctx['menu_activo'] = 'reporteria_clientes'
+        ctx['seccion_titulo'] = '1.1 Listado de Clientes'
+        ctx['total_clientes'] = Negocio.objects.count()
+        ctx['clientes_activos'] = Negocio.objects.filter(estado='ACTIVO').count()
+        return ctx
+
+
+class ReporteriaBenchmarkRubroView(AdminSoporteRequiredMixin, TemplateView):
+    """1.2 Benchmark por rubro."""
+    template_name = 'admin_panel/reporteria/benchmark_rubro.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['menu'] = modulos_menu(self.request)
+        ctx['menu_activo'] = 'reporteria_benchmark_rubro'
+        ctx['rubros_stats'] = Rubro.objects.filter(activo=True).annotate(
+            total_negocios=Count('negocios', distinct=True)
+        ).order_by('-total_negocios')
+        ctx['filtro_temporal'] = self.request.GET.get('filtro_temporal', 'MENSUAL')
+        ctx['filtro_geografico'] = self.request.GET.get('filtro_geografico', 'COMUNAL')
+        ctx['config_metricas'] = ConfiguracionMetricas.get_solo()
+        return ctx
+
+
+class ReporteriaTendenciasResenasView(AdminSoporteRequiredMixin, TemplateView):
+    """1.3 Tendencias en reseñas."""
+    template_name = 'admin_panel/reporteria/tendencias_resenas.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['menu'] = modulos_menu(self.request)
+        ctx['menu_activo'] = 'reporteria_tendencias_resenas'
+        ctx['seccion_titulo'] = '1.3 Tendencias en Reseñas'
+        from apps.reputation.models import ResenaGoogle, SentimientoChoices
+        ctx['total_resenas'] = ResenaGoogle.objects.count()
+        ctx['positivas'] = ResenaGoogle.objects.filter(sentimiento=SentimientoChoices.POSITIVO).count()
+        ctx['neutras'] = ResenaGoogle.objects.filter(sentimiento=SentimientoChoices.NEUTRO).count()
+        ctx['negativas'] = ResenaGoogle.objects.filter(sentimiento=SentimientoChoices.NEGATIVO).count()
+        ctx['config_metricas'] = ConfiguracionMetricas.get_solo()
+        return ctx
+
+
+class ReporteriaPlanesView(AdminSoporteRequiredMixin, TemplateView):
+    """1.4 Planes (Por rubro, Por ubicación geográfica, Por cambios / bajas / altas)."""
+    template_name = 'admin_panel/reporteria/planes.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['menu'] = modulos_menu(self.request)
+        ctx['menu_activo'] = 'reporteria_planes'
+        ctx['seccion_titulo'] = '1.4 Reportes de Planes'
+        ctx['tab_activo'] = self.request.GET.get('tab', 'rubro')
+        ctx['cambios_plan'] = CambioPlan.objects.select_related('suscripcion__negocio', 'plan_anterior', 'plan_nuevo', 'suscripcion').order_by('-fecha_cambio')[:50]
+        ctx['suscripciones_activas'] = Suscripcion.objects.select_related('negocio', 'plan').filter(estado=EstadoSuscripcionChoices.ACTIVA)
+        return ctx
+
+
+# ==============================
+# 2. DATA GOOGLE VIEWS
+# ==============================
+class DataGoogleRubrosView(AdminSoporteRequiredMixin, ListView):
+    """2.1 Rubros y Preguntas asociadas al rubro (Google Places & Encuestas)."""
+    template_name = 'admin_panel/datagoogle/rubros.html'
+    context_object_name = 'rubros'
+    paginate_by = 30
+
+    def get_queryset(self):
+        qs = Rubro.objects.select_related('google_category').prefetch_related('plantillas_encuesta').order_by('orden', 'nombre')
+        q = self.request.GET.get('q', '').strip()
+        if q:
+            qs = qs.filter(
+                Q(nombre__icontains=q)
+                | Q(google_category__google_es__icontains=q)
+                | Q(google_category__google_en__icontains=q)
+            )
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['menu'] = modulos_menu(self.request)
+        ctx['menu_activo'] = 'datagoogle_rubros'
+        ctx['seccion_titulo'] = '2.1 Rubros y Preguntas Asociadas'
+        ctx['q'] = self.request.GET.get('q', '').strip()
+        ctx['plantillas_encuesta'] = PlantillaEncuesta.objects.filter(activa=True)
+        ctx['total_rubros'] = Rubro.objects.count()
+        ctx['rubros_con_google'] = Rubro.objects.exclude(google_category__isnull=True).count()
+        ctx['rubros_con_plantillas'] = Rubro.objects.annotate(cp=Count('plantillas_encuesta')).filter(cp__gt=0).count()
+        ctx['rubros_activos'] = Rubro.objects.filter(activo=True).count()
+        return ctx
+
+
+
+class DataGoogleInfoNegocioView(AdminSoporteRequiredMixin, TemplateView):
+    """2.2 Información general por negocio (Fase 2 - pendiente definir información a entregar)."""
+    template_name = 'admin_panel/datagoogle/info_negocio.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['menu'] = modulos_menu(self.request)
+        ctx['menu_activo'] = 'datagoogle_info_negocio'
+        ctx['seccion_titulo'] = '2.2 Información General por Negocio'
+        return ctx
+
+
+# ==============================
+# 3. MÉTRICAS VIEWS
+# ==============================
+class MetricasCriteriosBenchmarkView(AdminSoporteRequiredMixin, View):
+    """3.1 Modificar criterios de Benchmark (Google y ClientBeat)."""
+    template_name = 'admin_panel/metricas/criterios_benchmark.html'
+
+    def get(self, request):
+        config = ConfiguracionMetricas.get_solo()
+        context = {
+            'menu': modulos_menu(request),
+            'menu_activo': 'metricas_criterios_benchmark',
+            'seccion_titulo': '3.1 Criterios de Benchmark (Google y ClientBeat)',
+            'config': config,
+            'filtro_temporal': config.bm_filtro_temporal_default,
+            'filtro_geografico': config.bm_filtro_geografico_default,
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        config = ConfiguracionMetricas.get_solo()
+        config.bm_min_empresas = int(request.POST.get('bm_min_empresas', 3))
+        config.bm_min_valoraciones = int(request.POST.get('bm_min_valoraciones', 10))
+        config.bm_dias_sin_valoraciones_excluir = int(request.POST.get('bm_dias_sin_valoraciones_excluir', 90))
+        config.bm_filtro_temporal_default = request.POST.get('bm_filtro_temporal_default', 'MENSUAL')
+        config.bm_filtro_geografico_default = request.POST.get('bm_filtro_geografico_default', 'COMUNAL')
+        config.bm_criterio_desempate = request.POST.get('bm_criterio_desempate', 'DECIMAS')
+        config.bm_nota_explicativa_usuario = request.POST.get('bm_nota_explicativa_usuario', '')
+        config.save()
+        _auditar(request, AccionAuditoriaChoices.EDITAR, ModuloAuditoriaChoices.BENCHMARK, config, descripcion='Actualizó criterios de Benchmark')
+        messages.success(request, 'Criterios de Benchmark actualizados correctamente.')
+        return redirect('adminpanel:metricas_criterios_benchmark')
+
+
+class MetricasCsatNpsView(AdminSoporteRequiredMixin, View):
+    """3.2 CSAT y NPS: Criterios metodológicos y cálculo."""
+    template_name = 'admin_panel/metricas/csat_nps.html'
+
+    def get(self, request):
+        config = ConfiguracionMetricas.get_solo()
+        context = {
+            'menu': modulos_menu(request),
+            'menu_activo': 'metricas_csat_nps',
+            'seccion_titulo': '3.2 Criterios de Métricas CSAT y NPS',
+            'config': config,
+            'filtro_temporal': config.csat_nps_filtro_temporal_default,
+            'filtro_geografico': config.csat_nps_filtro_geografico_default,
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        config = ConfiguracionMetricas.get_solo()
+        config.csat_nps_criterio_metodologico = request.POST.get('csat_nps_criterio_metodologico', '')
+        config.csat_nps_min_empresas_benchmark = int(request.POST.get('csat_nps_min_empresas_benchmark', 3))
+        config.csat_nps_min_valoraciones = int(request.POST.get('csat_nps_min_valoraciones', 5))
+        config.csat_nps_dias_sin_valoraciones_excluir = int(request.POST.get('csat_nps_dias_sin_valoraciones_excluir', 60))
+        config.csat_nps_filtro_temporal_default = request.POST.get('csat_nps_filtro_temporal_default', 'MENSUAL')
+        config.csat_nps_filtro_geografico_default = request.POST.get('csat_nps_filtro_geografico_default', 'COMUNAL')
+        config.csat_nps_criterio_desempate = request.POST.get('csat_nps_criterio_desempate', 'DECIMAS')
+        config.save()
+        _auditar(request, AccionAuditoriaChoices.EDITAR, ModuloAuditoriaChoices.OTRO, config, descripcion='Actualizó criterios CSAT/NPS')
+        messages.success(request, 'Criterios de CSAT y NPS actualizados correctamente.')
+        return redirect('adminpanel:metricas_csat_nps')
+
+
+class MetricasResenasGoogleView(AdminSoporteRequiredMixin, View):
+    """3.3 Reseñas Google: parámetros y categorías."""
+    template_name = 'admin_panel/metricas/resenas_google.html'
+
+    def get(self, request):
+        config = ConfiguracionMetricas.get_solo()
+        context = {
+            'menu': modulos_menu(request),
+            'menu_activo': 'metricas_resenas_google',
+            'seccion_titulo': '3.3 Criterios de Reseñas Google',
+            'config': config,
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        config = ConfiguracionMetricas.get_solo()
+        config.resenas_minimo_para_analisis = int(request.POST.get('resenas_minimo_para_analisis', 5))
+        config.resenas_dias_sin_valoraciones_no_mostrar = int(request.POST.get('resenas_dias_sin_valoraciones_no_mostrar', 120))
+        cats_raw = request.POST.get('resenas_categorias_agrupacion', '')
+        if cats_raw:
+            config.resenas_categorias_agrupacion = [c.strip() for c in cats_raw.split(',') if c.strip()]
+        config.save()
+        _auditar(request, AccionAuditoriaChoices.EDITAR, ModuloAuditoriaChoices.RESEÑAS_GOOGLE, config, descripcion='Actualizó parámetros de Reseñas Google')
+        messages.success(request, 'Parámetros de Reseñas Google actualizados correctamente.')
+        return redirect('adminpanel:metricas_resenas_google')
+
+
+# ==============================
+# 4. PLANES VIEWS
+# ==============================
+class PlanesEditarView(AdminSoporteRequiredMixin, ListView):
+    """4.1 Editar Planes (Precios, características, agregar/eliminar, activar/desactivar)."""
+    template_name = 'admin_panel/planes/editar.html'
+    context_object_name = 'planes'
+
+    def get_queryset(self):
+        return Plan.objects.all().order_by('orden', 'precio_clp')
+
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['menu'] = modulos_menu(self.request)
+        ctx['menu_activo'] = 'planes_editar'
+        ctx['seccion_titulo'] = '4.1 Editar y Gestionar Planes de Servicio'
+        return ctx
+
+
+class AdminPanelPlanDeleteView(AdminSoporteRequiredMixin, View):
+    """Eliminar un plan de servicio."""
+    def post(self, request, pk):
+        plan = get_object_or_404(Plan, pk=pk)
+        nombre = plan.nombre
+        plan.delete()
+        _auditar(request, AccionAuditoriaChoices.ELIMINAR, ModuloAuditoriaChoices.PLANES, plan, descripcion=f'Eliminó plan {nombre}')
+        messages.success(request, f'El plan "{nombre}" fue eliminado correctamente.')
+        return redirect('adminpanel:planes_editar')
+
+
+# ==============================
+# 5. RECURSOS VIEWS
+# ==============================
+class RecursosDocumentosView(AdminSoporteRequiredMixin, TemplateView):
+    """5.1 Cargar o bajar documentos (Fase 2)."""
+    template_name = 'admin_panel/recursos/documentos.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['menu'] = modulos_menu(self.request)
+        ctx['menu_activo'] = 'recursos_documentos'
+        ctx['seccion_titulo'] = '5.1 Gestión de Documentos (Fase 2)'
+        return ctx
+
+
+class RecursosNoticiasView(AdminSoporteRequiredMixin, TemplateView):
+    """5.2 Noticias (Fase 2)."""
+    template_name = 'admin_panel/recursos/noticias.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['menu'] = modulos_menu(self.request)
+        ctx['menu_activo'] = 'recursos_noticias'
+        ctx['seccion_titulo'] = '5.2 Publicación de Noticias (Fase 2)'
+        return ctx
+
+
+class RecursosReconocimientoView(AdminSoporteRequiredMixin, TemplateView):
+    """5.3 Reconocimiento (Fase 1 / Programa de Distinción de Negocios)."""
+    template_name = 'admin_panel/recursos/reconocimiento.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['menu'] = modulos_menu(self.request)
+        ctx['menu_activo'] = 'recursos_reconocimiento'
+        ctx['seccion_titulo'] = '5.3 Programa de Reconocimiento y Sellos'
+        return ctx
+
+
+# ==============================
+# 6. NOTIFICACIONES VIEWS
+# ==============================
+class NotificacionesEditarEmitirView(AdminSoporteRequiredMixin, View):
+    """6.1 Editar y emitir notificaciones a clientes/usuarios."""
+    template_name = 'admin_panel/notificaciones/index.html'
+
+    def get(self, request):
+        from apps.notifications.models import PlantillaNotificacion, Notificacion
+        context = {
+            'menu': modulos_menu(request),
+            'menu_activo': 'notificaciones',
+            'seccion_titulo': '6.1 Editar y Emitir Notificaciones',
+            'plantillas': PlantillaNotificacion.objects.all(),
+            'notificaciones_recientes': Notificacion.objects.select_related('usuario', 'negocio').order_by('-fecha_creacion')[:30],
+            'planes': Plan.objects.filter(activo=True),
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        titulo = request.POST.get('titulo')
+        mensaje = request.POST.get('mensaje')
+        tipo = request.POST.get('tipo', 'INFO')
+        canal = request.POST.get('canal', 'IN_APP')
+        target_plan = request.POST.get('target_plan')
+
+        from apps.notifications.models import Notificacion
+        negocios = Negocio.objects.filter(estado='ACTIVO')
+        if target_plan:
+            negocios = negocios.filter(suscripcion__plan_id=target_plan)
+
+        count = 0
+        for neg in negocios:
+            if neg.dueño:
+                Notificacion.objects.create(
+                    usuario=neg.dueño,
+                    negocio=neg,
+                    titulo=titulo,
+                    mensaje=mensaje,
+                    tipo=tipo,
+                    canal=canal,
+                )
+                count += 1
+
+        _auditar(request, AccionAuditoriaChoices.CREAR, ModuloAuditoriaChoices.PLANTILLAS_NOTIFICACIONES, None, descripcion=f'Emitió notificación masiva a {count} usuarios')
+        messages.success(request, f'Notificación emitida con éxito a {count} usuarios de la plataforma.')
+        return redirect('adminpanel:notificaciones')
+
+
+# ==============================
+# PERFIL & PREVIEW VIEWS
+# ==============================
+class AdminPerfilView(AdminSoporteRequiredMixin, View):
+    """Gestión de perfil e información personal del Administrador."""
+    template_name = 'admin_panel/perfil.html'
+
+    def get(self, request):
+        context = {
+            'menu': modulos_menu(request),
+            'menu_activo': 'perfil',
+            'seccion_titulo': 'Mi Perfil de Administrador',
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        user = request.user
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        telefono = request.POST.get('telefono', '').strip()
+        password_actual = request.POST.get('password_actual')
+        nueva_password = request.POST.get('nueva_password')
+
+        user.first_name = first_name
+        user.last_name = last_name
+        user.telefono = telefono
+
+        if nueva_password:
+            if not password_actual or not user.check_password(password_actual):
+                messages.error(request, 'La contraseña actual ingresada es incorrecta.')
+                return redirect('adminpanel:perfil')
+            user.set_password(nueva_password)
+            from django.contrib.auth import update_session_auth_hash
+            update_session_auth_hash(request, user)
+            messages.success(request, '¡Contraseña actualizada con éxito!')
+
+        user.save()
+        _auditar(request, AccionAuditoriaChoices.EDITAR, ModuloAuditoriaChoices.USUARIOS, user, descripcion='Actualizó su perfil de administrador')
+        messages.success(request, 'Información de perfil actualizada correctamente.')
+        return redirect('adminpanel:perfil')
+
+
+class AdminPreviewClienteView(AdminSoporteRequiredMixin, View):
+    """Modo Vista Previa de Cliente para el Administrador de Servicios."""
+    def get(self, request):
+        request.session['admin_preview_modo'] = True
+        messages.info(request, 'Modo Vista Previa activado. Visualizando el dashboard como cliente.')
+        return redirect('/dashboard/?admin_preview=1')
+
+
+class AdminPanelPlanMarcarDefaultView(AdminSoporteRequiredMixin, View):
+    def post(self, request, pk):
+        plan = get_object_or_404(Plan, pk=pk)
+        with transaction.atomic():
+            Plan.objects.all().update(es_plan_default=False)
+            plan.es_plan_default = True
+            plan.save()
+        _auditar(request, AccionAuditoriaChoices.MARCAR_DEFAULT, ModuloAuditoriaChoices.PLANES, plan, descripcion=f'Marcar plan default {plan.nombre}')
+        messages.success(request, f'Ahora el plan default es "{plan.nombre}".')
+        return redirect('adminpanel:planes_editar')
+
+
+class AdminPanelSuscripcionCreateView(AdminSoporteRequiredMixin, View):
+    def get(self, request):
+        negocio_id = request.GET.get('negocio_id')
+        context = {
+            'menu': modulos_menu(request),
+            'menu_activo': 'suscripciones',
+            'seccion_titulo': 'Asignar Nueva Suscripción',
+            'negocios': Negocio.objects.filter(estado='ACTIVO'),
+            'planes': Plan.objects.filter(activo=True),
+            'negocio_seleccionado': get_object_or_404(Negocio, pk=negocio_id) if negocio_id else None,
+        }
+        return render(request, 'admin_panel/suscripcion_nueva.html', context)
+
+    def post(self, request):
+        negocio_id = request.POST.get('negocio_id')
+        plan_id = request.POST.get('plan_id')
+        dias = int(request.POST.get('dias', 30))
+        negocio = get_object_or_404(Negocio, pk=negocio_id)
+        plan = get_object_or_404(Plan, pk=plan_id)
+
+        negocio.suscripciones.filter(estado=EstadoSuscripcionChoices.ACTIVA).update(estado=EstadoSuscripcionChoices.CANCELADA, cancelada_en=timezone.now())
+
+        nueva_sus = Suscripcion.objects.create(
+            negocio=negocio,
+            plan=plan,
+            estado=EstadoSuscripcionChoices.ACTIVA,
+            fecha_inicio=timezone.now(),
+            fecha_vencimiento=timezone.now() + timezone.timedelta(days=dias),
+        )
+        _auditar(request, AccionAuditoriaChoices.CREAR, ModuloAuditoriaChoices.SUSCRIPCIONES, nueva_sus, descripcion=f'Asignó plan {plan.nombre} a {negocio.nombre}')
+        messages.success(request, f'Suscripción al plan "{plan.nombre}" asignada correctamente a {negocio.nombre}.')
+        return redirect('adminpanel:negocio_detalle', pk=negocio.id)
+
+
+

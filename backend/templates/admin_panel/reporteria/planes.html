@@ -1,0 +1,101 @@
+{% extends 'admin_panel/base.html' %}
+{% block admin_subtitle %}1.4 Desglose de planes contratados por rubro, distribución geográfica y registro de cambios / altas / bajas{% endblock %}
+
+{% block admin_content %}
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
+  {# Navegación por pestañas #}
+  <div class="flex border-b border-slate-200 gap-4 mb-6">
+    <a href="?tab=rubro" class="pb-3 px-2 text-xs font-bold border-b-2 transition-all {% if tab_activo == 'rubro' or not tab_activo %}border-cbblue text-cbblue{% else %}border-transparent text-slate-500 hover:text-slate-700{% endif %}">
+      <i class="fa fa-layer-group mr-1"></i> Por Rubro
+    </a>
+    <a href="?tab=geo" class="pb-3 px-2 text-xs font-bold border-b-2 transition-all {% if tab_activo == 'geo' %}border-cbblue text-cbblue{% else %}border-transparent text-slate-500 hover:text-slate-700{% endif %}">
+      <i class="fa fa-map-marker-alt mr-1"></i> Por Ubicación Geográfica
+    </a>
+    <a href="?tab=cambios" class="pb-3 px-2 text-xs font-bold border-b-2 transition-all {% if tab_activo == 'cambios' %}border-cbblue text-cbblue{% else %}border-transparent text-slate-500 hover:text-slate-700{% endif %}">
+      <i class="fa fa-exchange-alt mr-1"></i> Cambios / Altas / Bajas
+    </a>
+  </div>
+
+  {% if tab_activo == 'rubro' or not tab_activo %}
+    <h3 class="text-sm font-bold text-slate-800 mb-3">Distribución de Planes Activos por Rubro</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-700">
+        <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold">
+          <tr>
+            <th class="py-3 px-4">Cliente / Negocio</th>
+            <th class="py-3 px-4">Rubro</th>
+            <th class="py-3 px-4">Plan Actual</th>
+            <th class="py-3 px-4">Estado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 font-medium">
+          {% for sus in suscripciones_activas %}
+          <tr>
+            <td class="py-3 px-4 font-bold text-slate-900">{{ sus.negocio.nombre }}</td>
+            <td class="py-3 px-4">{{ sus.negocio.rubro.nombre|default:"Sin rubro" }}</td>
+            <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-cbblue/10 text-cbblue font-bold">{{ sus.plan.nombre }}</span></td>
+            <td class="py-3 px-4"><span class="text-emerald-700 font-bold">Activa</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="py-6 text-center text-slate-400 italic">No hay suscripciones registradas.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  {% elif tab_activo == 'geo' %}
+    <h3 class="text-sm font-bold text-slate-800 mb-3">Distribución de Planes por Ubicación Geográfica</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-700">
+        <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold">
+          <tr>
+            <th class="py-3 px-4">Cliente / Negocio</th>
+            <th class="py-3 px-4">Región / Comuna</th>
+            <th class="py-3 px-4">Plan Contratado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 font-medium">
+          {% for sus in suscripciones_activas %}
+          <tr>
+            <td class="py-3 px-4 font-bold text-slate-900">{{ sus.negocio.nombre }}</td>
+            <td class="py-3 px-4">{{ sus.negocio.comuna.nombre|default:"Comuna N/A" }}</td>
+            <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-cbblue/10 text-cbblue font-bold">{{ sus.plan.nombre }}</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" class="py-6 text-center text-slate-400 italic">No hay datos geográficos disponibles.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  {% elif tab_activo == 'cambios' %}
+    <h3 class="text-sm font-bold text-slate-800 mb-3">Registro de Cambios, Altas y Bajas en Planes</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-700">
+        <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold">
+          <tr>
+            <th class="py-3 px-4">Fecha</th>
+            <th class="py-3 px-4">Negocio</th>
+            <th class="py-3 px-4">Plan Anterior</th>
+            <th class="py-3 px-4">Plan Nuevo</th>
+            <th class="py-3 px-4">Motivo / Tipo</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 font-medium">
+          {% for c in cambios_plan %}
+          <tr>
+            <td class="py-3 px-4 text-slate-500">{{ c.fecha_cambio|date:"d/m/Y H:i" }}</td>
+            <td class="py-3 px-4 font-bold text-slate-900">{{ c.suscripcion.negocio.nombre }}</td>
+            <td class="py-3 px-4 text-slate-500">{{ c.plan_anterior.nombre|default:"-" }}</td>
+            <td class="py-3 px-4 font-bold text-cbblue">{{ c.plan_nuevo.nombre }}</td>
+            <td class="py-3 px-4">{{ c.get_motivo_display|default:c.motivo }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="py-6 text-center text-slate-400 italic">Sin historial reciente de cambios de plan.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

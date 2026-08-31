@@ -25,6 +25,8 @@ class LoginView(auth_views.LoginView):
 
     def get_success_url(self):
         user = self.request.user
+        if getattr(user, 'is_admin_soporte', False) or user.is_staff or user.is_superuser or getattr(user, 'rol', None) == 'ADMIN_SOPORTE':
+            return '/admin-panel/'
         if onboarding_pendiente(user):
             paso, _ = onboarding_siguiente_paso(user)
             messages.info(
@@ -47,11 +49,6 @@ class OnboardingWizardView(View):
     Paso 1 → Registro Usuario (email, password, nombre, T&C, mayor18)
     Paso 2 → Datos Negocio + Local #1
     Paso 3 → Confirmación Plan Default activo (días gratis según plan)
-
-    Características reanudación:
-    - Si el usuario ya inició sesión (cuenta creada en paso1 anterior), se le
-      redirige automáticamente al paso 2 sin volver a registrarse.
-    - Si ya creó negocio y local pero no finalizó suscripción, salta al paso 3.
     """
     template_dict = {
         1: 'accounts/onboarding_paso1.html',
@@ -65,10 +62,12 @@ class OnboardingWizardView(View):
     SESSION_KEY_STEP = 'onboarding_paso_actual'
 
     def dispatch(self, request, *args, **kwargs):
-        # Si el usuario tiene onboarding COMPLETADO (no pendiente), va a dashboard
+        if request.user.is_authenticated and (getattr(request.user, 'is_admin_soporte', False) or request.user.is_staff or request.user.is_superuser):
+            return redirect('/admin-panel/')
         if request.user.is_authenticated and not onboarding_pendiente(request.user):
             return redirect('/dashboard/')
         return super().dispatch(request, *args, **kwargs)
+
 
     def get_paso(self, request):
         try:
@@ -144,18 +143,22 @@ class OnboardingWizardView(View):
         return None
 
     def get(self, request, *args, **kwargs):
+        if request.GET.get('plan_id'):
+            request.session['onboarding_plan_id'] = request.GET.get('plan_id')
+
         if request.GET.get('accion') == 'reiniciar':
             for k in [self.SESSION_KEY_USER, self.SESSION_KEY_NEGOCIO,
-                      self.SESSION_KEY_LOCAL, self.SESSION_KEY_STEP]:
+                      self.SESSION_KEY_LOCAL, self.SESSION_KEY_STEP, 'onboarding_plan_id']:
                 request.session.pop(k, None)
             # Si es usuario autenticado, no lo desloguea pero fuerza paso 1
             if not request.user.is_authenticated:
                 return self._redirect_paso(1)
             return redirect('/accounts/logout/?next=/accounts/register/')
 
+
         # Detección automática de paso real por BD del usuario logueado
         user = self.get_saved_user(request)
-        if user is not None and user.is_authenticated or user:
+        if user is not None:
             paso_detectado, _ = onboarding_siguiente_paso(user)
             if paso_detectado >= 2:
                 # Carga objetos por BD (por si la sesión se perdió)
@@ -321,8 +324,9 @@ class OnboardingWizardView(View):
             ctx['form_local'] = form_local if form_local is not None else LocalOnboardingForm(prefix='loc')
         if paso == 3:
             from apps.billing.models import Plan
-            plan = get_plan_onboarding()
+            plan = get_plan_onboarding(request.session.get('onboarding_plan_id'))
             ctx['plan_actual'] = plan
+
             if plan is None:
                 ctx['error_sin_plan'] = (
                     '⚠️ Lo sentimos, no hay un Plan activo configurado por el momento. '

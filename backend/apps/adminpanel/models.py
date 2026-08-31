@@ -140,3 +140,137 @@ class AuditoriaAdmin(models.Model):
         if x_forwarded:
             return x_forwarded.split(',')[0].strip()
         return request.META.get('REMOTE_ADDR')
+
+
+class ConfiguracionMetricas(models.Model):
+    """Configuración global de criterios metodológicos para Benchmark, CSAT/NPS y Reseñas Google."""
+    
+    TEMPORAL_CHOICES = [
+        ('SEMANAL', 'Semanal'),
+        ('MENSUAL', 'Mensual'),
+        ('SEMESTRAL', 'Semestral'),
+        ('ANUAL', 'Anual'),
+    ]
+
+    GEOGRAFICO_CHOICES = [
+        ('5KM', 'Hasta 5 km'),
+        ('COMUNAL', 'Comunal'),
+        ('REGIONAL', 'Regional'),
+        ('NACIONAL', 'Nacional'),
+    ]
+
+    DESEMPATE_CHOICES = [
+        ('DECIMAS', 'Décimas de valoración'),
+        ('POSITIVAS_PERIODO', 'Valoraciones positivas del último mes/semestre'),
+    ]
+
+    # 3.1 Benchmark (Google & ClientBeat)
+    bm_min_empresas = models.PositiveIntegerField(
+        default=3,
+        verbose_name='Cantidad mínima de empresas en el benchmark'
+    )
+    bm_min_valoraciones = models.PositiveIntegerField(
+        default=10,
+        verbose_name='Cantidad mínima de valoraciones requeridas'
+    )
+    bm_dias_sin_valoraciones_excluir = models.PositiveIntegerField(
+        default=90,
+        verbose_name='Días sin valoraciones para excluir del benchmark'
+    )
+    bm_filtro_temporal_default = models.CharField(
+        max_length=20,
+        choices=TEMPORAL_CHOICES,
+        default='MENSUAL',
+        verbose_name='Filtro temporal predeterminado'
+    )
+    bm_filtro_geografico_default = models.CharField(
+        max_length=20,
+        choices=GEOGRAFICO_CHOICES,
+        default='COMUNAL',
+        verbose_name='Filtro geográfico predeterminado'
+    )
+    bm_criterio_desempate = models.CharField(
+        max_length=30,
+        choices=DESEMPATE_CHOICES,
+        default='DECIMAS',
+        verbose_name='Criterio de desempate'
+    )
+    bm_nota_explicativa_usuario = models.TextField(
+        default='Los criterios de benchmark determinan la muestra mínima de empresas y opiniones requeridas para comparar el rendimiento de tu negocio en tu rubro y zona geográfica.',
+        verbose_name='Explicación de criterios visible en Dashboard de Usuario'
+    )
+
+    # 3.2 CSAT y NPS
+    csat_nps_criterio_metodologico = models.TextField(
+        default='CSAT (% respuestas de 4 y 5 estrellas / caritas felices) y NPS (% Promotores [9-10] menos % Detractores [0-6]).',
+        verbose_name='Criterio metodológico de cálculo'
+    )
+    csat_nps_min_empresas_benchmark = models.PositiveIntegerField(
+        default=3,
+        verbose_name='Cantidad mínima de empresas para benchmark por rubro'
+    )
+    csat_nps_min_valoraciones = models.PositiveIntegerField(
+        default=5,
+        verbose_name='Cantidad mínima de valoraciones para aparecer en benchmark'
+    )
+    csat_nps_dias_sin_valoraciones_excluir = models.PositiveIntegerField(
+        default=60,
+        verbose_name='Días sin valoraciones para excluir del benchmark'
+    )
+    csat_nps_filtro_temporal_default = models.CharField(
+        max_length=20,
+        choices=TEMPORAL_CHOICES,
+        default='MENSUAL',
+        verbose_name='Filtro temporal default CSAT/NPS'
+    )
+    csat_nps_filtro_geografico_default = models.CharField(
+        max_length=20,
+        choices=GEOGRAFICO_CHOICES,
+        default='COMUNAL',
+        verbose_name='Filtro geográfico default CSAT/NPS'
+    )
+    csat_nps_criterio_desempate = models.CharField(
+        max_length=30,
+        choices=DESEMPATE_CHOICES,
+        default='DECIMAS',
+        verbose_name='Criterio de desempate CSAT/NPS'
+    )
+
+    # 3.3 Reseñas Google
+    resenas_minimo_para_analisis = models.PositiveIntegerField(
+        default=5,
+        verbose_name='Mínimo de reseñas para realizar análisis'
+    )
+    resenas_categorias_agrupacion = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Categorías de agrupación de reseñas'
+    )
+    resenas_dias_sin_valoraciones_no_mostrar = models.PositiveIntegerField(
+        default=120,
+        verbose_name='Rango de tiempo sin valoraciones para ocultar análisis en la app'
+    )
+
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Configuración de Métricas'
+        verbose_name_plural = 'Configuración de Métricas'
+
+    def __str__(self):
+        return f'Configuración de Métricas (Actualizada {self.fecha_actualizacion:%d/%m/%Y %H:%M})'
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(id=1)
+        if not obj.resenas_categorias_agrupacion:
+            obj.resenas_categorias_agrupacion = [
+                'Atención al Cliente',
+                'Calidad de Producto / Servicio',
+                'Ambiente y Limpieza',
+                'Tiempos de Espera',
+                'Relación Precio / Calidad'
+            ]
+            obj.save(update_fields=['resenas_categorias_agrupacion'])
+        return obj
+

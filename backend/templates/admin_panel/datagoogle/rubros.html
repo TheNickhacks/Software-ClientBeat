@@ -1,0 +1,130 @@
+{% extends 'admin_panel/base.html' %}
+{% block admin_subtitle %}2.1 Catálogo Oficial de Rubros, Categorías Google Places API y Preguntas de Encuesta Asociadas{% endblock %}
+
+{% block admin_content %}
+{# Tarjetas de Resumen KPI #}
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-cbblue/10 text-cbblue flex items-center justify-center text-lg font-bold">
+      <i class="fa fa-list"></i>
+    </div>
+    <div>
+      <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Rubros</div>
+      <div class="text-xl font-extrabold text-slate-800">{{ total_rubros }}</div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg font-bold">
+      <i class="fa fa-map-location-dot"></i>
+    </div>
+    <div>
+      <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Categoría Google API</div>
+      <div class="text-xl font-extrabold text-slate-800">{{ rubros_con_google }} / {{ total_rubros }}</div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-lg font-bold">
+      <i class="fa fa-comments"></i>
+    </div>
+    <div>
+      <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Plantillas Custom</div>
+      <div class="text-xl font-extrabold text-slate-800">{{ rubros_con_plantillas }}</div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center text-lg font-bold">
+      <i class="fa fa-check-circle"></i>
+    </div>
+    <div>
+      <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Rubros Activos</div>
+      <div class="text-xl font-extrabold text-slate-800">{{ rubros_activos }}</div>
+    </div>
+  </div>
+</div>
+
+{# Buscador y Tabla de Rubros #}
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div>
+      <h2 class="text-lg font-bold text-slate-900">Catálogo de Rubros y Preguntas de Encuesta</h2>
+      <p class="text-xs text-slate-500 mt-0.5">Asociación de categorías Google Places con plantillas de preguntas predeterminadas para benchmarking sectorial</p>
+    </div>
+
+    {# Buscador #}
+    <form method="GET" class="flex items-center gap-2">
+      <div class="relative">
+        <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+        <input type="text" name="q" value="{{ q }}" placeholder="Buscar por rubro o categoría Google..."
+               class="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-lg pl-8 pr-4 py-2 focus:ring-cbblue focus:border-cbblue w-64">
+      </div>
+      <button type="submit" class="btn-primary !py-2 !px-3 text-xs">
+        Buscar
+      </button>
+      {% if q %}
+        <a href="?" class="btn-secondary !py-2 !px-3 text-xs">Limpiar</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-xs text-slate-700">
+      <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200">
+        <tr>
+          <th class="py-3 px-4">Rubro ClientBeat</th>
+          <th class="py-3 px-4">Categoría Google Places (EN / ES)</th>
+          <th class="py-3 px-4">Plantillas de Encuesta Asociadas</th>
+          <th class="py-3 px-4">Estado</th>
+          <th class="py-3 px-4 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100 font-medium">
+        {% for r in rubros %}
+        <tr class="hover:bg-slate-50/80 transition-colors">
+          <td class="py-3 px-4 font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa {{ r.icono|default:'fa-tag' }} text-cbblue"></i> {{ r.nombre }}
+          </td>
+          <td class="py-3 px-4">
+            {% if r.google_category %}
+              <span class="font-mono text-[11px] bg-slate-100 px-2 py-0.5 rounded text-slate-700">
+                {{ r.google_category.google_en }} ({{ r.google_category.google_es }})
+              </span>
+            {% else %}
+              <span class="text-slate-400 italic">No vinculada</span>
+            {% endif %}
+          </td>
+          <td class="py-3 px-4">
+            {% for p in r.plantillas_encuesta.all %}
+              <span class="inline-block bg-cbblue/10 text-cbblue px-2 py-0.5 rounded text-[11px] font-semibold mr-1 mb-1">
+                {{ p.nombre }}
+              </span>
+            {% empty %}
+              <span class="text-slate-400 italic text-[11px]">Plantilla por defecto (NPS + CSAT general)</span>
+            {% endfor %}
+          </td>
+          <td class="py-3 px-4">
+            {% if r.activo %}
+              <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">Activo</span>
+            {% else %}
+              <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Inactivo</span>
+            {% endif %}
+          </td>
+          <td class="py-3 px-4 text-right">
+            <form method="POST" action="{% url 'adminpanel:rubro_toggle_activo' r.pk %}" class="inline">
+              {% csrf_token %}
+              <button type="submit" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold">
+                {% if r.activo %}Desactivar{% else %}Activar{% endif %}
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="py-8 text-center text-slate-400 italic">Sin rubros registrados para la búsqueda.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

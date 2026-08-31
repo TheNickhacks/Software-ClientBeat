@@ -4,6 +4,24 @@
 <section class="pt-28 pb-20">
   <div class="container mx-auto px-6">
 
+    {% if is_admin_preview %}
+      <div class="mb-6 bg-slate-900 text-white p-4 rounded-xl shadow-md flex items-center justify-between border border-slate-700">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-cbgreen text-slate-900 flex items-center justify-center font-bold">
+            <i class="fa fa-eye"></i>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold">Modo Vista Previa de Cliente</h4>
+            <p class="text-xs text-slate-300">Estás visualizando el panel como lo vería un cliente en producción.</p>
+          </div>
+        </div>
+        <a href="/admin-panel/" class="px-4 py-2 bg-cbblue text-white rounded-lg text-xs font-bold hover:bg-cbblue-700 transition-colors shadow">
+          Volver al Panel de Administrador &rarr;
+        </a>
+      </div>
+    {% endif %}
+
+
     {# ---------------- WELCOME BANNER ---------------- #}
     {% if welcome %}
       <div class="mb-8 rounded-2xl overflow-hidden shadow-lg animate-fade-up delay-1">

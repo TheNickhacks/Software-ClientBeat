@@ -191,7 +191,10 @@ DIMENSIONES_TEMATICAS = {
 
 
 def landing(request):
-    return render(request, 'landing.html')
+    from apps.billing.models import Plan
+    planes = Plan.objects.filter(activo=True).order_by('orden', 'precio_clp')
+    return render(request, 'landing.html', {'planes': planes})
+
 
 
 def _parse_date(s):
@@ -237,9 +240,15 @@ def _estrellas_html(n):
 
 @login_required(login_url='/accounts/login/')
 def dashboard(request):
-    if onboarding_pendiente(request.user):
+    is_admin = getattr(request.user, 'is_admin_soporte', False) or request.user.is_staff or request.user.is_superuser or getattr(request.user, 'rol', None) == 'ADMIN_SOPORTE'
+    admin_preview = request.GET.get('admin_preview') == '1' or request.session.get('admin_preview_modo')
+    if is_admin and not admin_preview:
+        return redirect('/admin-panel/')
+    if onboarding_pendiente(request.user) and not is_admin:
         paso, _ = onboarding_siguiente_paso(request.user)
         return redirect(f'/accounts/onboarding/?paso={paso}')
+
+
 
     # ========= TABS / PESTAÑAS =========
     tabs = [
@@ -273,6 +282,7 @@ def dashboard(request):
     filtro_fecha_exacta = _parse_date(request.GET.get('fecha_exacta'))
 
     ctx = {
+        'is_admin_preview': admin_preview,
         'welcome': request.GET.get('welcome') == '1',
         'negocio': getattr(request, 'negocio', None),
         'negocios_qs': getattr(request, 'negocios_qs', None),

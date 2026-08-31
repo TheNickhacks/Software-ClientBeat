@@ -13,9 +13,6 @@
       theme: {
         extend: {
           colors: {
-            primary: '#0B3EA6',
-            secondary: '#00B879',
-            accent: '#08337a',
             cbblue: { DEFAULT: '#0B3EA6', 50: '#eef4ff', 100: '#d9e7ff', 600: '#08337a', 700: '#062556', 900: '#041B3A' },
             cbgreen: { DEFAULT: '#00B879', 50: '#ecfbf4', 600: '#008E5C', 700: '#00633F' },
           }
@@ -31,141 +28,128 @@
       background: linear-gradient(90deg, #0B3EA6 0%, #00B879 100%);
       -webkit-background-clip: text; background-clip: text; color: transparent;
     }
-    .glass-effect { background: rgba(255,255,255,0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.5); }
+    .dropdown:hover .dropdown-menu { display: block; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased">
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
   {% if messages %}
-  <div id="msg-toast-container" class="fixed top-4 right-4 z-[90] space-y-2 w-full max-w-md">
+  <div id="msg-toast-container" class="fixed top-20 right-4 z-[90] space-y-2 w-full max-w-md">
     {% for m in messages %}
-    <div class="glass-effect rounded-xl px-4 py-3 shadow-lg border flex items-start gap-3
+    <div class="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-lg flex items-start gap-3
                 {% if m.tags == 'error' %}border-rose-200 bg-rose-50 text-rose-700
-                {% elif m.tags == 'success' %}border-cbgreen-600/30 bg-cbgreen-50 text-cbgreen-700
+                {% elif m.tags == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-700
                 {% elif m.tags == 'warning' %}border-amber-200 bg-amber-50 text-amber-700
                 {% else %}border-cbblue-100 bg-cbblue-50 text-cbblue-700{% endif %}">
       <i class="fa {% if m.tags == 'error' %}fa-exclamation-circle{% elif m.tags == 'success' %}fa-check-circle{% elif m.tags == 'warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %} text-lg mt-0.5"></i>
-      <div class="text-sm leading-relaxed flex-1">{{ m }}</div>
-      <button type="button" onclick="this.parentElement.remove()"
-              class="text-slate-400 hover:text-slate-600 text-lg leading-none ml-1">×</button>
+      <div class="text-xs leading-relaxed flex-1 font-medium">{{ m }}</div>
+      <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600 text-lg leading-none ml-1">×</button>
     </div>
     {% endfor %}
   </div>
   {% endif %}
 
-  <div class="min-h-screen flex">
-    {# ========= SIDEBAR ========= #}
-    <aside class="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col fixed h-screen z-40">
-      <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
-        <div class="min-w-0 flex items-center gap-3">
-          <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" class="h-10 w-auto object-contain" />
-          <div class="min-w-0">
-            <div class="text-[11px] text-slate-500 mt-0.5">Panel Administrativo</div>
-          </div>
+  {# ========= TOP NAVIGATION BAR ========= #}
+  <header class="bg-slate-900 text-slate-100 border-b border-slate-800 sticky top-0 z-50 shadow-md">
+    <div class="container mx-auto px-4 md:px-6">
+      <div class="flex items-center justify-between h-16">
+
+        {# Brand & Title #}
+        <div class="flex items-center gap-4">
+          <a href="{% url 'adminpanel:dashboard' %}" class="flex items-center gap-3">
+            <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" class="h-8 w-auto object-contain bg-white rounded p-1" />
+            <div>
+              <span class="text-sm font-bold tracking-wide text-white">ClientBeat</span>
+              <span class="hidden sm:inline-block text-[10px] bg-cbblue text-white px-2 py-0.5 rounded font-semibold ml-2">Administración</span>
+            </div>
+          </a>
         </div>
-      </div>
 
-      <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400 px-3 mt-2 mb-1">Gestión</p>
-        {% for item in menu %}
-        <a href="{{ item.url }}"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all
-                  {% if menu_activo == item.label %}
-                    bg-gradient-to-r from-cbblue/10 via-cbblue/5 to-cbgreen/10 text-slate-900 shadow-sm ring-1 ring-cbblue/20
-                  {% else %}
-                    text-slate-600 hover:bg-slate-100 hover:text-slate-900
-                  {% endif %}">
-          <span class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 text-cbblue shadow-sm">
-            <i class="fa {{ item.icono }} text-xs"></i>
-          </span>
-          <span class="flex-1">{{ item.label }}</span>
-          {% if item.badge %}
-            <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-gradient-to-r from-cbblue to-cbgreen text-white shadow-sm animate-pulse">
-              {{ item.badge }}
-            </span>
-          {% endif %}
-        </a>
-        {% endfor %}
+        {# Dropdown Tabs Navigation (Desktop) #}
+        <nav class="hidden lg:flex items-center gap-1">
+          <a href="{% url 'adminpanel:dashboard' %}"
+             class="px-3 py-2 rounded-lg text-xs font-bold transition-all {% if menu_activo == 'Dashboard' %}bg-cbblue text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} flex items-center gap-1.5">
+            <i class="fa fa-th-large"></i> Dashboard
+          </a>
 
-        {% if user.is_superuser %}
-        <p class="text-[10px] uppercase tracking-wider font-bold text-slate-400 px-3 mt-6 mb-1">Solo SuperUser</p>
-        <a href="/admin-panel/superuser/salud/"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all">
-          <span class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 text-rose-600 shadow-sm">
-            <i class="fa fa-heartbeat text-xs"></i>
-          </span>
-          <span>Salud técnica</span>
-        </a>
-        <a href="/admin/"
-           target="_blank"
-           rel="noopener noreferrer"
-           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-rose-600 hover:bg-rose-50 transition-all">
-          <span class="w-7 h-7 flex items-center justify-center rounded-lg bg-rose-100 text-rose-600 shadow-sm">
-            <i class="fa fa-unlock text-xs"></i>
-          </span>
-          <span>Django Admin (técnico)</span>
-        </a>
-        {% endif %}
-      </nav>
-
-      <div class="p-4 border-t border-slate-100 text-[11px] text-slate-500 leading-relaxed">
-        <div class="flex items-center gap-2 mb-2">
-          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-cbblue to-cbgreen flex items-center justify-center text-white text-xs font-bold">
-            {{ user.email|slice:":2"|upper }}
-          </div>
-          <div class="min-w-0">
-            <div class="text-slate-800 font-semibold text-[12px] truncate">{{ user.get_full_name|default:user.email }}</div>
-            <div class="text-[10px] text-slate-400">
-              {% if user.is_superuser %}SuperUser Django{% elif user.is_admin_soporte %}Admin Soporte{% else %}{{ user.get_rol_display }}{% endif %}
+          {% for mod in menu %}
+          <div class="relative dropdown">
+            <button type="button" class="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-all flex items-center gap-1.5">
+              <i class="fa {{ mod.icono }} text-cbgreen-600 text-xs"></i>
+              <span>{{ mod.section }}</span>
+              <i class="fa fa-chevron-down text-[9px] text-slate-400 ml-0.5"></i>
+            </button>
+            
+            <div class="dropdown-menu hidden absolute left-0 top-full pt-1 w-56 z-50">
+              <div class="bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 overflow-hidden">
+                {% for sub in mod.submodulos %}
+                <a href="{{ sub.url }}"
+                   class="flex items-center justify-between px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                  <span class="flex items-center gap-2 truncate">
+                    <i class="fa {{ sub.icono }} text-[11px] text-slate-400"></i>
+                    <span class="truncate">{{ sub.label }}</span>
+                  </span>
+                </a>
+                {% endfor %}
+              </div>
             </div>
           </div>
-        </div>
-        <a href="/dashboard/" class="inline-block text-slate-500 hover:text-cbblue mb-1">
-          <i class="fa fa-arrow-left mr-1"></i> Volver al dashboard cliente
-        </a><br>
-        <form method="POST" action="/accounts/logout/" class="inline">
-          {% csrf_token %}
-          <button type="submit" class="text-slate-500 hover:text-rose-600 font-medium">
-            <i class="fa fa-sign-out-alt mr-1"></i> Cerrar sesión
-          </button>
-        </form>
-      </div>
-    </aside>
+          {% endfor %}
+        </nav>
 
-    {# ========= CONTENIDO PRINCIPAL ========= #}
-    <main class="flex-1 md:ml-64 flex flex-col min-h-screen">
-      {# Header móvil / barra superior #}
-      <header class="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 sticky top-0 z-30">
+        {# User Actions Dropdown / Profile #}
         <div class="flex items-center gap-3">
-          <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" class="h-8 w-auto object-contain" />
+          <a href="{% url 'adminpanel:preview_cliente' %}" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors">
+            <i class="fa fa-eye text-cbgreen-600"></i> Vista Cliente
+          </a>
+
+          <a href="{% url 'adminpanel:perfil' %}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition-all border border-slate-700">
+            <i class="fa fa-user-circle text-cbblue text-sm"></i>
+            <span class="hidden md:inline max-w-[120px] truncate">{{ user.first_name|default:user.email }}</span>
+          </a>
+
+          <form method="POST" action="/accounts/logout/" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="px-2.5 py-1.5 text-rose-400 hover:text-rose-300 text-xs font-semibold flex items-center gap-1 transition-colors">
+              <i class="fa fa-sign-out-alt"></i>
+            </button>
+          </form>
         </div>
-      </header>
 
-      {# Título sección #}
-      <div class="px-6 md:px-8 pt-6 pb-2 md:pt-8">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div class="text-xs font-semibold uppercase tracking-wider text-cbblue mb-1">
-              Administración ClientBeat · El Pulso de tu Marca
-            </div>
-            <h1 class="text-2xl md:text-3xl font-extrabold gradient-text">
-              {{ menu_activo|default:"Panel" }}
-            </h1>
-            <p class="text-sm text-slate-500 mt-1">
-              {% block admin_subtitle %}Gestión no técnica del producto. Sin acceso a funciones raw de base de datos.{% endblock %}
-            </p>
-          </div>
-          {% block admin_header_actions %}{% endblock %}
-        </div>
       </div>
+    </div>
+  </header>
 
-      <div class="px-6 md:px-8 py-6 flex-1">
-        {% block admin_content %}{% endblock %}
-      </div>
-
-      <footer class="px-6 md:px-8 py-4 text-xs text-slate-400 border-t border-slate-100 bg-white/50">
-        © ClientBeat SpA · RUT 77.607.311-3 · Asturias 790 E, Rancagua · Chile · El Pulso de tu Marca
-      </footer>
-    </main>
+  {# Mobile Nav Links #}
+  <div class="lg:hidden bg-slate-800 border-b border-slate-700 px-4 py-2 flex overflow-x-auto gap-2 text-xs font-semibold text-slate-200">
+    <a href="{% url 'adminpanel:dashboard' %}" class="whitespace-nowrap px-2.5 py-1 rounded bg-cbblue text-white">Dashboard</a>
+    <a href="{% url 'adminpanel:reporteria_clientes' %}" class="whitespace-nowrap px-2.5 py-1 rounded hover:bg-slate-700">1. Clientes</a>
+    <a href="{% url 'adminpanel:reporteria_benchmark_rubro' %}" class="whitespace-nowrap px-2.5 py-1 rounded hover:bg-slate-700">2. Benchmark Rubro</a>
+    <a href="{% url 'adminpanel:datagoogle_rubros' %}" class="whitespace-nowrap px-2.5 py-1 rounded hover:bg-slate-700">3. Data Rubros</a>
+    <a href="{% url 'adminpanel:metricas_criterios_benchmark' %}" class="whitespace-nowrap px-2.5 py-1 rounded hover:bg-slate-700">4. Criterios Métricas</a>
+    <a href="{% url 'adminpanel:planes_editar' %}" class="whitespace-nowrap px-2.5 py-1 rounded hover:bg-slate-700">5. Planes</a>
+    <a href="{% url 'adminpanel:notificaciones' %}" class="whitespace-nowrap px-2.5 py-1 rounded hover:bg-slate-700">6. Notificaciones</a>
   </div>
+
+  {# ========= CONTENIDO PRINCIPAL ========= #}
+  <main class="flex-1 container mx-auto px-4 md:px-6 py-6">
+    {# Título sección #}
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 class="text-xl md:text-2xl font-extrabold gradient-text">
+          {{ seccion_titulo|default:menu_activo|default:"Panel Administrativo" }}
+        </h1>
+        <p class="text-xs text-slate-500 mt-0.5">
+          {% block admin_subtitle %}Gestión centralizada de servicios ClientBeat.{% endblock %}
+        </p>
+      </div>
+      {% block admin_header_actions %}{% endblock %}
+    </div>
+
+    {% block admin_content %}{% endblock %}
+  </main>
+
+  <footer class="py-4 text-center text-xs text-slate-400 border-t border-slate-200 bg-white">
+    © ClientBeat SpA · RUT 77.607.311-3 · Asturias 790 E, Rancagua · Chile · El Pulso de tu Marca
+  </footer>
 </body>
 </html>

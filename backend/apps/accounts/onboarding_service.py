@@ -5,21 +5,28 @@ from django.contrib.auth import login
 from django.conf import settings
 
 
-def get_plan_onboarding():
-    """Retorna el plan a usar para el onboarding (plan default o primer plan activo)."""
+def get_plan_onboarding(plan_id=None):
+    """Retorna el plan a usar para el onboarding (plan seleccionado por ID, plan default o primer plan activo)."""
     from apps.billing.models import Plan
+    if plan_id:
+        try:
+            return Plan.objects.get(id=plan_id, activo=True)
+        except Exception:
+            pass
     return Plan.get_plan_default()
 
 
-def completar_suscripcion_default(negocio):
-    """Crea/actualiza la suscripción del negocio usando el Plan por defecto activo."""
+
+def completar_suscripcion_default(negocio, plan_id=None):
+    """Crea/actualiza la suscripción del negocio usando el Plan por defecto activo o el seleccionado por ID."""
     from apps.billing.models import (
         Plan,
         Suscripcion,
         EstadoSuscripcionChoices,
     )
 
-    plan = get_plan_onboarding()
+    plan = get_plan_onboarding(plan_id)
+
     if plan is None:
         raise RuntimeError(
             'No hay ningún Plan activo configurado en el sistema. '
@@ -65,12 +72,15 @@ def agregar_dueño_como_miembro_equipo(negocio, usuario, invitado_por=None):
     return miembro
 
 
-def finalizar_onboarding(request, usuario, negocio, local):
-    """Flujo atómico: completa suscripción plan default + login + marca onboarding en sesión."""
+def finalizar_onboarding(request, usuario, negocio, local, plan_id=None):
+    """Flujo atómico: completa suscripción plan default o seleccionado + login + marca onboarding en sesión."""
+    if not plan_id and request and hasattr(request, 'session'):
+        plan_id = request.session.get('onboarding_plan_id')
     with transaction.atomic():
-        suscripcion = completar_suscripcion_default(negocio)
+        suscripcion = completar_suscripcion_default(negocio, plan_id=plan_id)
         miembro = agregar_dueño_como_miembro_equipo(negocio, usuario)
         marcar_paso3_negocio(negocio)
+
 
     usuario.backend = 'django.contrib.auth.backends.ModelBackend'
     login(request, usuario)
@@ -151,12 +161,13 @@ def onboarding_pendiente(usuario):
     """
     from apps.businesses.models import Negocio
     from apps.billing.models import EstadoSuscripcionChoices
-    if usuario.is_authenticated and (getattr(usuario, 'is_admin_soporte', False) or getattr(usuario, 'is_usuario_equipo', False)):
+    if usuario.is_authenticated and (getattr(usuario, 'is_admin_soporte', False) or getattr(usuario, 'is_usuario_equipo', False) or getattr(usuario, 'is_staff', False) or getattr(usuario, 'is_superuser', False)):
         return False
     if not usuario.is_authenticated or not hasattr(usuario, 'is_dueno'):
         return True
-    if getattr(usuario, 'is_admin_soporte', False):
+    if getattr(usuario, 'is_admin_soporte', False) or getattr(usuario, 'is_staff', False) or getattr(usuario, 'is_superuser', False):
         return False
+
     negocios = Negocio.objects.filter(dueño_id=usuario.id, estado='ACTIVO').prefetch_related('suscripciones')
     if not negocios.exists():
         return True
@@ -180,12 +191,12 @@ def onboarding_siguiente_paso(usuario):
     Devuelve (paso: int, descripcion: str)
     """
     from apps.businesses.models import Negocio, Local
-    from apps.billing.models import EstadoSuscripcionChoices
-    if not usuario.is_authenticated:
-        return 1, 'usuario no autenticado'
+    if not usuario or not getattr(usuario, 'id', None):
+        return 1, 'usuario no identificado'
     negocios = Negocio.objects.filter(dueño_id=usuario.id)
     if not negocios.exists():
         return 2, 'cuenta creada pero sin negocio configurado'
+
     negocio = negocios.first()
     # Flags explicitos
     p1_ok = bool(getattr(negocio, 'onboarding_paso1_completo', False))

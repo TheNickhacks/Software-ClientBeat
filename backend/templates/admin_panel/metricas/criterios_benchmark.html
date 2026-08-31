@@ -1,0 +1,107 @@
+{% extends 'admin_panel/base.html' %}
+{% block admin_subtitle %}3.1 Configuración de criterios metodológicos de Benchmark (Google y ClientBeat){% endblock %}
+
+{% block admin_content %}
+{% include 'admin_panel/partials/filtros_metricas.html' with filtro_temporal=config.bm_filtro_temporal_default filtro_geografico=config.bm_filtro_geografico_default %}
+
+<form method="POST" action="">
+  {% csrf_token %}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
+    <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+      <div>
+        <h2 class="text-lg font-bold text-slate-900">Criterios de Benchmark (Google y ClientBeat)</h2>
+        <p class="text-xs text-slate-500 mt-0.5">Establece las reglas cuantitativas y de muestra para incluir empresas y calcular los promedios del benchmark</p>
+      </div>
+      <button type="submit" class="px-5 py-2.5 bg-cbblue text-white rounded-xl text-xs font-bold hover:bg-cbblue/90 transition-all shadow-sm flex items-center gap-2">
+        <i class="fa fa-save"></i> Guardar Criterios
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      {# Mínimo de empresas #}
+      <div>
+        <label for="bm_min_empresas" class="block text-xs font-bold text-slate-700 mb-1">
+          Cantidad Mínima de Empresas en el Rubro
+        </label>
+        <input type="number" id="bm_min_empresas" name="bm_min_empresas" value="{{ config.bm_min_empresas }}" min="1"
+               class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" required />
+        <p class="text-[11px] text-slate-400 mt-1">Número mínimo de competidores en la zona para habilitar el benchmark.</p>
+      </div>
+
+      {# Mínimo de valoraciones #}
+      <div>
+        <label for="bm_min_valoraciones" class="block text-xs font-bold text-slate-700 mb-1">
+          Cantidad Mínima de Valoraciones / Opiniones
+        </label>
+        <input type="number" id="bm_min_valoraciones" name="bm_min_valoraciones" value="{{ config.bm_min_valoraciones }}" min="1"
+               class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" required />
+        <p class="text-[11px] text-slate-400 mt-1">Muestra mínima requerida para procesar el cálculo de promedios.</p>
+      </div>
+
+      {# Días sin valoraciones para excluir #}
+      <div>
+        <label for="bm_dias_sin_valoraciones_excluir" class="block text-xs font-bold text-slate-700 mb-1">
+          Rango de Tiempo Sin Valoraciones para Excluir Empresa (Días)
+        </label>
+        <input type="number" id="bm_dias_sin_valoraciones_excluir" name="bm_dias_sin_valoraciones_excluir" value="{{ config.bm_dias_sin_valoraciones_excluir }}" min="1"
+               class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" required />
+        <p class="text-[11px] text-slate-400 mt-1">Si una empresa no suma opiniones en N días, se excluye del grupo comparativo.</p>
+      </div>
+
+      {# Criterio de desempate #}
+      <div>
+        <label for="bm_criterio_desempate" class="block text-xs font-bold text-slate-700 mb-1">
+          Criterio de Desempate en Ranking
+        </label>
+        <select id="bm_criterio_desempate" name="bm_criterio_desempate"
+                class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">
+          <option value="DECIMAS" {% if config.bm_criterio_desempate == 'DECIMAS' %}selected{% endif %}>Décimas de valoración exacta</option>
+          <option value="POSITIVAS_PERIODO" {% if config.bm_criterio_desempate == 'POSITIVAS_PERIODO' %}selected{% endif %}>Cantidad de valoraciones positivas del último mes/semestre</option>
+        </select>
+        <p class="text-[11px] text-slate-400 mt-1">REGLA de desempate para ordenar el ranking del benchmark.</p>
+      </div>
+
+      {# Filtro Temporal Default #}
+      <div>
+        <label for="bm_filtro_temporal_default" class="block text-xs font-bold text-slate-700 mb-1">
+          Filtro Temporal Predeterminado
+        </label>
+        <select id="bm_filtro_temporal_default" name="bm_filtro_temporal_default"
+                class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">
+          <option value="SEMANAL" {% if config.bm_filtro_temporal_default == 'SEMANAL' %}selected{% endif %}>Semanal</option>
+          <option value="MENSUAL" {% if config.bm_filtro_temporal_default == 'MENSUAL' %}selected{% endif %}>Mensual</option>
+          <option value="SEMESTRAL" {% if config.bm_filtro_temporal_default == 'SEMESTRAL' %}selected{% endif %}>Semestral</option>
+          <option value="ANUAL" {% if config.bm_filtro_temporal_default == 'ANUAL' %}selected{% endif %}>Anual</option>
+        </select>
+      </div>
+
+      {# Filtro Geográfico Default #}
+      <div>
+        <label for="bm_filtro_geografico_default" class="block text-xs font-bold text-slate-700 mb-1">
+          Filtro Geográfico Predeterminado
+        </label>
+        <select id="bm_filtro_geografico_default" name="bm_filtro_geografico_default"
+                class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">
+          <option value="5KM" {% if config.bm_filtro_geografico_default == '5KM' %}selected{% endif %}>Hasta 5 km</option>
+          <option value="COMUNAL" {% if config.bm_filtro_geografico_default == 'COMUNAL' %}selected{% endif %}>Comunal</option>
+          <option value="REGIONAL" {% if config.bm_filtro_geografico_default == 'REGIONAL' %}selected{% endif %}>Regional</option>
+          <option value="NACIONAL" {% if config.bm_filtro_geografico_default == 'NACIONAL' %}selected{% endif %}>Nacional</option>
+        </select>
+      </div>
+    </div>
+
+    {# Explicación visible en Dashboard de Usuario #}
+    <div class="border-t border-slate-100 pt-6">
+      <div class="flex items-center gap-2 mb-2">
+        <i class="fa fa-info-circle text-cbblue text-sm"></i>
+        <label for="bm_nota_explicativa_usuario" class="text-xs font-bold text-slate-800">
+          Nota Explicativa Visible en el Dashboard del Cliente / Usuario
+        </label>
+      </div>
+      <p class="text-[11px] text-slate-500 mb-3">Este texto se despliega automáticamente en el panel del cliente para informar la metodología empleada en el benchmark.</p>
+      <textarea id="bm_nota_explicativa_usuario" name="bm_nota_explicativa_usuario" rows="3"
+                class="w-full p-3 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">{{ config.bm_nota_explicativa_usuario }}</textarea>
+    </div>
+  </div>
+</form>
+{% endblock %}

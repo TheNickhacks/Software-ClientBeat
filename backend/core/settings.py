@@ -104,6 +104,7 @@ DATABASES = {
 }
 DATABASES['default']['CONN_MAX_AGE'] = 600 if not DEBUG else 0
 if 'postgresql' in DATABASES['default'].get('ENGINE', ''):
+    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
     DATABASES['default']['OPTIONS'] = {
         'sslmode': 'require',
     }

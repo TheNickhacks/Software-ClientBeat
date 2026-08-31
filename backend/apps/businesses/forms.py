@@ -117,23 +117,29 @@ class NegocioOnboardingForm(forms.ModelForm):
         self.fields['telefono'].required = False
         self.fields['email_contacto'].required = False
         self.fields['comuna'].required = True
-        self.fields['comuna'].queryset = Comuna.objects.none()
-        self.fields['comuna'].empty_label = 'Selecciona primero una provincia'
+        self.fields['provincia'].queryset = Provincia.objects.all()
+        self.fields['provincia'].empty_label = 'Selecciona una provincia'
+        self.fields['comuna'].required = True
+        self.fields['comuna'].queryset = Comuna.objects.all()
+        self.fields['comuna'].empty_label = 'Selecciona una comuna'
         self.fields['rubro'].required = True
         self.fields['rubro'].queryset = Rubro.objects.filter(activo=True).order_by('tipo', 'orden', 'nombre')
         self.fields['rubro'].empty_label = 'Selecciona un rubro'
 
-        if self.initial.get('region'):
-            self.fields['provincia'].queryset = Provincia.objects.filter(
-                region_id=self.initial['region']
-            ).order_by('orden', 'nombre')
-            self.fields['provincia'].empty_label = 'Selecciona una provincia'
+        region_id = self.data.get('neg-region') or self.data.get('region') or self.initial.get('region')
+        provincia_id = self.data.get('neg-provincia') or self.data.get('provincia') or self.initial.get('provincia')
 
-        if self.initial.get('provincia'):
-            self.fields['comuna'].queryset = Comuna.objects.filter(
-                provincia_id=self.initial['provincia']
-            ).order_by('orden', 'nombre')
-            self.fields['comuna'].empty_label = 'Selecciona una comuna'
+        if region_id:
+            try:
+                self.fields['provincia'].queryset = Provincia.objects.filter(region_id=region_id).order_by('orden', 'nombre')
+            except (ValueError, TypeError):
+                pass
+
+        if provincia_id:
+            try:
+                self.fields['comuna'].queryset = Comuna.objects.filter(provincia_id=provincia_id).order_by('orden', 'nombre')
+            except (ValueError, TypeError):
+                pass
 
         if self.instance and self.instance.pk and self.instance.acepto_politica_datos:
             self.initial['acepto_politica_datos_check'] = True
@@ -142,9 +148,9 @@ class NegocioOnboardingForm(forms.ModelForm):
             self.initial['provincia'] = prov.id
             self.initial['region'] = prov.region_id
             self.fields['provincia'].queryset = Provincia.objects.filter(region=prov.region).order_by('orden', 'nombre')
-            self.fields['provincia'].empty_label = 'Selecciona una provincia'
             self.fields['comuna'].queryset = Comuna.objects.filter(provincia=prov).order_by('orden', 'nombre')
-            self.fields['comuna'].empty_label = 'Selecciona una comuna'
+
+
 
     def clean_region(self):
         r = self.cleaned_data.get('region')
@@ -292,18 +298,24 @@ class LocalOnboardingForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['provincia'].queryset = Provincia.objects.all()
         self.fields['comuna'].required = True
-        self.fields['comuna'].queryset = Comuna.objects.none()
+        self.fields['comuna'].queryset = Comuna.objects.all()
         self.fields['comuna'].empty_label = 'Selecciona una comuna'
 
-        if self.initial.get('region'):
-            self.fields['provincia'].queryset = Provincia.objects.filter(
-                region_id=self.initial['region']
-            ).order_by('orden', 'nombre')
-        if self.initial.get('provincia'):
-            self.fields['comuna'].queryset = Comuna.objects.filter(
-                provincia_id=self.initial['provincia']
-            ).order_by('orden', 'nombre')
+        region_id = self.data.get('loc-region') or self.data.get('region') or self.initial.get('region')
+        provincia_id = self.data.get('loc-provincia') or self.data.get('provincia') or self.initial.get('provincia')
+
+        if region_id:
+            try:
+                self.fields['provincia'].queryset = Provincia.objects.filter(region_id=region_id).order_by('orden', 'nombre')
+            except (ValueError, TypeError):
+                pass
+        if provincia_id:
+            try:
+                self.fields['comuna'].queryset = Comuna.objects.filter(provincia_id=provincia_id).order_by('orden', 'nombre')
+            except (ValueError, TypeError):
+                pass
 
         if self.instance and self.instance.pk and self.instance.comuna:
             prov = self.instance.comuna.provincia
@@ -311,6 +323,8 @@ class LocalOnboardingForm(forms.ModelForm):
             self.initial['region'] = prov.region_id
             self.fields['provincia'].queryset = Provincia.objects.filter(region=prov.region).order_by('orden', 'nombre')
             self.fields['comuna'].queryset = Comuna.objects.filter(provincia=prov).order_by('orden', 'nombre')
+
+
 
     def clean(self):
         cleaned = super().clean()

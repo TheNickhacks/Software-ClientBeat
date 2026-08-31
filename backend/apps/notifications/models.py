@@ -84,3 +84,23 @@ class PlantillaNotificacion(models.Model):
         if not self.codigo_unico:
             self.codigo_unico = slugify(f"{self.categoria}-{self.nombre}")
         super().save(*args, **kwargs)
+
+
+class Notificacion(models.Model):
+    usuario = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='notificaciones', null=True, blank=True)
+    negocio = models.ForeignKey('businesses.Negocio', on_delete=models.CASCADE, related_name='notificaciones', null=True, blank=True)
+    titulo = models.CharField(max_length=200)
+    mensaje = models.TextField()
+    tipo = models.CharField(max_length=50, default='INFO')
+    canal = models.CharField(max_length=50, default='IN_APP')
+    leida = models.BooleanField(default=False)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Notificación"
+        verbose_name_plural = "Notificaciones"
+        ordering = ['-fecha_creacion']
+
+    def __str__(self):
+        return f"{self.titulo} ({self.usuario or 'Global'})"
+

@@ -1,568 +1,244 @@
 {% extends 'admin_panel/base.html' %}
 {% load humanize %}
-{% block admin_subtitle %}KPIs de la plataforma, últimos onboardings y próximos vencimientos de suscripción.{% endblock %}
+{% block admin_subtitle %}Centro de Mando de Servicios ClientBeat · Acceso directo a módulos administrativos{% endblock %}
 
 {% block admin_header_actions %}
-  <span class="hidden md:inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-500">
-    <i class="fa fa-clock"></i> Generado: {{ fecha_hora_generacion }}
+  <span class="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 shadow-sm">
+    <i class="fa fa-server text-cbblue"></i> Estado Servicio: <span class="text-cbgreen-600 font-bold">100% Operativo</span>
   </span>
-  <a href="/admin-panel/negocios/" class="btn-secondary !py-2 !px-4 text-sm">
-    <i class="fa fa-search"></i> Buscar negocio
-  </a>
-  <a href="/admin-panel/planes/" class="btn-primary !py-2 !px-4 text-sm">
-    <i class="fa fa-plus"></i> Nuevo Plan
-  </a>
 {% endblock %}
 
 {% block admin_content %}
-{# ====== KPIs (12 tarjetas Fase3: Panel Admin Soporte Completo) ====== #}
-<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-8">
-  {% for kpi in kpis %}
-  <div class="glass-effect rounded-2xl p-5 card-hover">
-    <div class="flex items-start justify-between mb-3">
-      <div class="w-11 h-11 rounded-xl flex items-center justify-center {{ kpi.3 }} {{ kpi.2 }} text-lg">
-        <i class="fa {{ kpi.4 }}"></i>
-      </div>
+{# ====== RESUMEN EJECUTIVO KPI SERVICIOS ====== #}
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+  <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center gap-4">
+    <div class="w-12 h-12 rounded-xl bg-cbblue/10 text-cbblue flex items-center justify-center text-xl font-bold">
+      <i class="fa fa-users"></i>
     </div>
-    <p class="text-[13px] text-slate-500 mb-1 font-medium">{{ kpi.0 }}</p>
-    <h3 class="text-3xl font-extrabold text-slate-900">{{ kpi.1 }}</h3>
+    <div>
+      <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Clientes Activos</div>
+      <div class="text-2xl font-extrabold text-slate-900">{{ kpis.0.1|default:0 }}</div>
+    </div>
   </div>
-  {% endfor %}
+
+  <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center gap-4">
+    <div class="w-12 h-12 rounded-xl bg-cbgreen/10 text-cbgreen-600 flex items-center justify-center text-xl font-bold">
+      <i class="fa fa-credit-card"></i>
+    </div>
+    <div>
+      <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Suscripciones</div>
+      <div class="text-2xl font-extrabold text-slate-900">{{ kpis.1.1|default:0 }}</div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center gap-4">
+    <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl font-bold">
+      <i class="fa fa-layer-group"></i>
+    </div>
+    <div>
+      <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Rubros Habilitados</div>
+      <div class="text-2xl font-extrabold text-slate-900">{{ kpis.11.1|default:0 }}</div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center gap-4">
+    <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl font-bold">
+      <i class="fa fa-star"></i>
+    </div>
+    <div>
+      <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Reseñas Analizadas</div>
+      <div class="text-2xl font-extrabold text-slate-900">{{ kpis.12.1|default:0 }}</div>
+    </div>
+  </div>
 </section>
 
-{# ====== MÉTRICAS DINÁMICAS 3 COLUMNAS ====== #}
-<section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+{# ====== HUB PRINCIPAL DE NAVEGACIÓN ====== #}
+<div class="mb-4">
+  <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+    <i class="fa fa-th-large text-cbblue"></i> Módulos de Administración de Servicios
+  </h2>
+  <p class="text-xs text-slate-500">Haz clic directamente en cualquiera de las secciones para acceder a su panel de gestión.</p>
+</div>
 
-  {# === COLUMNA 1: TOP 10 RUBROS POR NEGOCIOS === #}
-  <div class="glass-effect rounded-2xl overflow-hidden border border-slate-100">
-    <div class="px-5 py-4 border-b border-slate-100">
-      <h3 class="font-bold text-slate-800 flex items-center gap-2">
-        <span class="w-7 h-7 rounded-lg bg-fuchsia-100 text-fuchsia-600 flex items-center justify-center">
-          <i class="fa fa-chart-bar text-sm"></i>
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+
+  {# 1. REPORTERÍA #}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-cbblue/40 transition-all">
+    <div class="p-5 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-cbblue text-white flex items-center justify-center text-lg font-bold shadow-sm">
+        <i class="fa fa-chart-pie"></i>
+      </div>
+      <div>
+        <h3 class="font-bold text-slate-800 text-sm">1. REPORTERÍA</h3>
+        <p class="text-[11px] text-slate-500">Informes de clientes, rubros y tendencias</p>
+      </div>
+    </div>
+    <div class="p-4 flex-1 space-y-2">
+      <a href="{% url 'adminpanel:reporteria_clientes' %}"
+         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+        <span class="flex items-center gap-2.5">
+          <i class="fa fa-users text-cbblue"></i> 1.1 Listado de clientes
         </span>
-        Top 10 Rubros (negocios activos)
-      </h3>
-      <p class="text-[11px] text-slate-500 mt-1">Basado en la tabla geo.Rubro · Contador de negocios</p>
-    </div>
-    <div class="p-4 space-y-2.5">
-      {% if rubros_top %}
-        {% for r in rubros_top %}
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <span class="text-[13px] font-semibold text-slate-700 truncate pr-3">{{ r.nombre }}</span>
-              <span class="text-[11px] font-bold text-fuchsia-700 whitespace-nowrap">{{ r.total_negocios }} negocios</span>
-            </div>
-            <div class="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
-              <div class="h-full bg-gradient-to-r from-fuchsia-500 to-purple-500 rounded-full transition-all" style="width: {{ r.pct }}%;"></div>
-            </div>
-          </div>
-        {% endfor %}
-      {% else %}
-        <p class="text-sm text-slate-500 italic py-8 text-center">Sin datos aún (onboardings recién empiezan).</p>
-      {% endif %}
-    </div>
-  </div>
-
-  {# === COLUMNA 2: VENTAS POR PLAN + DISTRIBUCIÓN ROLES === #}
-  <div class="space-y-6">
-    {# Ventas Planes #}
-    <div class="glass-effect rounded-2xl overflow-hidden border border-slate-100">
-      <div class="px-5 py-4 border-b border-slate-100">
-        <h3 class="font-bold text-slate-800 flex items-center gap-2">
-          <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
-            <i class="fa fa-tags text-sm"></i>
-          </span>
-          Suscripciones por Plan
-        </h3>
-      </div>
-      <div class="p-4 space-y-2.5">
-        {% if ventas_planes %}
-          {% for vp in ventas_planes %}
-            {% with vp_pct=vp.total|divisibleby:ventas_planes_total %}{% endwith %}
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-[13px] font-semibold text-slate-700">{{ vp.nombre }}</span>
-                <span class="text-[11px] font-bold text-emerald-700">{{ vp.total }} suscripcion{{ vp.total|pluralize:",es" }}</span>
-              </div>
-              <div class="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-green-500 transition-all" style="width: {% widthratio vp.total ventas_planes_total 100 %}%;"></div>
-              </div>
-            </div>
-          {% endfor %}
-        {% else %}
-          <p class="text-sm text-slate-500 italic py-5 text-center">Aún sin suscripciones activas.</p>
-        {% endif %}
-      </div>
-    </div>
-
-    {# Distribución Roles #}
-    <div class="glass-effect rounded-2xl overflow-hidden border border-slate-100">
-      <div class="px-5 py-4 border-b border-slate-100">
-        <h3 class="font-bold text-slate-800 flex items-center gap-2">
-          <span class="w-7 h-7 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
-            <i class="fa fa-users-gear text-sm"></i>
-          </span>
-          Distribución Roles Equipo
-        </h3>
-        <p class="text-[11px] text-slate-500 mt-1">businesses.MiembroEquipo · 5 roles posibles</p>
-      </div>
-      <div class="p-4 grid grid-cols-2 gap-2.5">
-        {% for r in roles_distribucion %}
-          <div class="rounded-xl bg-slate-50 p-3 border border-slate-100 text-center">
-            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">{{ r.label }}</div>
-            <div class="text-2xl font-extrabold text-slate-800">{{ r.total }}</div>
-            <div class="text-[10px] font-semibold text-amber-700 mt-1">{{ r.pct }}%</div>
-            <div class="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden mt-2">
-              <div class="h-full bg-gradient-to-r from-amber-400 to-orange-500" style="width: {{ r.pct }}%;"></div>
-            </div>
-          </div>
-        {% empty %}
-          <div class="col-span-2 text-sm text-slate-500 italic py-5 text-center">Sin miembros equipo aún.</div>
-        {% endfor %}
-      </div>
+        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
+      </a>
+      <a href="{% url 'adminpanel:reporteria_benchmark_rubro' %}"
+         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+        <span class="flex items-center gap-2.5">
+          <i class="fa fa-chart-line text-cbblue"></i> 1.2 Benchmark por rubro
+        </span>
+        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
+      </a>
+      <a href="{% url 'adminpanel:reporteria_tendencias_resenas' %}"
+         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+        <span class="flex items-center gap-2.5">
+          <i class="fa fa-comments text-cbblue"></i> 1.3 Tendencias en reseñas
+        </span>
+        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
+      </a>
+      <a href="{% url 'adminpanel:reporteria_planes' %}"
+         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+        <span class="flex items-center gap-2.5">
+          <i class="fa fa-tags text-cbblue"></i> 1.4 Reportes de Planes
+        </span>
+        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
+      </a>
     </div>
   </div>
 
-  {# === COLUMNA 3: NPS PLATAFORMA + NOTIF CATEGORÍAS === #}
-  <div class="space-y-6">
-    {# NPS Cross-Negocios #}
-    <div class="glass-effect rounded-2xl overflow-hidden border border-slate-100">
-      <div class="px-5 py-4 border-b border-slate-100">
-        <h3 class="font-bold text-slate-800 flex items-center gap-2">
-          <span class="w-7 h-7 rounded-lg bg-{{ nps_plataforma.color }}-100 text-{{ nps_plataforma.color }}-600 flex items-center justify-center">
-            <i class="fa fa-gauge-high text-sm"></i>
-          </span>
-          NPS Plataforma · últimos 30 días
-        </h3>
-        <p class="text-[11px] text-slate-500 mt-1">Todas las RespuestaEncuesta · Fórmula: %P - %D</p>
+  {# 2. DATA GOOGLE #}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-cbblue/40 transition-all">
+    <div class="p-5 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-cbblue text-white flex items-center justify-center text-lg font-bold shadow-sm">
+        <i class="fa fa-database"></i>
       </div>
-      <div class="p-5 text-center">
-        <div class="inline-flex flex-col items-center justify-center w-40 h-40 rounded-full bg-gradient-to-br from-{{ nps_plataforma.color }}-100 via-white to-white border-4 border-{{ nps_plataforma.color }}-200 shadow-lg shadow-{{ nps_plataforma.color }}-500/10">
-          <div class="text-5xl font-black text-{{ nps_plataforma.color }}-600 leading-none">
-            {% if nps_plataforma.score > 0 %}+{% endif %}{{ nps_plataforma.score }}
-          </div>
-          <div class="text-[10px] font-bold text-{{ nps_plataforma.color }}-700 uppercase tracking-widest mt-1">
-            {{ nps_plataforma.badge }}
-          </div>
-          <div class="text-[10px] text-slate-500 mt-0.5">Prom {{ nps_plataforma.promedio }}/10</div>
-        </div>
-        <div class="grid grid-cols-3 gap-2 mt-5">
-          <div class="rounded-lg bg-green-50 p-2.5 border border-green-100">
-            <div class="text-[10px] font-bold text-green-600 uppercase tracking-wide">PROMOTORES</div>
-            <div class="text-xl font-extrabold text-green-700">{{ nps_plataforma.promotores }}</div>
-          </div>
-          <div class="rounded-lg bg-amber-50 p-2.5 border border-amber-100">
-            <div class="text-[10px] font-bold text-amber-600 uppercase tracking-wide">PASIVOS</div>
-            <div class="text-xl font-extrabold text-amber-700">{{ nps_plataforma.pasivos }}</div>
-          </div>
-          <div class="rounded-lg bg-rose-50 p-2.5 border border-rose-100">
-            <div class="text-[10px] font-bold text-rose-600 uppercase tracking-wide">DETRACTORES</div>
-            <div class="text-xl font-extrabold text-rose-700">{{ nps_plataforma.detractores }}</div>
-          </div>
-        </div>
-        <p class="text-[11px] text-slate-400 mt-3">Total respuestas NPS en 30 días: <b>{{ nps_plataforma.total }}</b></p>
+      <div>
+        <h3 class="font-bold text-slate-800 text-sm">2. DATA GOOGLE</h3>
+        <p class="text-[11px] text-slate-500">Gestión de rubros y preguntas por categoría</p>
       </div>
     </div>
-
-    {# Categorías Notificaciones #}
-    <div class="glass-effect rounded-2xl overflow-hidden border border-slate-100">
-      <div class="px-5 py-4 border-b border-slate-100">
-        <h3 class="font-bold text-slate-800 flex items-center gap-2">
-          <span class="w-7 h-7 rounded-lg bg-cyan-100 text-cyan-600 flex items-center justify-center">
-            <i class="fa fa-envelope-open-text text-sm"></i>
-          </span>
-          Plantillas de Notificación activas
-        </h3>
-        <p class="text-[11px] text-slate-500 mt-1">apps.notifications · 6 categorías × 4 plantillas</p>
-      </div>
-      <div class="p-4 divide-y divide-slate-100">
-        {% for c in notificaciones_categorias %}
-          <div class="py-2.5 flex items-center justify-between first:pt-0 last:pb-0">
-            <span class="text-[13px] font-medium text-slate-700">{{ c.label }}</span>
-            <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-100">
-              <i class="fa fa-file-text-o"></i> {{ c.total }} plantillas
-            </span>
-          </div>
-        {% empty %}
-          <p class="text-sm text-slate-500 italic py-5 text-center">Sin plantillas (ejecutar seed_notificaciones).</p>
-        {% endfor %}
-      </div>
+    <div class="p-4 flex-1 space-y-2">
+      <a href="{% url 'adminpanel:datagoogle_rubros' %}"
+         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+        <span class="flex items-center gap-2.5">
+          <i class="fa fa-layer-group text-cbblue"></i> 2.1 Rubros y Preguntas asociadas
+        </span>
+        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
+      </a>
     </div>
   </div>
+
+  {# 3. MÉTRICAS #}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-cbblue/40 transition-all">
+    <div class="p-5 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-cbblue text-white flex items-center justify-center text-lg font-bold shadow-sm">
+        <i class="fa fa-sliders-h"></i>
+      </div>
+      <div>
+        <h3 class="font-bold text-slate-800 text-sm">3. MÉTRICAS</h3>
+        <p class="text-[11px] text-slate-500">Parámetros de Benchmark, CSAT/NPS y Reseñas</p>
+      </div>
+    </div>
+    <div class="p-4 flex-1 space-y-2">
+      <a href="{% url 'adminpanel:metricas_criterios_benchmark' %}"
+         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+        <span class="flex items-center gap-2.5">
+          <i class="fa fa-balance-scale text-cbblue"></i> 3.1 Criterios de Benchmark
+        </span>
+        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
+      </a>
+      <a href="{% url 'adminpanel:metricas_csat_nps' %}"
+         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+        <span class="flex items-center gap-2.5">
+          <i class="fa fa-smile text-cbblue"></i> 3.2 CSAT y NPS
+        </span>
+        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
+      </a>
+      <a href="{% url 'adminpanel:metricas_resenas_google' %}"
+         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+        <span class="flex items-center gap-2.5">
+          <i class="fa fa-star text-cbblue"></i> 3.3 Reseñas Google
+        </span>
+        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
+      </a>
+    </div>
+  </div>
+
+  {# 4. PLANES #}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-cbblue/40 transition-all">
+    <div class="p-5 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-cbblue text-white flex items-center justify-center text-lg font-bold shadow-sm">
+        <i class="fa fa-cubes"></i>
+      </div>
+      <div>
+        <h3 class="font-bold text-slate-800 text-sm">4. PLANES</h3>
+        <p class="text-[11px] text-slate-500">Gestión de catálogo de planes y valores</p>
+      </div>
+    </div>
+    <div class="p-4 flex-1 space-y-2">
+      <a href="{% url 'adminpanel:planes_editar' %}"
+         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+        <span class="flex items-center gap-2.5">
+          <i class="fa fa-edit text-cbblue"></i> 4.1 Editar Precios y Características
+        </span>
+        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
+      </a>
+    </div>
+  </div>
+
+  {# 5. RECURSOS #}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-cbblue/40 transition-all">
+    <div class="p-5 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-cbblue text-white flex items-center justify-center text-lg font-bold shadow-sm">
+        <i class="fa fa-award"></i>
+      </div>
+      <div>
+        <h3 class="font-bold text-slate-800 text-sm">5. RECURSOS</h3>
+        <p class="text-[11px] text-slate-500">Programa de Reconocimiento y sellos de excelencia</p>
+      </div>
+    </div>
+    <div class="p-4 flex-1 space-y-2">
+      <a href="{% url 'adminpanel:recursos_reconocimiento' %}"
+         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+        <span class="flex items-center gap-2.5">
+          <i class="fa fa-award text-cbblue"></i> 5.1 Programa de Reconocimiento
+        </span>
+        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
+      </a>
+    </div>
+  </div>
+
+  {# 6. NOTIFICACIONES #}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-cbblue/40 transition-all">
+    <div class="p-5 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-cbblue text-white flex items-center justify-center text-lg font-bold shadow-sm">
+        <i class="fa fa-bell"></i>
+      </div>
+      <div>
+        <h3 class="font-bold text-slate-800 text-sm">6. NOTIFICACIONES</h3>
+        <p class="text-[11px] text-slate-500">Emisión masiva y plantillas de aviso</p>
+      </div>
+    </div>
+    <div class="p-4 flex-1 space-y-2">
+      <a href="{% url 'adminpanel:notificaciones' %}"
+         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+        <span class="flex items-center gap-2.5">
+          <i class="fa fa-paper-plane text-cbblue"></i> 6.1 Editar y Emitir Notificaciones
+        </span>
+        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
+      </a>
+    </div>
+  </div>
+
 </section>
 
-{# ====== ÚLTIMAS RESPUESTAS ENCUESTA (TODA LA PLATAFORMA) ====== #}
-<section class="glass-effect rounded-2xl overflow-hidden border border-slate-100 mb-8">
-  <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-    <h3 class="font-bold text-slate-800 flex items-center gap-2">
-      <span class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
-        <i class="fa fa-comments text-sm"></i>
-      </span>
-      Últimas 10 respuestas en la plataforma
+{# ====== AUDITORÍA RECIENTE ====== #}
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+      <i class="fa fa-shield-alt text-cbblue"></i> Registro Reciente de Auditoría
     </h3>
-    <span class="text-[11px] font-semibold text-slate-400">Vista consolidada cross-negocios</span>
+    <a href="{% url 'adminpanel:auditoria' %}" class="text-xs font-semibold text-cbblue hover:underline">Ver historial completo &rarr;</a>
   </div>
-  {% if ultimas_respuestas_plataforma %}
-  <div class="overflow-x-auto">
-    <table class="w-full text-left text-sm">
-      <thead class="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
-        <tr>
-          <th class="px-5 py-3 font-semibold">Fecha</th>
-          <th class="px-5 py-3 font-semibold">Negocio · Local</th>
-          <th class="px-5 py-3 font-semibold text-center">NPS 0-10</th>
-          <th class="px-5 py-3 font-semibold">CSAT</th>
-          <th class="px-5 py-3 font-semibold">Comentario</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-slate-100">
-        {% for r in ultimas_respuestas_plataforma %}
-        <tr class="hover:bg-slate-50 transition-colors">
-          <td class="px-5 py-3 whitespace-nowrap">
-            <div class="text-[12px] font-semibold text-slate-700">{{ r.fecha_respuesta|date:"d/m/Y H:i" }}</div>
-          </td>
-          <td class="px-5 py-3">
-            <div class="font-semibold text-slate-800 text-[13px]">{{ r.local.negocio.nombre|default:"—" }}</div>
-            <div class="text-[11px] text-slate-500">{{ r.local.nombre|default:"Sin local" }}</div>
-          </td>
-          <td class="px-5 py-3 text-center">
-            {% if r.nps_puntaje is not None %}
-              <span class="inline-flex items-center justify-center min-w-[38px] h-8 rounded-lg text-sm font-extrabold border
-                {% if r.nps_puntaje >= 9 %}bg-green-50 text-green-700 border-green-200
-                {% elif r.nps_puntaje >= 7 %}bg-amber-50 text-amber-700 border-amber-200
-                {% else %}bg-rose-50 text-rose-700 border-rose-200{% endif %}">
-                {{ r.nps_puntaje }}
-              </span>
-            {% else %}
-              <span class="text-[11px] text-slate-400 italic">— N/A</span>
-            {% endif %}
-          </td>
-          <td class="px-5 py-3 text-[12px]">
-            {% if r.csat_emocion %}
-              <span class="text-slate-700 font-medium">{{ r.get_csat_emocion_display }}</span>
-            {% else %}
-              <span class="text-[11px] text-slate-400 italic">N/A</span>
-            {% endif %}
-          </td>
-          <td class="px-5 py-3">
-            <p class="text-[12px] text-slate-600 line-clamp-2 max-w-md">
-              {{ r.nps_comentario|default:r.csat_comentario|default:"<i class='text-slate-400'>Sin comentario</i>" }}
-            </p>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-  <div class="px-5 py-12 text-center text-sm text-slate-500 italic">
-    Aún no hay respuestas en la plataforma.
-  </div>
-  {% endif %}
-</section>
-
-{# ====== 2 columnas: últimos negocios + vencimientos ====== #}
-<section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-
-  <div class="glass-effect rounded-2xl overflow-hidden border border-slate-100">
-    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-      <h3 class="font-bold text-slate-800 flex items-center gap-2">
-        <span class="w-7 h-7 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
-          <i class="fa fa-store text-sm"></i>
-        </span>
-        Últimos negocios en onboarding
-      </h3>
-      <a href="/admin-panel/negocios/" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
-        Ver todos →
-      </a>
-    </div>
-    {% if ultimos_negocios %}
-    <div class="divide-y divide-slate-100">
-      {% for n in ultimos_negocios %}
-      <div class="px-5 py-3.5 flex items-center gap-4 hover:bg-slate-50 transition-colors">
-        <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 text-sm">
-          {{ n.nombre|slice:":1" }}
-        </div>
-        <div class="min-w-0 flex-1">
-          <div class="font-semibold text-slate-800 text-sm truncate">{{ n.nombre }}</div>
-          <div class="text-xs text-slate-500 truncate">{{ n.dueño.get_full_name|default:n.dueño.email }}</div>
-        </div>
-        <div class="text-right">
-          <span class="text-[11px] font-semibold px-2 py-1 rounded-full
-                       {% if n.estado == 'ACTIVO' %}bg-green-100 text-green-700
-                       {% elif n.estado == 'SUSPENDIDO' %}bg-amber-100 text-amber-700
-                       {% else %}bg-slate-100 text-slate-500{% endif %}">
-            {{ n.estado }}
-          </span>
-          <div class="text-[11px] text-slate-400 mt-1">{{ n.fecha_creacion|date:"d/m/Y" }}</div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div class="px-5 py-10 text-center text-sm text-slate-500 italic">
-      No hay negocios recientes.
-    </div>
-    {% endif %}
-  </div>
-
-  <div class="glass-effect rounded-2xl overflow-hidden border border-slate-100">
-    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-      <h3 class="font-bold text-slate-800 flex items-center gap-2">
-        <span class="w-7 h-7 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
-          <i class="fa fa-credit-card text-sm"></i>
-        </span>
-        Suscripciones · próximos vencimientos
-      </h3>
-      <a href="/admin-panel/planes/" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
-        Gestionar planes →
-      </a>
-    </div>
-    {% if vencen_7dias %}
-    <div class="divide-y divide-slate-100">
-      {% for s in vencen_7dias %}
-      <div class="px-5 py-3.5 flex items-center gap-4 hover:bg-slate-50 transition-colors">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white text-xs font-bold">
-          {{ s.plan.get_nombre_mostrar|slice:":2" }}
-        </div>
-        <div class="min-w-0 flex-1">
-          <div class="font-semibold text-slate-800 text-sm truncate">{{ s.negocio.nombre }}</div>
-          <div class="text-xs text-slate-500 truncate">{{ s.plan.get_nombre_mostrar }} · {{ s.plan.get_precio_display }}</div>
-        </div>
-        <div class="text-right">
-          <div class="text-xs font-bold text-slate-800">{{ s.fecha_vencimiento|date:"d/m/Y" }}</div>
-          <span class="text-[11px] font-semibold px-2 py-0.5 mt-0.5 inline-block rounded-full
-                       {% if s.estado == 'ACTIVA' %}bg-green-100 text-green-700
-                       {% else %}bg-amber-100 text-amber-700{% endif %}">
-            {{ s.estado }}
-          </span>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div class="px-5 py-10 text-center text-sm text-slate-500 italic">
-      No hay suscripciones por vencer próximamente.
-    </div>
-    {% endif %}
-  </div>
-</section>
-
-{# ====== Planes activos ====== #}
-<section class="glass-effect rounded-2xl p-6 border border-slate-100 mb-8">
-  <div class="flex items-center justify-between mb-5">
-    <h3 class="font-bold text-slate-800 flex items-center gap-2 text-lg">
-      <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
-        <i class="fa fa-tags"></i>
-      </span>
-      Planes activos en la plataforma
-    </h3>
-    <a href="/admin-panel/planes/" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
-      Gestionar planes →
-    </a>
-  </div>
-  {% if planes %}
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-    {% for p in planes %}
-    <div class="rounded-2xl ring-1 ring-slate-200 p-5 bg-white hover:ring-indigo-200 hover:shadow-lg transition-all">
-      <div class="flex items-start justify-between mb-3">
-        <div>
-          {% if p.es_plan_default %}
-          <span class="text-[10px] font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 inline-block px-2 py-0.5 rounded-full mb-2">
-            PLAN ONBOARDING DEFAULT
-          </span>
-          {% endif %}
-          <h4 class="text-xl font-extrabold gradient-text">{{ p.get_nombre_mostrar }}</h4>
-        </div>
-        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full
-                     {% if p.activo %}bg-green-100 text-green-700{% else %}bg-slate-100 text-slate-500{% endif %}">
-          {{ p.activo|yesno:"Activo,Inactivo" }}
-        </span>
-      </div>
-      <div class="text-3xl font-extrabold text-slate-900 mb-4">
-        {{ p.get_precio_display }}
-        <span class="text-sm font-medium text-slate-400">/ mes</span>
-      </div>
-      {% if p.descripcion %}
-      <p class="text-xs text-slate-500 mb-3 leading-relaxed">{{ p.descripcion }}</p>
-      {% endif %}
-      <div class="grid grid-cols-3 gap-2 text-[11px] font-semibold mb-3">
-        <div class="bg-slate-50 rounded-lg p-2 text-center">
-          <div class="text-slate-400">Locales</div>
-          <div class="text-slate-800">{{ p.locales_permitidos }}</div>
-        </div>
-        <div class="bg-slate-50 rounded-lg p-2 text-center">
-          <div class="text-slate-400">Usuarios</div>
-          <div class="text-slate-800">{{ p.usuarios_permitidos }}</div>
-        </div>
-        <div class="bg-slate-50 rounded-lg p-2 text-center">
-          <div class="text-slate-400">Prueba</div>
-          <div class="text-slate-800">{{ p.dias_prueba_gratis|default:0 }}d</div>
-        </div>
-      </div>
-      {% if p.caracteristicas %}
-      <ul class="space-y-1.5 mb-3">
-        {% for f in p.caracteristicas|slice:":5" %}
-        <li class="flex items-start gap-2 text-xs text-slate-600">
-          <i class="fa fa-check text-green-500 mt-0.5 flex-shrink-0"></i>
-          <span>{{ f }}</span>
-        </li>
-        {% endfor %}
-        {% if p.caracteristicas|length > 5 %}
-        <li class="text-[11px] text-slate-400 pl-5">+{{ p.caracteristicas|length|add:"-5" }} características más</li>
-        {% endif %}
-      </ul>
-      {% endif %}
-      <a href="/admin-panel/planes/" class="btn-secondary !py-2 w-full text-xs justify-center">
-        Editar plan
-      </a>
-    </div>
-    {% endfor %}
-  </div>
-  {% else %}
-  <div class="py-12 text-center text-sm text-slate-500 italic">
-    No hay planes activos. Crea uno desde Gestión de Planes.
-  </div>
-  {% endif %}
-</section>
-
-{# ====== 2 COLUMNAS FINALES: TRAZABILIDAD (Auditoría + Cambios Plan) ====== #}
-<section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-  {# === COLUMNA 1: ÚLTIMAS AUDITORÍAS ADMIN (Trazabilidad total) === #}
-  <div class="glass-effect rounded-2xl overflow-hidden border border-slate-100">
-    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-      <h3 class="font-bold text-slate-800 flex items-center gap-2">
-        <span class="w-7 h-7 rounded-lg bg-slate-800 text-white flex items-center justify-center">
-          <i class="fa fa-shield-halved text-sm"></i>
-        </span>
-        Auditoría Admin · últimas 10 acciones
-      </h3>
-      <a href="/admin-panel/auditoria/" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
-        Ver todas →
-      </a>
-    </div>
-    {% if auditorias_recientes %}
-    <div class="divide-y divide-slate-100 max-h-[520px] overflow-y-auto">
-      {% for a in auditorias_recientes %}
-      <div class="px-5 py-3 hover:bg-slate-50 transition-colors">
-        <div class="flex items-start gap-3">
-          <div class="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center text-sm
-            {% if a.accion == 'CREAR' or a.accion == 'CONFIRMAR' %}bg-green-100 text-green-600
-            {% elif a.accion == 'ELIMINAR' or a.accion == 'CANCELAR' or a.accion == 'SUSPENDER' %}bg-rose-100 text-rose-600
-            {% elif a.accion == 'EDITAR' or a.accion == 'CAMBIAR_PLAN' or a.accion == 'REASIGNAR_DUENO' or a.accion == 'REINICIAR_ONBOARDING' %}bg-amber-100 text-amber-600
-            {% else %}bg-slate-100 text-slate-500{% endif %}">
-            <i class="fa {% if a.accion == 'CREAR' %}fa-plus
-                      {% elif a.accion == 'ELIMINAR' %}fa-trash
-                      {% elif a.accion == 'EDITAR' %}fa-pen
-                      {% elif a.accion == 'CONFIRMAR' %}fa-check
-                      {% elif a.accion == 'CANCELAR' %}fa-ban
-                      {% elif a.accion == 'CAMBIAR_PLAN' %}fa-arrow-right-arrow-left
-                      {% elif a.accion == 'SUSPENDER' %}fa-pause
-                      {% elif a.accion == 'REASIGNAR_DUENO' %}fa-user-shield
-                      {% elif a.accion == 'REINICIAR_ONBOARDING' %}fa-rotate-right
-                      {% else %}fa-gear{% endif %}"></i>
-          </div>
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center justify-between gap-3 mb-0.5">
-              <span class="text-[11px] font-bold uppercase tracking-wide
-                {% if a.accion == 'CREAR' or a.accion == 'CONFIRMAR' %}text-green-700
-                {% elif a.accion == 'ELIMINAR' or a.accion == 'CANCELAR' or a.accion == 'SUSPENDER' %}text-rose-700
-                {% elif a.accion == 'EDITAR' or a.accion == 'CAMBIAR_PLAN' or a.accion == 'REASIGNAR_DUENO' %}text-amber-700
-                {% else %}text-slate-600{% endif %}">
-                {{ a.accion }} · {{ a.modulo }}
-              </span>
-              <span class="text-[10px] font-semibold text-slate-400 whitespace-nowrap">
-                {{ a.fecha_accion|date:"d/m H:i" }}
-              </span>
-            </div>
-            <div class="text-[13px] font-semibold text-slate-800 truncate mb-0.5">
-              {{ a.entidad_tipo }} · {{ a.entidad_id|slice:":8" }}…
-            </div>
-            <div class="flex items-center justify-between gap-3">
-              <span class="text-[11px] text-slate-500 truncate">
-                <i class="fa fa-user mr-1"></i>{{ a.usuario_email|default:"sistema" }}
-              </span>
-              <span class="text-[10px] text-slate-400 whitespace-nowrap">
-                <i class="fa fa-location-dot mr-1"></i>{{ a.ip_address|default:"s/d" }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div class="px-5 py-10 text-center text-sm text-slate-500 italic">
-      Sin auditorías aún. La trazabilidad comienza a registrar acciones desde ahora.
-    </div>
-    {% endif %}
-  </div>
-
-  {# === COLUMNA 2: ÚLTIMOS CAMBIOS DE PLAN (historial snapshot precios) === #}
-  <div class="glass-effect rounded-2xl overflow-hidden border border-slate-100">
-    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-      <h3 class="font-bold text-slate-800 flex items-center gap-2">
-        <span class="w-7 h-7 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center">
-          <i class="fa fa-arrow-right-arrow-left text-sm"></i>
-        </span>
-        Cambios Plan · últimos 10 (snapshot precios)
-      </h3>
-      <a href="/admin-panel/suscripciones/" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
-        Gestionar suscripciones →
-      </a>
-    </div>
-    {% if cambios_plan_recientes %}
-    <div class="divide-y divide-slate-100 max-h-[520px] overflow-y-auto">
-      {% for cp in cambios_plan_recientes %}
-      <div class="px-5 py-3.5 hover:bg-slate-50 transition-colors">
-        <div class="flex items-center gap-3 mb-2">
-          <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">
-            {{ cp.suscripcion.negocio.nombre|slice:":2" }}
-          </div>
-          <div class="min-w-0 flex-1">
-            <div class="text-[13px] font-bold text-slate-800 truncate">
-              {{ cp.suscripcion.negocio.nombre }}
-            </div>
-            <div class="flex items-center gap-2 mt-0.5">
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                {{ cp.get_motivo_display }}
-              </span>
-              <span class="text-[10px] text-slate-400 whitespace-nowrap">
-                <i class="fa fa-calendar mr-1"></i>{{ cp.fecha_cambio|date:"d/m/Y" }}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 pl-12">
-          <div class="flex-1 text-right">
-            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Plan Anterior</div>
-            <div class="text-[12px] font-semibold text-slate-600">{{ cp.plan_anterior.get_nombre_mostrar|default:"—" }}</div>
-            <div class="text-[12px] font-extrabold text-slate-700">${{ cp.precio_antes_clp|intcomma }}</div>
-          </div>
-          <div class="flex-shrink-0 w-9 h-9 rounded-full bg-violet-50 flex items-center justify-center text-violet-500">
-            <i class="fa fa-arrow-right text-sm"></i>
-          </div>
-          <div class="flex-1">
-            <div class="text-[10px] uppercase tracking-wider text-green-500 font-bold">Plan Nuevo</div>
-            <div class="text-[12px] font-semibold text-slate-800">{{ cp.plan_nuevo.get_nombre_mostrar }}</div>
-            <div class="text-[12px] font-extrabold gradient-text">${{ cp.precio_despues_clp|intcomma }}</div>
-          </div>
-        </div>
-        {% if cp.realizado_por %}
-        <div class="pl-12 mt-1.5">
-          <span class="text-[10px] text-slate-400">
-            <i class="fa fa-user-check mr-1"></i>{{ cp.realizado_por.email }}
-          </span>
-        </div>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div class="px-5 py-10 text-center text-sm text-slate-500 italic">
-      Sin cambios de plan aún. El historial se genera automáticamente al cambiar suscripciones.
-    </div>
-    {% endif %}
-  </div>
-</section>
+  <p class="text-xs text-slate-500 mb-4">Todas las acciones realizadas desde esta interfaz quedan registradas automáticamente para trazabilidad del servicio.</p>
+</div>
 {% endblock %}

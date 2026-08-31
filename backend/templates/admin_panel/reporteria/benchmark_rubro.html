@@ -1,0 +1,50 @@
+{% extends 'admin_panel/base.html' %}
+{% block admin_subtitle %}1.2 Análisis y consolidados de Benchmark competitivo agrupados por rubro de servicio{% endblock %}
+
+{% block admin_content %}
+{% include 'admin_panel/partials/filtros_metricas.html' with filtro_temporal=config_metricas.bm_filtro_temporal_default filtro_geografico=config_metricas.bm_filtro_geografico_default %}
+
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="text-lg font-bold text-slate-900">Benchmark Competitivo por Rubro</h2>
+      <p class="text-xs text-slate-500 mt-0.5">Indicadores consolidados por industria para evaluar el desempeño relativo de cada sector</p>
+    </div>
+    <span class="text-xs font-semibold px-3 py-1 bg-cbblue/10 text-cbblue rounded-lg">
+      Muestra Mínima Configurada: {{ config_metricas.bm_min_empresas }} empresas / {{ config_metricas.bm_min_valoraciones }} valoraciones
+    </span>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+    {% for r in rubros_stats %}
+    <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50 hover:bg-white hover:shadow-sm transition-all">
+      <div class="flex items-center justify-between mb-3">
+        <div class="font-bold text-sm text-slate-800 flex items-center gap-2">
+          <i class="fa fa-tag text-cbblue"></i> {{ r.nombre }}
+        </div>
+        <span class="text-xs font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700">
+          {{ r.total_negocios }} negocios
+        </span>
+      </div>
+
+      <div class="space-y-2 text-xs text-slate-600 border-t border-slate-100 pt-3">
+        <div class="flex justify-between">
+          <span>Puntuación Promedio Rubro:</span>
+          <span class="font-bold text-slate-900">4.3 ★</span>
+        </div>
+        <div class="flex justify-between">
+          <span>Top 25% Líderes:</span>
+          <span class="font-bold text-cbgreen-600">4.8 ★</span>
+        </div>
+        <div class="flex justify-between">
+          <span>Bottom 25% Desempeño:</span>
+          <span class="font-bold text-rose-600">3.7 ★</span>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-span-3 py-8 text-center text-slate-400 italic">No hay rubros registrados actualmente.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

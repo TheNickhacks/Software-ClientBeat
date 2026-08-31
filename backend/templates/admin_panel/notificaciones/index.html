@@ -1,0 +1,92 @@
+{% extends 'admin_panel/base.html' %}
+{% block admin_subtitle %}6.1 Edición de plantillas y emisión masiva de notificaciones a empresas y usuarios{% endblock %}
+
+{% block admin_content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+
+  {# FORMULARIO EMISIÓN MASIVA #}
+  <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+    <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-100">
+      <div>
+        <h2 class="text-lg font-bold text-slate-900">Emitir Notificación a Clientes</h2>
+        <p class="text-xs text-slate-500 mt-0.5">Envía avisos in-app o correos electrónicos a los usuarios de la plataforma</p>
+      </div>
+      <span class="w-8 h-8 rounded-lg bg-cbblue/10 text-cbblue flex items-center justify-center font-bold text-sm">
+        <i class="fa fa-paper-plane"></i>
+      </span>
+    </div>
+
+    <form method="POST" action="" class="space-y-4">
+      {% csrf_token %}
+      <div>
+        <label for="titulo" class="block text-xs font-bold text-slate-700 mb-1">Título del Aviso / Notificación</label>
+        <input type="text" id="titulo" name="titulo" placeholder="Ej: Nueva funcionalidad disponible en ClientBeat"
+               class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" required />
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="tipo" class="block text-xs font-bold text-slate-700 mb-1">Tipo de Notificación</label>
+          <select id="tipo" name="tipo" class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">
+            <option value="INFO">Información / Comunicado</option>
+            <option value="ALERTA">Alerta de Servicio</option>
+            <option value="ACTUALIZACION">Actualización de Sistema</option>
+            <option value="OFERTA">Promoción / Mejora de Plan</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="target_plan" class="block text-xs font-bold text-slate-700 mb-1">Segmento de Clientes (Plan)</label>
+          <select id="target_plan" name="target_plan" class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">
+            <option value="">Todos los clientes activos</option>
+            {% for plan in planes %}
+              <option value="{{ plan.id }}">Solo Plan {{ plan.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label for="mensaje" class="block text-xs font-bold text-slate-700 mb-1">Mensaje Completo</label>
+        <textarea id="mensaje" name="mensaje" rows="4" placeholder="Escribe aquí el contenido detallado de la notificación..."
+                  class="w-full p-3 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" required></textarea>
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button type="submit" class="px-6 py-2.5 bg-cbblue text-white rounded-xl text-xs font-bold hover:bg-cbblue/90 transition-all shadow-sm flex items-center gap-2">
+          <i class="fa fa-paper-plane"></i> Emitir Notificación Ahora
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {# PLANTILLAS Y HISTORIAL RECIENTE #}
+  <div class="space-y-6">
+    {# Plantillas #}
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+      <h3 class="font-bold text-slate-900 text-sm mb-3 flex items-center gap-2">
+        <i class="fa fa-file-alt text-cbblue"></i> Plantillas de Notificación
+      </h3>
+      <div class="space-y-2">
+        {% for p in plantillas %}
+        <div class="p-2.5 border border-slate-100 rounded-lg bg-slate-50 flex items-center justify-between text-xs">
+          <div>
+            <div class="font-bold text-slate-800">{{ p.nombre }}</div>
+            <div class="text-[10px] text-slate-400 truncate max-w-[180px]">{{ p.asunto }}</div>
+          </div>
+          <form method="POST" action="{% url 'adminpanel:plantilla_notif_toggle_activa' p.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="px-2 py-0.5 rounded text-[10px] font-bold {% if p.activa %}bg-emerald-100 text-emerald-800{% else %}bg-slate-200 text-slate-600{% endif %}">
+              {% if p.activa %}Activa{% else %}Inactiva{% endif %}
+            </button>
+          </form>
+        </div>
+        {% empty %}
+        <p class="text-xs text-slate-400 italic py-2">Sin plantillas configuradas.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

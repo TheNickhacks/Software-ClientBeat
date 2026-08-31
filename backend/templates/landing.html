@@ -1,86 +1,239 @@
 {% extends 'base.html' %}
+{% load humanize %}
 {% block title %}Client Beat — Mide la Satisfacción de tus Clientes{% endblock %}
+
 {% block content %}
 
-<section class="relative overflow-hidden pt-36 pb-20 md:pt-40">
-  <div class="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-indigo-600/20"></div>
+{# HERO SECTION CON LOGO CENTRADO Y ACCIÓN PRINCIPAL #}
+<section class="relative overflow-hidden pt-32 pb-20 md:pt-36 bg-gradient-to-b from-slate-900 via-slate-800 to-indigo-950 text-white">
+  <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cbblue/30 via-purple-900/10 to-transparent"></div>
   <div class="container mx-auto px-6 relative z-10">
-    <div class="max-w-4xl mx-auto text-center">
-      <img
-        src="https://storage.googleapis.com/hostinger-horizons-assets-prod/1a278a57-ddc3-48d4-9216-30f7b1b4e998/216e817e9696a1575f704e812c10a089.png"
-        alt="Client Beat Logo"
-        class="mx-auto h-64 md:h-80 w-auto object-contain mb-6"
-        style="filter: drop-shadow(0 12px 24px rgba(0,0,0,0.3))"
-      />
-      <h1 class="text-5xl md:text-7xl font-bold gradient-text mb-6 animate-fade-up delay-1">
-        Mide la Satisfacción de tus Clientes
+    <div class="max-w-4xl mx-auto text-center flex flex-col items-center">
+      {# Logo Centrado #}
+      <div class="mb-8 relative group">
+        <div class="absolute -inset-1 bg-gradient-to-r from-cbblue via-indigo-500 to-purple-500 rounded-full blur-xl opacity-50 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+        <img
+          src="https://storage.googleapis.com/hostinger-horizons-assets-prod/1a278a57-ddc3-48d4-9216-30f7b1b4e998/216e817e9696a1575f704e812c10a089.png"
+          alt="Client Beat Logo"
+          class="relative h-44 md:h-56 w-auto object-contain mx-auto drop-shadow-[0_15px_30px_rgba(0,0,0,0.5)]"
+        />
+      </div>
+
+      <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-cbblue/20 text-cbgreen-300 border border-cbblue/40 mb-6 uppercase tracking-wider">
+        <span class="w-2 h-2 rounded-full bg-cbgreen animate-pulse"></span>
+        Plataforma Lider de Experiencia de Clientes & Benchmarking
+      </span>
+
+      <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent leading-tight">
+        Mide la Satisfacción de tus Clientes en Tiempo Real
       </h1>
-      <p class="text-xl md:text-2xl text-gray-600 mb-8 animate-fade-up delay-2">
-        Transforma la experiencia de tus clientes con encuestas inteligentes, benchmarking sectorial y análisis en tiempo real.
+
+      <p class="text-lg md:text-xl text-slate-300 mb-10 max-w-2xl mx-auto font-normal leading-relaxed">
+        Transforma la experiencia de tu negocio con encuestas QR inteligentes, benchmarking sectorial con Google Places y análisis avanzado de voz del cliente.
       </p>
-      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-up delay-3">
-        <a href="/accounts/register/" class="btn-primary text-lg py-4 px-8">
-          Comenzar Ahora
-          <i class="fa-solid fa-arrow-right"></i>
+
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto">
+        <a href="#precios" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-cbblue to-indigo-600 text-white font-bold text-base hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-cbblue/30 hover:shadow-cbblue/50 transition-all hover:-translate-y-0.5">
+          <i class="fa fa-rocket"></i> Ver Planes y Contratar Ahora
+        </a>
+        <a href="#caracteristicas" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/10 text-white font-semibold text-base hover:bg-white/20 border border-white/10 transition">
+          <i class="fa fa-compass"></i> Explorar Características
         </a>
       </div>
     </div>
   </div>
 </section>
 
-<section id="features" class="py-20 bg-white/50">
+{# SECCIÓN CARACTERÍSTICAS MEJORADAS (6 CARDS) #}
+<section id="caracteristicas" class="py-24 bg-slate-50 relative">
+  <div id="features"></div>
   <div class="container mx-auto px-6">
-    <h2 class="text-4xl font-bold gradient-text mb-4 text-center">
-      ¿Por qué elegir nuestra plataforma?
-    </h2>
-    <p class="text-xl text-gray-600 max-w-3xl mx-auto text-center mb-16">
-      Todo lo que necesitas para entender, medir y mejorar la experiencia de tus clientes en un solo lugar.
-    </p>
-    <div class="grid md:grid-cols-3 gap-8">
-      <div class="glass-effect p-8 rounded-2xl card-hover text-center animate-fade-up delay-1">
-        <div class="mb-6 flex justify-center">
-          <i class="fa-solid fa-chart-line text-blue-600 w-12 h-12 text-5xl"></i>
+    <div class="text-center max-w-3xl mx-auto mb-16">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">
+        Todo lo que tu empresa necesita en una sola plataforma
+      </h2>
+      <p class="text-slate-600 text-base md:text-lg">
+        Diseñado para dueños de negocios, cadenas de locales y equipos operacionales que buscan agilidad y resultados tangibles.
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {# Card 1 #}
+      <div class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-2xl mb-6">
+          <i class="fa fa-qrcode"></i>
         </div>
-        <h3 class="text-xl font-bold text-slate-800 mb-3">Análisis Inteligente</h3>
-        <p class="text-gray-600">
-          Métricas avanzadas y visualizaciones que revelan insights accionables.
+        <h3 class="text-xl font-bold text-slate-900 mb-3">Encuestas QR Instantáneas</h3>
+        <p class="text-slate-600 text-sm leading-relaxed">
+          Captura evaluaciones NPS (0-10) y emociones CSAT directamente en tus mesas, cajas o mostradores mediante códigos QR dinámicos por local.
         </p>
       </div>
-      <div class="glass-effect p-8 rounded-2xl card-hover text-center animate-fade-up delay-2">
-        <div class="mb-6 flex justify-center">
-          <i class="fa-solid fa-trending-up text-purple-600 w-12 h-12 text-5xl"></i>
+
+      {# Card 2 #}
+      <div class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="w-14 h-14 rounded-2xl bg-cbblue/10 text-cbblue flex items-center justify-center text-2xl mb-6">
+          <i class="fa fa-chart-line"></i>
         </div>
-        <h3 class="text-xl font-bold text-slate-800 mb-3">Benchmarking Sectorial</h3>
-        <p class="text-gray-600">
-          Compárate con empresas de tu rubro y descubre oportunidades de mejora.
+        <h3 class="text-xl font-bold text-slate-900 mb-3">Benchmarking Sectorial</h3>
+        <p class="text-slate-600 text-sm leading-relaxed">
+          Compara tus puntuaciones y volumen de reseñas de Google Places con tus competidores directos por rubro, comuna y región.
         </p>
       </div>
-      <div class="glass-effect p-8 rounded-2xl card-hover text-center animate-fade-up delay-3">
-        <div class="mb-6 flex justify-center">
-          <i class="fa-solid fa-comments text-indigo-600 w-12 h-12 text-5xl"></i>
+
+      {# Card 3 #}
+      <div class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl mb-6">
+          <i class="fa fa-brain"></i>
         </div>
-        <h3 class="text-xl font-bold text-slate-800 mb-3">Encuestas Personalizadas</h3>
-        <p class="text-gray-600">
-          Crea encuestas NPS y CSAT mediante códigos QR en tus locales.
+        <h3 class="text-xl font-bold text-slate-900 mb-3">Análisis Temático 4D</h3>
+        <p class="text-slate-600 text-sm leading-relaxed">
+          Clasifica automáticamente los comentarios en 4 dimensiones clave: Atención, Producto, Espacio/Ambiente e Higiene con modismos locales.
+        </p>
+      </div>
+
+      {# Card 4 #}
+      <div class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-2xl mb-6">
+          <i class="fa fa-bell"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-900 mb-3">Alertas de Detractores</h3>
+        <p class="text-slate-600 text-sm leading-relaxed">
+          Recibe notificaciones inmediatas ante clientes insatisfechos (NPS ≤ 6) para tomar acciones correctivas antes de que dejen el local.
+        </p>
+      </div>
+
+      {# Card 5 #}
+      <div class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl mb-6">
+          <i class="fa fa-clock"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-900 mb-3">Latencia & Horas Pico</h3>
+        <p class="text-slate-600 text-sm leading-relaxed">
+          Descubre los días y horas de mayor afluencia de respuestas para optimizar turnos de personal y mejorar la continuidad operativa.
+        </p>
+      </div>
+
+      {# Card 6 #}
+      <div class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl mb-6">
+          <i class="fa fa-file-excel"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-900 mb-3">Reportería & Exportación</h3>
+        <p class="text-slate-600 text-sm leading-relaxed">
+          Genera reportes ejecutivos en Excel con fórmulas metodológicas y datos crudos anonimizados listos para tus reuniones gerenciales.
         </p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="py-20 bg-gradient-to-r from-blue-600 to-purple-600">
-  <div class="container mx-auto px-6 text-center">
-    <h2 class="text-4xl font-bold text-white mb-6">
-      ¿Listo para transformar tu negocio?
+{# SECCIÓN DE PRECIOS VIGENTES Y BOTÓN DE CONTRATACIÓN #}
+<section id="precios" class="py-24 bg-white relative">
+  <div id="pricing"></div>
+  <div id="pricyng"></div>
+  <div class="container mx-auto px-6">
+    <div class="text-center max-w-3xl mx-auto mb-16">
+      <span class="text-cbblue font-bold text-xs uppercase tracking-widest bg-cbblue/10 px-3 py-1 rounded-full">Suscripciones Transparentes</span>
+      <h2 class="text-3xl md:text-4xl font-extrabold text-slate-900 mt-3 mb-4">
+        Planes diseñados para escalar tu negocio
+      </h2>
+      <p class="text-slate-600 text-base md:text-lg">
+        Selecciona el plan que mejor se adapte a la cantidad de locales de tu empresa. Sin permanencia forzada.
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
+      {% for p in planes %}
+      <div class="rounded-3xl border transition-all duration-300 flex flex-col justify-between p-8 relative
+                  {% if p.es_plan_default %}border-2 border-cbblue shadow-2xl bg-gradient-to-b from-white to-blue-50/30 scale-105 z-10{% else %}border-slate-200 shadow-lg hover:shadow-xl bg-white{% endif %}">
+        
+        {% if p.es_plan_default %}
+          <div class="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-cbblue to-indigo-600 text-white text-xs font-bold uppercase tracking-wider shadow">
+            🔥 El Más Popular
+          </div>
+        {% endif %}
+
+        <div>
+          <div class="mb-6">
+            <h3 class="text-2xl font-bold text-slate-900 mb-2">{{ p.get_nombre_mostrar }}</h3>
+            <p class="text-xs text-slate-500 min-h-[36px] line-clamp-2">{{ p.descripcion|default:"Ideal para potenciar la reputación y medir satisfacción de clientes." }}</p>
+          </div>
+
+          <div class="mb-6 pb-6 border-b border-slate-100">
+            <div class="flex items-baseline gap-1">
+              <span class="text-4xl font-extrabold text-slate-900">
+                {% if p.precio_clp %}${{ p.precio_clp|intcomma }}{% elif p.precio_uf %}{{ p.precio_uf }} UF{% else %}Consultar{% endif %}
+              </span>
+              <span class="text-slate-500 text-xs font-bold">/ mes + IVA</span>
+            </div>
+            {% if p.costo_local_adicional_clp > 0 %}
+              <div class="text-[11px] font-semibold text-slate-500 mt-2">
+                <i class="fa fa-plus-circle text-cbblue"></i> Incluye {{ p.locales_gratis_incluidos }} locales ($30.000 por local extra)
+              </div>
+            {% else %}
+              <div class="text-[11px] font-semibold text-emerald-600 mt-2">
+                <i class="fa fa-check-circle"></i> Incluye {{ p.locales_permitidos }} locales físicos
+              </div>
+            {% endif %}
+          </div>
+
+          {# Características del Plan #}
+          <div class="space-y-3 mb-8">
+            <div class="text-xs font-bold text-slate-700 uppercase tracking-wider">Incluye:</div>
+            {% if p.caracteristicas %}
+              {% for feat in p.caracteristicas %}
+                <div class="flex items-start gap-2.5 text-xs text-slate-700 font-medium">
+                  <i class="fa fa-check text-emerald-500 mt-0.5 shrink-0"></i>
+                  <span>{{ feat }}</span>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="flex items-start gap-2.5 text-xs text-slate-700 font-medium">
+                <i class="fa fa-check text-emerald-500 mt-0.5 shrink-0"></i>
+                <span>Panel de control con Métricas NPS & CSAT</span>
+              </div>
+              <div class="flex items-start gap-2.5 text-xs text-slate-700 font-medium">
+                <i class="fa fa-check text-emerald-500 mt-0.5 shrink-0"></i>
+                <span>Encuestas ilimitadas mediante código QR</span>
+              </div>
+              <div class="flex items-start gap-2.5 text-xs text-slate-700 font-medium">
+                <i class="fa fa-check text-emerald-500 mt-0.5 shrink-0"></i>
+                <span>Benchmarking por rubro y competidores Google</span>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        {# Botón de Contratación #}
+        <div>
+          <a href="/accounts/register/?plan_id={{ p.id }}"
+             class="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all
+                    {% if p.es_plan_default %}bg-cbblue hover:bg-blue-700 text-white shadow-lg shadow-cbblue/20{% else %}bg-slate-900 hover:bg-slate-800 text-white{% endif %}">
+            <i class="fa fa-credit-card"></i> Contratar Plan Ahora
+          </a>
+        </div>
+      </div>
+      {% empty %}
+      <div class="col-span-3 text-center py-12 bg-slate-50 rounded-2xl border border-slate-200">
+        <p class="text-slate-500 italic text-sm mb-4">No hay planes públicos cargados actualmente.</p>
+        <a href="/accounts/register/" class="btn-primary">Registrarse Gratis</a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{# CALL TO ACTION FINAL #}
+<section class="py-20 bg-gradient-to-r from-cbblue via-indigo-700 to-purple-800 text-white">
+  <div class="container mx-auto px-6 text-center max-w-3xl">
+    <h2 class="text-3xl md:text-5xl font-extrabold mb-6">
+      ¿Listo para llevar la voz de tus clientes al siguiente nivel?
     </h2>
-    <p class="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-      Únete a cientos de empresas que ya están midiendo y mejorando la satisfacción de sus clientes con Client Beat.
+    <p class="text-base md:text-lg text-blue-100 mb-8 font-normal">
+      Comienza hoy mismo a medir la satisfacción en tus locales y toma mejores decisiones basadas en datos reales.
     </p>
-    <a
-      href="/accounts/register/"
-      class="inline-block bg-white text-blue-600 font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
-    >
-      Ver Plan y Comenzar
+    <a href="/accounts/register/" class="inline-flex items-center gap-2 bg-white text-cbblue font-extrabold text-base px-8 py-4 rounded-xl shadow-xl hover:bg-slate-100 transition-all hover:-translate-y-0.5">
+      <i class="fa fa-user-plus"></i> Crear Cuenta de Negocio
     </a>
   </div>
 </section>

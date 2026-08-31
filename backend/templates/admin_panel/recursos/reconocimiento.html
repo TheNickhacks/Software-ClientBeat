@@ -1,0 +1,51 @@
+{% extends 'admin_panel/base.html' %}
+{% block admin_subtitle %}5.3 Programa de Reconocimiento, Distinción y Sellos de Calidad ClientBeat{% endblock %}
+
+{% block admin_content %}
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
+  <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+    <div>
+      <h2 class="text-lg font-bold text-slate-900">Programa de Reconocimiento y Sellos de Excelencia</h2>
+      <p class="text-xs text-slate-500 mt-0.5">Otorgamiento de insignias y distintivos de calidad para negocios destacados en su rubro</p>
+    </div>
+    <span class="px-3 py-1 bg-cbgreen/10 text-cbgreen-600 font-bold text-xs rounded-lg">
+      <i class="fa fa-award mr-1"></i> Fase 1 Activa
+    </span>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="border border-slate-200 rounded-xl p-5 bg-slate-50 text-center">
+      <div class="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-3">
+        <i class="fa fa-crown"></i>
+      </div>
+      <h3 class="font-bold text-slate-900 text-sm mb-1">Líder en Satisfacción CSAT</h3>
+      <p class="text-xs text-slate-500 mb-4">Negocios con CSAT superior al 90% sostenido por 3 meses en su comuna.</p>
+      <button class="w-full py-2 bg-cbblue text-white rounded-lg text-xs font-semibold hover:bg-cbblue/90">
+        Gestionar Otorgamiento
+      </button>
+    </div>
+
+    <div class="border border-slate-200 rounded-xl p-5 bg-slate-50 text-center">
+      <div class="w-14 h-14 bg-cbblue/10 text-cbblue rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-3">
+        <i class="fa fa-star"></i>
+      </div>
+      <h3 class="font-bold text-slate-900 text-sm mb-1">Excelencia en Reseñas Google</h3>
+      <p class="text-xs text-slate-500 mb-4">Puntuación promedio superior a 4.7★ con más de 50 valoraciones.</p>
+      <button class="w-full py-2 bg-cbblue text-white rounded-lg text-xs font-semibold hover:bg-cbblue/90">
+        Gestionar Otorgamiento
+      </button>
+    </div>
+
+    <div class="border border-slate-200 rounded-xl p-5 bg-slate-50 text-center">
+      <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl font-bold mx-auto mb-3">
+        <i class="fa fa-shield-alt"></i>
+      </div>
+      <h3 class="font-bold text-slate-900 text-sm mb-1">Sello Verificado ClientBeat</h3>
+      <p class="text-xs text-slate-500 mb-4">Distintivo digital de transparencia activa para mostrar en local o sitio web.</p>
+      <button class="w-full py-2 bg-cbblue text-white rounded-lg text-xs font-semibold hover:bg-cbblue/90">
+        Gestionar Otorgamiento
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
