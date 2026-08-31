@@ -191,6 +191,7 @@ def onboarding_siguiente_paso(usuario):
     Devuelve (paso: int, descripcion: str)
     """
     from apps.businesses.models import Negocio, Local
+    from apps.billing.models import EstadoSuscripcionChoices
     if not usuario or not getattr(usuario, 'id', None):
         return 1, 'usuario no identificado'
     negocios = Negocio.objects.filter(dueño_id=usuario.id)
