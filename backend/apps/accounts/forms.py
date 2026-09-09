@@ -95,11 +95,13 @@ class RegistroUsuarioForm(forms.ModelForm):
         user = super().save(commit=False)
         user.username = self.cleaned_data['email'].split('@')[0] + '_' + secrets.token_hex(3)
         user.set_password(self.cleaned_data['password1'])
+        # ================= ROLES SEGMENTACIÓN =================
+        # Todo usuario que se registra por la web = ROL = DUEÑO, is_staff=False (solo Admin Soporte real tiene is_staff).
         user.rol = User.RolChoices.DUENO
+        user.is_staff = False
         user.es_mayor_18 = True
         user.acepto_terminos = date.today()
         user.is_active = True
-        user.is_staff = True
         if commit:
             user.save()
         return user

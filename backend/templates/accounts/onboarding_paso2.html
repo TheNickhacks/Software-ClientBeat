@@ -264,10 +264,10 @@
           </div>
 
           <div class="flex flex-col sm:flex-row gap-3 pt-4">
-            <button type="submit" name="accion" value="reiniciar" form="reiniciarForm" class="btn-secondary flex-1 justify-center">
+            <button type="button" id="btnReiniciarWizard" class="btn-secondary flex-1 justify-center">
               <i class="fa fa-rotate-left"></i> Reiniciar wizard
             </button>
-            <button type="submit" id="btnGuardarPaso2" class="btn-primary flex-1 sm:flex-none">
+            <button type="submit" id="btnGuardarPaso2" data-submit-once class="btn-primary flex-1 sm:flex-none !py-3 !px-7 text-base font-bold">
               Finalizar configuración →
             </button>
           </div>
@@ -294,6 +294,20 @@
   const negProvincia = document.getElementById('id_neg-provincia');
   const negComuna    = document.getElementById('id_neg-comuna');
   const geoLoading   = document.getElementById('geoLoading');
+  const btnGuardar   = document.getElementById('btnGuardarPaso2');
+  const btnReiniciar = document.getElementById('btnReiniciarWizard');
+  // ================= CACHE GEO EN MEMORIA (performance) =================
+  // Evitamos hacer 2 veces el fetch a la misma región/provincia
+  const geoCache = new Map();
+  let geoPeticionesEnCurso = 0;
+
+  // Botón reiniciar (type=button → no intercepta submit accidental)
+  if (btnReiniciar){
+    btnReiniciar.addEventListener('click', function(){
+      if (confirm('⚠️ ¿Seguro que quieres reiniciar el onboarding?\nSe perderán los datos de negocio y local no guardados.') === false) return;
+      window.location.href = '/accounts/onboarding/?accion=reiniciar';
+    });
+  }
 
   function setLoading(on){
     if (!geoLoading) return;
@@ -321,10 +335,21 @@
   }
 
   async function cargarProvincias(regionId){
+    if (btnGuardar) btnGuardar.disabled = true;
+    geoPeticionesEnCurso++;
     if (!regionId){
       fillSelect(negProvincia, [], 'Selecciona primero una región');
       fillSelect(negComuna, [], 'Selecciona primero una provincia');
-      return;
+      geoPeticionesEnCurso = Math.max(0, geoPeticionesEnCurso - 1);
+      if (geoPeticionesEnCurso === 0 && btnGuardar) btnGuardar.disabled = false;
+      return cargarComunas(null, true);
+    }
+    const cacheKey = 'provincias/' + regionId;
+    if (geoCache.has(cacheKey)){
+      fillSelect(negProvincia, geoCache.get(cacheKey), 'Selecciona una provincia');
+      geoPeticionesEnCurso = Math.max(0, geoPeticionesEnCurso - 1);
+      if (geoPeticionesEnCurso === 0 && btnGuardar) btnGuardar.disabled = false;
+      return cargarComunas(null, true);
     }
     setLoading(true);
     try {
@@ -332,20 +357,35 @@
       const data = await res.json();
       if (data.ok){
         fillSelect(negProvincia, data.provincias, 'Selecciona una provincia');
+        geoCache.set(cacheKey, data.provincias);
       }
     } catch(e){
       console.error('Error cargar provincias:', e);
     } finally {
       setLoading(false);
-      cargarComunas(null, true);
+      geoPeticionesEnCurso = Math.max(0, geoPeticionesEnCurso - 1);
+      if (geoPeticionesEnCurso === 0 && btnGuardar) btnGuardar.disabled = false;
+      await cargarComunas(null, true);
     }
   }
 
   async function cargarComunas(provinciaId, skipProvincia){
+    if (btnGuardar) btnGuardar.disabled = true;
+    geoPeticionesEnCurso++;
     const provId = provinciaId || negProvincia?.value;
     if (!provId){
       fillSelect(negComuna, [], 'Selecciona primero una provincia');
-      syncLocalConNegocio();
+      geoPeticionesEnCurso = Math.max(0, geoPeticionesEnCurso - 1);
+      if (geoPeticionesEnCurso === 0 && btnGuardar) btnGuardar.disabled = false;
+      setTimeout(syncLocalConNegocio, 0);
+      return;
+    }
+    const cacheKey = 'comunas/' + provId;
+    if (geoCache.has(cacheKey)){
+      fillSelect(negComuna, geoCache.get(cacheKey), 'Selecciona una comuna');
+      geoPeticionesEnCurso = Math.max(0, geoPeticionesEnCurso - 1);
+      if (geoPeticionesEnCurso === 0 && btnGuardar) btnGuardar.disabled = false;
+      setTimeout(syncLocalConNegocio, 0);
       return;
     }
     setLoading(true);
@@ -354,12 +394,15 @@
       const data = await res.json();
       if (data.ok){
         fillSelect(negComuna, data.comunas, 'Selecciona una comuna');
+        geoCache.set(cacheKey, data.comunas);
       }
     } catch(e){
       console.error('Error cargar comunas:', e);
     } finally {
       setLoading(false);
-      syncLocalConNegocio();
+      geoPeticionesEnCurso = Math.max(0, geoPeticionesEnCurso - 1);
+      if (geoPeticionesEnCurso === 0 && btnGuardar) btnGuardar.disabled = false;
+      setTimeout(syncLocalConNegocio, 0);
     }
   }
 
@@ -369,7 +412,6 @@
   if (negProvincia) {
     negProvincia.addEventListener('change', e => cargarComunas(e.target.value));
   }
-  // Carga inicial si hay valores previos (POST con errores o edición)
   if (negRegion && negRegion.value) cargarProvincias(negRegion.value);
 
   // ================= CHECKBOX: MISMA DIRECCIÓN LOCAL =================
@@ -381,8 +423,9 @@
   const negDirInput = document.getElementById('id_neg-direccion');
 
   function toggleLocalFields(){
-    const activo = checkMismaDir.checked;
+    const activo = checkMismaDir ? checkMismaDir.checked : false;
     const comunaInputs = seccDatos ? seccDatos.querySelectorAll('select, input') : [];
+    if (btnGuardar) btnGuardar.disabled = (geoPeticionesEnCurso > 0);
     if (seccDir){
       const dirInputs = seccDir.querySelectorAll('input, textarea');
       dirInputs.forEach(i => { if (i !== checkMismaDir) i.disabled = activo; });
@@ -390,28 +433,32 @@
       else seccDir.classList.remove('opacity-60','pointer-events-none');
     }
     comunaInputs.forEach(i => {
-      if (i.id === 'id_loc-nombre' || i.id && i.id.includes('nombre')) return; // nombre siempre editable
+      if (i.id === 'id_loc-nombre' || (i.id && i.id.includes('nombre'))) return;
       if (i === checkMismaDir) return;
-      if (i.tagName === 'SELECT') {
-        i.disabled = activo;
-      }
+      if (i.tagName === 'SELECT') i.disabled = activo;
     });
-    const grid = seccDatos;
-    if (grid){
-      if (activo) grid.style.opacity = '0.85';
-      else grid.style.opacity = '';
+    if (seccDatos){
+      seccDatos.style.opacity = activo ? '0.85' : '';
     }
-    syncLocalConNegocio();
+    if (geoPeticionesEnCurso > 0) {
+      const revisar = setInterval(function(){
+        if (geoPeticionesEnCurso === 0){
+          clearInterval(revisar);
+          syncLocalConNegocio();
+        }
+      }, 50);
+      setTimeout(function(){ clearInterval(revisar); syncLocalConNegocio(); }, 3000);
+    } else {
+      syncLocalConNegocio();
+    }
   }
 
   function syncLocalConNegocio(){
     if (!checkMismaDir || !checkMismaDir.checked) return;
-    // Copiar comuna
     if (locComunaSel && negComuna && negComuna.value){
       const busco = String(negComuna.value);
       const coinciden = [...locComunaSel.options].some(o => String(o.value) === busco);
       if (!coinciden){
-        // Si aún no tiene options, rellenar con comuna actual (copia exacta)
         const nombre = negComuna.options[negComuna.selectedIndex]?.textContent;
         if (nombre){
           locComunaSel.innerHTML = '';
@@ -424,7 +471,6 @@
         locComunaSel.value = busco;
       }
     }
-    // Copiar dirección
     if (locDirInput && negDirInput){
       if (!locDirInput.value && negDirInput.value) {
         locDirInput.value = negDirInput.value;
@@ -436,22 +482,19 @@
 
   if (checkMismaDir){
     checkMismaDir.addEventListener('change', toggleLocalFields);
-    toggleLocalFields();
-    // Sync cuando cambia el negocio
+    if (geoPeticionesEnCurso > 0) {
+      const revisarInit = setInterval(function(){
+        if (geoPeticionesEnCurso === 0){
+          clearInterval(revisarInit);
+          toggleLocalFields();
+        }
+      }, 50);
+      setTimeout(function(){ clearInterval(revisarInit); toggleLocalFields(); }, 3000);
+    } else {
+      toggleLocalFields();
+    }
     negComuna?.addEventListener('change', syncLocalConNegocio);
     negDirInput?.addEventListener('input', syncLocalConNegocio);
-  }
-
-  // ================= CHECK ANTES DE SUBMIT =================
-  const form = document.getElementById('onboardingPaso2Form');
-  if (form){
-    form.addEventListener('submit', function(){
-      const btn = document.getElementById('btnGuardarPaso2');
-      if (btn){
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Guardando…';
-      }
-    });
   }
 })();
 </script>

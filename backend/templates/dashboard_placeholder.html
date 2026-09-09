@@ -53,6 +53,64 @@
       </div>
     {% endif %}
 
+
+    {# ---------------- ESTADO SUSCRIPCIÓN (PENDIENTE / VENCIDA / SUSPENDIDA) ---------------- #}
+    {% if suscripcion_ultima and suscripcion_estado_color != 'emerald' %}
+      <div class="mb-8 rounded-2xl overflow-hidden shadow animate-fade-up delay-1">
+        <div class="p-5 md:p-6 text-white
+                    {% if suscripcion_estado_color == 'amber' %}bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500
+                    {% elif suscripcion_estado_color == 'rose' %}bg-gradient-to-r from-rose-500 via-rose-600 to-red-500
+                    {% elif suscripcion_estado_color == 'orange' %}bg-gradient-to-r from-orange-500 via-orange-600 to-amber-600
+                    {% else %}bg-gradient-to-r from-slate-500 via-slate-600 to-slate-700{% endif %}">
+          <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+            <div class="flex items-start gap-4 max-w-3xl">
+              <div class="shrink-0 w-12 h-12 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center shadow-inner">
+                <i class="fa {{ suscripcion_estado_icon|default:'fa-circle-info' }} text-2xl"></i>
+              </div>
+              <div>
+                {% if suscripcion_estado_color == 'amber' %}
+                  <h3 class="text-xl md:text-2xl font-bold mb-1 flex items-center gap-2">
+                    ⏳ Suscripción pendiente de activación
+                  </h3>
+                  <p class="text-sm md:text-base opacity-95 leading-relaxed">
+                    Tu plan <b>{{ plan_activo.nombre|default:'seleccionado' }}</b> fue registrado exitosamente y está siendo revisado por nuestro equipo de <b>Admin Soporte ClientBeat</b>.
+                    Te enviaremos un correo apenas tu cuenta quede <b>ACTIVA</b>.
+                    Si tienes urgencia, escríbenos a <a class="underline font-bold hover:opacity-80" href="mailto:soporte@clientbeat.cl">soporte@clientbeat.cl</a>.
+                  </p>
+                {% elif suscripcion_estado_color == 'rose' %}
+                  <h3 class="text-xl md:text-2xl font-bold mb-1 flex items-center gap-2">
+                    ⚠️ Suscripción {{ suscripcion_estado_label|default:'vencida' }}
+                  </h3>
+                  <p class="text-sm md:text-base opacity-95 leading-relaxed">
+                    Tu suscripción al plan <b>{{ plan_activo.nombre|default:'actual' }}</b> está vencida. Para seguir accediendo a todas las funcionalidades
+                    (Benchmark competitividad, reseñas ilimitadas, generador QR NPS/CSAT) contacta a <a class="underline font-bold hover:opacity-80" href="mailto:soporte@clientbeat.cl">soporte@clientbeat.cl</a>.
+                  </p>
+                {% elif suscripcion_estado_color == 'orange' %}
+                  <h3 class="text-xl md:text-2xl font-bold mb-1 flex items-center gap-2">
+                    🔒 Suscripción suspendida
+                  </h3>
+                  <p class="text-sm md:text-base opacity-95 leading-relaxed">
+                    Tu suscripción se encuentra suspendida. Contacta a <a class="underline font-bold hover:opacity-80" href="mailto:soporte@clientbeat.cl">soporte@clientbeat.cl</a> para regularizar.
+                  </p>
+                {% else %}
+                  <h3 class="text-xl md:text-2xl font-bold mb-1">Estado: {{ suscripcion_estado_label }}</h3>
+                  <p class="text-sm md:text-base opacity-95">
+                    Contacta a <a class="underline font-bold hover:opacity-80" href="mailto:soporte@clientbeat.cl">soporte@clientbeat.cl</a> si necesitas ayuda.
+                  </p>
+                {% endif %}
+              </div>
+            </div>
+            <div class="shrink-0 flex items-center gap-2">
+              <span class="inline-flex items-center gap-2 bg-white/15 backdrop-blur px-3 py-1.5 rounded-full text-xs md:text-sm font-bold">
+                <i class="fa-solid fa-tag"></i> {{ plan_activo.nombre|default:'Sin plan' }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+
     {# ---------------- HEADER CON ROL / NEGOCIO ---------------- #}
     <div class="flex flex-col md:flex-row md:items-end md:justify-between mb-6 gap-4 animate-fade-up delay-2">
       <div>

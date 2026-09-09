@@ -1,10 +1,11 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import views as auth_views
+from django.contrib.auth import views as auth_views, login as auth_login
 from django.contrib import messages
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.csrf import csrf_protect
+from django.db import transaction, IntegrityError
 
 from .forms import RegistroUsuarioForm
 from .onboarding_service import (
@@ -25,7 +26,13 @@ class LoginView(auth_views.LoginView):
 
     def get_success_url(self):
         user = self.request.user
-        if getattr(user, 'is_admin_soporte', False) or user.is_staff or user.is_superuser or getattr(user, 'rol', None) == 'ADMIN_SOPORTE':
+        # ================= ROLES SEGMENTACIÓN =================
+        # Panel admin-panel ES EXCLUSIVO para:
+        # · SuperUser Django (is_superuser=True — técnico acceso total Django Admin)
+        # · Rol Global == ADMIN_SOPORTE (operadores de soporte)
+        # Todo el resto (DUEÑO / USUARIO_EQUIPO) van a dashboard cliente.
+        # is_staff NO otorga nada (bug histórico: los DUEÑOS tenían is_staff=True accidentalmente).
+        if user.is_superuser or getattr(user, 'rol', None) == 'ADMIN_SOPORTE':
             return '/admin-panel/'
         if onboarding_pendiente(user):
             paso, _ = onboarding_siguiente_paso(user)
@@ -62,12 +69,13 @@ class OnboardingWizardView(View):
     SESSION_KEY_STEP = 'onboarding_paso_actual'
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated and (getattr(request.user, 'is_admin_soporte', False) or request.user.is_staff or request.user.is_superuser):
+        # Onboarding = solo para DUEÑOS / USUARIOS_EQUIPO.
+        # ADMIN_SOPORTE / SuperUser no hacen onboarding y van a admin-panel.
+        if request.user.is_authenticated and (request.user.is_superuser or getattr(request.user, 'rol', None) == 'ADMIN_SOPORTE'):
             return redirect('/admin-panel/')
         if request.user.is_authenticated and not onboarding_pendiente(request.user):
             return redirect('/dashboard/')
         return super().dispatch(request, *args, **kwargs)
-
 
     def get_paso(self, request):
         try:
@@ -103,8 +111,8 @@ class OnboardingWizardView(View):
         uid = request.session.get(self.SESSION_KEY_USER)
         if uid:
             try:
-                return User.objects.get(id=uid)
-            except (User.DoesNotExist, ValueError, TypeError):
+                return User.objects.filter(id=uid).first()
+            except (ValueError, TypeError):
                 pass
         return None
 
@@ -150,22 +158,18 @@ class OnboardingWizardView(View):
             for k in [self.SESSION_KEY_USER, self.SESSION_KEY_NEGOCIO,
                       self.SESSION_KEY_LOCAL, self.SESSION_KEY_STEP, 'onboarding_plan_id']:
                 request.session.pop(k, None)
-            # Si es usuario autenticado, no lo desloguea pero fuerza paso 1
             if not request.user.is_authenticated:
                 return self._redirect_paso(1)
             return redirect('/accounts/logout/?next=/accounts/register/')
-
 
         # Detección automática de paso real por BD del usuario logueado
         user = self.get_saved_user(request)
         if user is not None:
             paso_detectado, _ = onboarding_siguiente_paso(user)
             if paso_detectado >= 2:
-                # Carga objetos por BD (por si la sesión se perdió)
                 self.get_saved_negocio(request)
                 self.get_saved_local(request)
                 pedido = self.get_paso(request)
-                # Si el usuario pide paso 1 pero tiene cuenta, lo subimos al paso que corresponde
                 if pedido < paso_detectado:
                     return self._redirect_paso(paso_detectado)
 
@@ -205,16 +209,47 @@ class OnboardingWizardView(View):
     #  PASO 1 — Registro Usuario
     # ===========================
     def _procesar_paso1(self, request):
-        # Si usuario ya autenticado con onboarding pendiente, no necesita registrarse
         saved = self.get_saved_user(request)
         if saved is not None and onboarding_pendiente(saved):
             return self._redirect_paso(2)
 
         form = RegistroUsuarioForm(request.POST or None)
         if form.is_valid():
-            user = form.save(commit=True)
+            # ================= IDEMPOTENCIA POR EMAIL (doble click) =================
+            try:
+                with transaction.atomic():
+                    email = form.cleaned_data['email'].strip().lower()
+                    from django.contrib.auth import get_user_model
+                    User = get_user_model()
+                    existente = User.objects.filter(email__iexact=email).first()
+                    if existente is None:
+                        user = form.save(commit=True)
+                    else:
+                        user = existente
+                        import django.contrib.auth.hashers as hashers
+                        if not hashers.check_password(form.cleaned_data['password1'], user.password):
+                            form.add_error(None, 'Este correo ya está registrado. Por favor inicia sesión en /accounts/login/.')
+                            ctx = self._build_context(request, 1, form=form)
+                            return render(request, self.template_dict[1], ctx)
+            except IntegrityError:
+                email = form.cleaned_data['email'].strip().lower()
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                user = User.objects.filter(email__iexact=email).first()
+                if user is None:
+                    raise
+
             marcar_paso1_usuario(user)
             self.save_step_session(request, 2, user=user)
+
+            # Auto-login inmediato → aunque se pierdan session keys del wizard, sigue autenticado y retorna /dashboard si es necesario.
+            backend = 'django.contrib.auth.backends.ModelBackend'
+            if not request.user.is_authenticated or request.user.id != user.id:
+                try:
+                    user.backend = backend
+                    auth_login(request, user, backend=backend)
+                except Exception:
+                    pass
             return self._redirect_paso(2)
         ctx = self._build_context(request, 1, form=form)
         return render(request, self.template_dict[1], ctx)
@@ -227,24 +262,66 @@ class OnboardingWizardView(View):
         if user is None:
             return self._redirect_paso(1)
 
+        # ================= IDEMPOTENCIA (doble click => no crea 2 negocios / 2 locales
+        from apps.businesses.models import Negocio, Local
+        negocio_preexistente = (
+            Negocio.objects
+            .filter(dueño_id=user.id, estado=Negocio.EstadoChoices.ACTIVO)
+            .order_by('-fecha_creacion')
+            .first()
+        )
+        local_preexistente = None
+        if negocio_preexistente:
+            local_preexistente = (
+                Local.objects
+                .filter(negocio__dueño_id=user.id, estado=Local.EstadoChoices.ACTIVO)
+                .order_by('-fecha_creacion')
+                .first()
+            )
+
         form_negocio = NegocioOnboardingForm(
             request.POST or None,
             prefix='neg',
-            instance=self.get_saved_negocio(request),
+            instance=negocio_preexistente if negocio_preexistente else self.get_saved_negocio(request),
         )
         form_local = LocalOnboardingForm(
             request.POST or None,
             prefix='loc',
-            instance=self.get_saved_local(request),
+            instance=local_preexistente if local_preexistente else self.get_saved_local(request),
         )
 
         if form_negocio.is_valid() and form_local.is_valid():
-            negocio = form_negocio.save_negocio(dueño=user, commit=True)
-            if not form_local.cleaned_data.get('direccion') and negocio.direccion:
-                form_local.instance.direccion = negocio.direccion
-            if not form_local.cleaned_data.get('ciudad') and negocio.ciudad:
-                form_local.instance.ciudad = negocio.ciudad
-            local = form_local.save_local(negocio=negocio, commit=True)
+            try:
+                with transaction.atomic():
+                    if negocio_preexistente is None and not form_negocio.instance.pk:
+                        negocio = form_negocio.save_negocio(dueño=user, commit=True)
+                    else:
+                        negocio = form_negocio.save_negocio(dueño=user, commit=False)
+                        if negocio_preexistente is not None:
+                            negocio.pk = negocio_preexistente.pk
+                        negocio.save()
+
+                    if not form_local.cleaned_data.get('direccion') and negocio.direccion:
+                        form_local.instance.direccion = negocio.direccion
+                    if not form_local.cleaned_data.get('ciudad') and negocio.ciudad:
+                        form_local.instance.ciudad = negocio.ciudad
+
+                    if local_preexistente is None and not form_local.instance.pk:
+                        local = form_local.save_local(negocio=negocio, commit=True)
+                    else:
+                        local = form_local.save_local(negocio=negocio, commit=False)
+                        if local_preexistente is not None:
+                            local.pk = local_preexistente.pk
+                        local.negocio_id = negocio.id
+                        local.save()
+            except IntegrityError:
+                # Race condition extremo: otro proceso creó el mismo Negocio/Local
+                # entre nuestro filter() y save(). Recuperamos desde BD y seguimos.
+                negocio = Negocio.objects.filter(dueño_id=user.id).order_by('-fecha_creacion').first()
+                local = Local.objects.filter(negocio=negocio).order_by('-fecha_creacion').first() if negocio else None
+                if negocio is None or local is None:
+                    raise
+
             marcar_paso2_negocio(negocio, user)
             self.save_step_session(request, 3, negocio=negocio, local=local)
             return self._redirect_paso(3)
@@ -265,8 +342,19 @@ class OnboardingWizardView(View):
         if user is None or negocio is None or local is None:
             return self._redirect_paso(1)
 
+        # ================= IDEMPOTENCIA DOBLE CLICK (si onboarding ya terminó) =================
+        if not onboarding_pendiente(user):
+            messages.success(
+                request,
+                f'✅ Onboarding ya completado. Bienvenido/a nuevamente {user.first_name or user.email}!'
+            )
+            for k in [self.SESSION_KEY_USER, self.SESSION_KEY_NEGOCIO,
+                      self.SESSION_KEY_LOCAL, self.SESSION_KEY_STEP]:
+                request.session.pop(k, None)
+            return redirect('/dashboard/?welcome=1')
+
         aceptar = request.POST.get('aceptar_plan') == '1'
-        plan = get_plan_onboarding()
+        plan = get_plan_onboarding(request.session.get('onboarding_plan_id'))
         plan_nombre = plan.get_nombre_mostrar() if plan else 'el plan seleccionado'
         if not aceptar:
             messages.error(
@@ -276,7 +364,14 @@ class OnboardingWizardView(View):
             ctx = self._build_context(request, 3, user, negocio, local)
             return render(request, self.template_dict[3], ctx)
 
-        resultado = finalizar_onboarding(request, user, negocio, local)
+        try:
+            with transaction.atomic():
+                resultado = finalizar_onboarding(request, user, negocio, local)
+        except IntegrityError:
+            from apps.billing.models import Suscripcion
+            s = Suscripcion.objects.filter(negocio=negocio).order_by('-fecha_inicio').first()
+            resultado = {'suscripcion': s}
+
         suscripcion = resultado.get('suscripcion')
         plan_actual = suscripcion.plan if suscripcion else plan
         dias = getattr(plan_actual, 'dias_prueba_gratis', 365) or 365
@@ -286,11 +381,21 @@ class OnboardingWizardView(View):
                   self.SESSION_KEY_LOCAL, self.SESSION_KEY_STEP]:
             request.session.pop(k, None)
 
-        messages.success(
-            request,
-            f'🎉 ¡Bienvenido/a {user.first_name or user.email}! Tu negocio "{negocio.nombre}" ya está listo. '
-            f'{plan_mostrar} activado por {dias} días gratuitos.'
-        )
+        sus_estado = getattr(suscripcion, 'estado', None) if suscripcion else None
+        if suscripcion and sus_estado == 'PENDIENTE':
+            messages.warning(
+                request,
+                f'🎉 ¡Bienvenido/a {user.first_name or user.email}! Tu negocio "{negocio.nombre}" ya está registrado. '
+                f'Tu plan "{plan_mostrar}" quedó PENDIENTE DE ACTIVACIÓN — nuestro equipo de soporte '
+                f'lo revisará y confirmará a la brevedad. Recibirás un correo cuando esté listo '
+                f'o puedes contactarnos en soporte@clientbeat.cl.'
+            )
+        else:
+            messages.success(
+                request,
+                f'🎉 ¡Bienvenido/a {user.first_name or user.email}! Tu negocio "{negocio.nombre}" ya está listo. '
+                f'{plan_mostrar} activado por {dias} días gratuitos.'
+            )
         return redirect('/dashboard/?welcome=1')
 
     # ===========================
@@ -326,7 +431,6 @@ class OnboardingWizardView(View):
             from apps.billing.models import Plan
             plan = get_plan_onboarding(request.session.get('onboarding_plan_id'))
             ctx['plan_actual'] = plan
-
             if plan is None:
                 ctx['error_sin_plan'] = (
                     '⚠️ Lo sentimos, no hay un Plan activo configurado por el momento. '

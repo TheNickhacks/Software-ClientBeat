@@ -65,7 +65,9 @@ class User(AbstractUser):
 
     @property
     def is_admin_soporte(self):
-        return self.rol == self.RolChoices.ADMIN_SOPORTE or self.is_superuser or self.is_staff
+        # SOLO ADMIN_SOPORTE o is_superuser pueden acceder a admin-panel.
+        # is_staff NO otorga acceso (bug anterior: DUEÑOS se creaban con is_staff=True y entraban a admin-panel).
+        return self.rol == self.RolChoices.ADMIN_SOPORTE or self.is_superuser
 
 
     @property

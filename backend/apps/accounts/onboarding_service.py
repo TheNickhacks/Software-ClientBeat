@@ -18,7 +18,12 @@ def get_plan_onboarding(plan_id=None):
 
 
 def completar_suscripcion_default(negocio, plan_id=None):
-    """Crea/actualiza la suscripción del negocio usando el Plan por defecto activo o el seleccionado por ID."""
+    """Crea/actualiza la suscripción del negocio usando el Plan por defecto o seleccionado.
+
+    ⚠️ Regla suscripción: NUEVAS suscripciones post-onboarding = PENDIENTE.
+    Solo Admin Soporte la marca ACTIVA después de confirmar el pago (o si es plan
+    lanzamiento gratuito default con >=30 días de prueba).
+    """
     from apps.billing.models import (
         Plan,
         Suscripcion,
@@ -34,13 +39,16 @@ def completar_suscripcion_default(negocio, plan_id=None):
         )
 
     dias_gratis = int(getattr(plan, 'dias_prueba_gratis', 365) or 365)
+    es_lanzamiento_gratis = bool(getattr(plan, 'es_plan_default', False)) and dias_gratis >= 30
 
     ahora = timezone.now()
     suscripcion, creada = Suscripcion.objects.get_or_create(
         negocio=negocio,
         defaults={
             'plan': plan,
-            'estado': EstadoSuscripcionChoices.ACTIVA,
+            # ================= SUSCRIPCIÓN PENDIENTE POST-ONBOARDING =================
+            # No activamos el plan hasta que Admin Soporte lo confirme.
+            'estado': EstadoSuscripcionChoices.ACTIVA if es_lanzamiento_gratis else EstadoSuscripcionChoices.PENDIENTE,
             'fecha_inicio': ahora,
             'fecha_vencimiento': ahora + timedelta(days=dias_gratis),
             'proximo_ciclo': ahora + timedelta(days=30),
@@ -49,7 +57,8 @@ def completar_suscripcion_default(negocio, plan_id=None):
     )
     if not creada:
         suscripcion.plan = plan
-        suscripcion.estado = EstadoSuscripcionChoices.ACTIVA
+        # ⚠️ No cambiamos el estado arbitrariamente de una suscripción ya existente
+        # (lo maneja Admin Soporte desde el panel).
         suscripcion.fecha_vencimiento = max(suscripcion.fecha_vencimiento, ahora + timedelta(days=dias_gratis))
         suscripcion.save()
     return suscripcion
@@ -155,28 +164,30 @@ def onboarding_pendiente(usuario):
     """
     Devuelve True si el usuario aún debe completar el onboarding.
     Considera el onboarding COMPLETO solo si:
-    - Es ADMIN_SOPORTE o USUARIO_EQUIPO (nunca tienen onboarding propio)
+    - Es ADMIN_SOPORTE o USUARIO_EQUIPO o SUPERUSER (nunca tienen onboarding propio)
     - O es DUEÑO y tiene al menos UN Negocio ACTIVO con onboarding_paso3_completo=True
-      (o fallback heurístico: suscripción ACTIVA).
+      (o fallback heurístico: suscripción ACTIVA O PENDIENTE — lo normal es PENDIENTE después de onboarding).
     """
     from apps.businesses.models import Negocio
     from apps.billing.models import EstadoSuscripcionChoices
-    if usuario.is_authenticated and (getattr(usuario, 'is_admin_soporte', False) or getattr(usuario, 'is_usuario_equipo', False) or getattr(usuario, 'is_staff', False) or getattr(usuario, 'is_superuser', False)):
-        return False
-    if not usuario.is_authenticated or not hasattr(usuario, 'is_dueno'):
+    if not usuario.is_authenticated:
         return True
-    if getattr(usuario, 'is_admin_soporte', False) or getattr(usuario, 'is_staff', False) or getattr(usuario, 'is_superuser', False):
+    rol_global = getattr(usuario, 'rol', None)
+    # SOLO SuperUser / ADMIN_SOPORTE / USUARIO_EQUIPO saltan onboarding.
+    # is_staff NO se considera aquí (un DUEÑO no salta onboarding por ser is_staff accidental).
+    if usuario.is_superuser or rol_global in ('ADMIN_SOPORTE', 'USUARIO_EQUIPO'):
         return False
+    if rol_global != 'DUENO':
+        return True
 
     negocios = Negocio.objects.filter(dueño_id=usuario.id, estado='ACTIVO').prefetch_related('suscripciones')
     if not negocios.exists():
         return True
     for n in negocios:
-        # Prioridad 1: flag explícito paso 3 completado
         if getattr(n, 'onboarding_paso3_completo', False):
             return False
-        # Fallback heurístico (backward compatible con data previa a FASE 1.6)
-        if n.suscripciones.filter(estado=EstadoSuscripcionChoices.ACTIVA).exists():
+        # Fallback heurístico: si ya tiene suscripción (ACTIVA o PENDIENTE) = paso 3 ya pasó
+        if n.suscripciones.filter(estado__in=(EstadoSuscripcionChoices.ACTIVA, EstadoSuscripcionChoices.PENDIENTE)).exists():
             return False
     return True
 

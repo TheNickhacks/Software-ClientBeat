@@ -3,23 +3,110 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0B3EA6" />
+  <meta name="color-scheme" content="light" />
+  <meta http-equiv="Accept-CH" content="Sec-CH-UA-Mobile,Sec-CH-UA-Platform" />
   <title>{% block title %}ClientBeat · El Pulso de tu Marca{% endblock %}</title>
   {% load static %}
   <link rel="icon" type="image/png" sizes="512x512" href="{% static 'img/LogoClientBeat.png' %}" />
   <link rel="apple-touch-icon" href="{% static 'img/LogoClientBeat.png' %}" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  {# ============ PERFORMANCE: EARLY PRECONNECT / DNS PREFETCH CDN ============ #}
+  {# Abre conexiones TLS anticipadamente y resuelve DNS antes de que el navegador pida los recursos. Ahorra 200-600ms en first paint. #}
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin="anonymous" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin="anonymous" />
+  <link rel="dns-prefetch" href="https://cdn.tailwindcss.com" />
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
+  <link rel="dns-prefetch" href="https://ka-f.fontawesome.com" />
+  {# ============ PRELOAD CRÍTICO: FontAwesome CSS (evita flash sin iconos 200ms+) ============ #}
+  <link rel="preload" as="style" fetchpriority="high" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" fetchpriority="high" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  {# ============ PROTECCIÓN DOBLE CLICK / MULTI-SUBMIT (EARLY - ANTES DE BODY) ============ #}
+  {# Captura submit/click en document en fase CAPTURE → ningún botón queda desprotegido aunque cargue después. #}
   <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            cbblue: { DEFAULT: '#0B3EA6', 50: '#eef4ff', 100: '#d9e7ff', 600: '#08337a', 700: '#062556', 900: '#041B3A' },
-            cbgreen: { DEFAULT: '#00B879', 50: '#ecfbf4', 600: '#008E5C', 700: '#00633F' },
+    (function(){
+      var LOCK_MS = 5000;
+      function lockOnce(el, txt){
+        if (!el || el.dataset && el.dataset.locked === '1') return;
+        try {
+          el.dataset.locked = '1';
+          el.dataset.originalHtml = el.innerHTML;
+          try { el.disabled = true; } catch(_) {}
+          el.style.pointerEvents = 'none';
+          if (el.classList) {
+            el.classList.add('opacity-80', 'cursor-wait');
+          } else {
+            el.setAttribute('style', (el.getAttribute('style') || '') + ';opacity:0.8;cursor:wait;pointer-events:none');
+          }
+          var icono = '<i class="fa fa-spinner fa-spin mr-2"></i>';
+          el.innerHTML = icono + (txt || 'Procesando…');
+        } catch(_) {}
+        setTimeout(function(){
+          try {
+            if (!el || el.dataset.locked !== '1') return;
+            el.dataset.locked = '0';
+            if (el.dataset.originalHtml) el.innerHTML = el.dataset.originalHtml;
+            try { el.disabled = false; } catch(_) {}
+            el.style.pointerEvents = '';
+            if (el.classList) el.classList.remove('opacity-80', 'cursor-wait');
+          } catch(_) {}
+        }, LOCK_MS);
+      }
+      // Submit handler CAPTURE fase (antes que cualquier otro listener)
+      document.addEventListener('submit', function(e){
+        var f = e.target;
+        if (!f || f.tagName !== 'FORM') return;
+        // Buscar el submit button asociado al form
+        var btn = f.querySelector('button[type="submit"]');
+        if (!btn) {
+          // Fallback: buscar el último click pointer dentro del form
+          var all = f.querySelectorAll('button, input[type="submit"]');
+          for (var i = 0; i < all.length; i++) {
+            if (all[i].type === 'submit' || all[i].tagName === 'BUTTON') { btn = all[i]; break; }
           }
         }
+        if (btn) lockOnce(btn, btn.getAttribute('data-loading-text') || 'Procesando…');
+      }, true);
+      // Link buttons (btn-primary / btn-secondary) → lock al primer click
+      document.addEventListener('click', function(e){
+        var el = e.target;
+        for (var depth = 0; depth < 4 && el; depth++, el = el.parentElement) {
+          if (el.tagName === 'A') {
+            var isBtnLink = (el.className || '').match(/btn-primary|btn-secondary|href-once|data-href-once/);
+            if (isBtnLink) { lockOnce(el, 'Cargando…'); }
+            return;
+          }
+        }
+      }, true);
+    })();
+  </script>
+  <script src="https://cdn.tailwindcss.com" fetchpriority="low" defer></script>
+  <script>
+    (function initTailwindCfg(){
+      var cfg = {
+        theme: {
+          extend: {
+            colors: {
+              cbblue: { DEFAULT: '#0B3EA6', 50: '#eef4ff', 100: '#d9e7ff', 600: '#08337a', 700: '#062556', 900: '#041B3A' },
+              cbgreen: { DEFAULT: '#00B879', 50: '#ecfbf4', 600: '#008E5C', 700: '#00633F' },
+            }
+          }
+        }
+      };
+      function applyCfg(){
+        if (window.tailwind && typeof window.tailwind.config !== 'undefined') {
+          window.tailwind.config = cfg;
+          return true;
+        }
+        return false;
       }
-    }
+      if (!applyCfg()) {
+        var tries = 0;
+        var intervalo = setInterval(function(){
+          if (applyCfg() || tries++ > 80) clearInterval(intervalo);
+        }, 50);
+        window.addEventListener('load', function(){ applyCfg(); clearInterval(intervalo); }, { once: true });
+      }
+    })();
   </script>
   <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
   <style>
@@ -40,8 +127,11 @@
       display: inline-flex;
       align-items: center;
       gap: 0.45rem;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
     .btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); filter: brightness(0.97); }
     .btn-secondary {
       background: white;
       color: #08337a;
@@ -54,9 +144,16 @@
       display: inline-flex;
       align-items: center;
       gap: 0.45rem;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
     .btn-secondary:hover { border-color: #00B879; color: #00633F; box-shadow: 0 6px 16px -6px rgba(0,184,121,0.35); }
+    .btn-secondary:active { transform: translateY(0); }
     .cb-brand-card { background: linear-gradient(135deg, rgba(11,62,166,0.05), rgba(0,184,121,0.05)); }
+    .form-input, .form-select, select, input[type="text"], input[type="email"], input[type="password"], input[type="tel"] {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
   </style>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col">
@@ -138,7 +235,7 @@
         </div>
       </div>
       <div class="border-t border-cbblue-700/60 pt-6 text-center text-sm text-slate-400">
-        © {% now "Y" %} ClientBeat SpA · RUT 77.607.311-3 · El Pulso de tu Marca. Todos los derechos reservados.
+        © {% now "Y" %} ClientBeat SpA · El Pulso de tu Marca. Todos los derechos reservados.
       </div>
     </div>
   </footer>

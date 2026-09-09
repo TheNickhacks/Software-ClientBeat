@@ -240,7 +240,10 @@ def _estrellas_html(n):
 
 @login_required(login_url='/accounts/login/')
 def dashboard(request):
-    is_admin = getattr(request.user, 'is_admin_soporte', False) or request.user.is_staff or request.user.is_superuser or getattr(request.user, 'rol', None) == 'ADMIN_SOPORTE'
+    # ================= ROLES SEGMENTACIÓN =================
+    # Panel Admin es EXCLUSIVO para: SuperUser o Rol Global == ADMIN_SOPORTE.
+    # is_staff NO otorga acceso (bug anterior: DUEÑOS con is_staff=True se iban a admin-panel).
+    is_admin = request.user.is_superuser or getattr(request.user, 'rol', None) == 'ADMIN_SOPORTE'
     admin_preview = request.GET.get('admin_preview') == '1' or request.session.get('admin_preview_modo')
     if is_admin and not admin_preview:
         return redirect('/admin-panel/')
@@ -310,15 +313,41 @@ def dashboard(request):
     negocio = ctx['negocio']
     if negocio is not None:
         from apps.billing.models import Suscripcion, EstadoSuscripcionChoices
-        suscripcion = (
+        # ================= FIX ESTADO SUSCRIPCIÓN (PENDIENTE) =================
+        # Cargamos la SUSCRIPCIÓN MÁS RECIENTE del negocio, NO solo la ACTIVA.
+        # Esto permite mostrar banner AMBER al DUEÑO si el plan está PENDIENTE de aprobación
+        # por Admin Soporte (estado normal después del onboarding MVP).
+        suscripcion_ultima = (
             Suscripcion.objects
-            .filter(negocio=negocio, estado=EstadoSuscripcionChoices.ACTIVA)
+            .filter(negocio=negocio)
             .select_related('plan')
             .order_by('-fecha_inicio')
             .first()
         )
-        ctx['suscripcion_activa'] = suscripcion
-        ctx['plan_activo'] = suscripcion.plan if suscripcion else None
+        suscripcion_activa = (
+            suscripcion_ultima
+            if suscripcion_ultima and suscripcion_ultima.estado == EstadoSuscripcionChoices.ACTIVA
+            else None
+        )
+        ctx['suscripcion_ultima'] = suscripcion_ultima
+        ctx['suscripcion_activa'] = suscripcion_activa
+        ctx['plan_activo'] = suscripcion_activa.plan if suscripcion_activa else (suscripcion_ultima.plan if suscripcion_ultima else None)
+
+        # Datos para banner de estado en dashboard cliente:
+        if suscripcion_ultima:
+            estado = suscripcion_ultima.estado
+            fecha_vence = suscripcion_ultima.fecha_vencimiento.strftime('%d/%m/%Y') if suscripcion_ultima.fecha_vencimiento else '—'
+            estado_map = {
+                EstadoSuscripcionChoices.ACTIVA:      {'label': f'Activa · vence {fecha_vence}',           'color': 'emerald', 'icon': 'fa-circle-check'},
+                EstadoSuscripcionChoices.PENDIENTE:   {'label': 'Pendiente de activación por Admin Soporte', 'color': 'amber',   'icon': 'fa-clock'},
+                EstadoSuscripcionChoices.VENCIDA:     {'label': 'Vencida - renovación pendiente',            'color': 'rose',    'icon': 'fa-triangle-exclamation'},
+                EstadoSuscripcionChoices.SUSPENDIDA:  {'label': 'Suspendida - contacta a soporte',           'color': 'orange',  'icon': 'fa-lock'},
+                EstadoSuscripcionChoices.CANCELADA:   {'label': 'Cancelada',                                 'color': 'slate',   'icon': 'fa-circle-xmark'},
+            }
+            info = estado_map.get(estado, {'label': str(estado), 'color': 'slate', 'icon': 'fa-circle-info'})
+            ctx['suscripcion_estado_label'] = info['label']
+            ctx['suscripcion_estado_color'] = info['color']
+            ctx['suscripcion_estado_icon']  = info['icon']
 
         ctx['locales_disponibles'] = list(
             negocio.locales.filter(estado='ACTIVO').values('id', 'nombre').order_by('nombre')
