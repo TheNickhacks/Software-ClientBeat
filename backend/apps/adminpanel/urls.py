@@ -75,13 +75,16 @@ urlpatterns = [
     path('usuarios/<uuid:pk>/cambiar-estado/', views.AdminPanelUsuarioCambiarEstadoView.as_view(), name='usuario_cambiar_estado'),
     path('usuarios/<uuid:pk>/reset-clave/', views.AdminPanelUsuarioResetClaveView.as_view(), name='usuario_reset_clave'),
 
+    path('solicitudes-arco/', views.AdminPanelSolicitudesARCOListView.as_view(), name='solicitudes_arco'),
+    path('solicitudes-arco/<uuid:pk>/cambiar-estado/', views.AdminPanelSolicitudARCOCambiarEstadoView.as_view(), name='solicitud_arco_cambiar_estado'),
+
 
     path('pagos/', views.AdminPanelAuditoriaListView.as_view(), name='pagos'),
     path('planes/', views.PlanesEditarView.as_view(), name='planes'),
     path('rubros/', views.DataGoogleRubrosView.as_view(), name='rubros'),
     path('plantillas/', views.AdminPanelPlantillasListView.as_view(), name='plantillas'),
-    path('plantillas/<int:pk>/toggle-activa/', views.AdminPanelPlantillaToggleActivaView.as_view(), name='plantilla_toggle_activa'),
-    path('plantillas/<int:pk>/marcar-default/', views.AdminPanelPlantillaMarcarDefaultView.as_view(), name='plantilla_marcar_default'),
+    path('plantillas/<uuid:pk>/toggle-activa/', views.AdminPanelPlantillaToggleActivaView.as_view(), name='plantilla_toggle_activa'),
+    path('plantillas/<uuid:pk>/marcar-default/', views.AdminPanelPlantillaMarcarDefaultView.as_view(), name='plantilla_marcar_default'),
     path('plantillas-notificaciones/', views.AdminPanelPlantillasNotifListView.as_view(), name='plantillas_notificaciones'),
     path('metodologia/', views.AdminPanelMetodologiaView.as_view(), name='metodologia'),
 

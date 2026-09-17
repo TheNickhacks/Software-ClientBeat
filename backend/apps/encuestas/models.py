@@ -35,8 +35,21 @@ class PlantillaEncuesta(models.Model):
     comentario_requerido = models.BooleanField(default=False, verbose_name='Comentario obligatorio')
     preguntas_extra = models.JSONField(default=list, blank=True, verbose_name='Preguntas extra custom JSON (futuro')
 
-    # Visibilidad y rubros
-    rubros = models.ManyToManyField('geo.Rubro', blank=True, related_name='plantillas_encuesta', verbose_name='Rubros donde se aplica (vacío = todos')
+    # Visibilidad, branding y negocio
+    negocio = models.ForeignKey(
+        'businesses.Negocio',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='plantillas_custom',
+        verbose_name='Negocio dueño (null si es plantilla global)'
+    )
+    color_primario = models.CharField(max_length=7, default='#0f172a', verbose_name='Color primario UI (HEX)')
+    color_secundario = models.CharField(max_length=7, default='#2563eb', verbose_name='Color secundario UI (HEX)')
+    color_fondo = models.CharField(max_length=7, default='#f8fafc', verbose_name='Color de fondo UI (HEX)')
+    logo_custom = models.ImageField(upload_to='encuestas/logos/', blank=True, null=True, verbose_name='Logo personalizado para encuesta')
+
+    rubros = models.ManyToManyField('geo.Rubro', blank=True, related_name='plantillas_encuesta', verbose_name='Rubros donde se aplica (vacío = todos)')
     activa = models.BooleanField(default=True, verbose_name='Plantilla activa')
     es_default = models.BooleanField(default=False, verbose_name='Plantilla default para nuevos locales')
     fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name='Fecha creación')

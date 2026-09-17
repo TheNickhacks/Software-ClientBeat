@@ -6,7 +6,7 @@
 
         <div class="hidden md:flex items-center gap-4">
             {% if user.is_authenticated %}
-                {% if user.is_admin_soporte or user.is_staff or user.is_superuser %}
+                {% if user.is_admin_soporte or user.is_superuser %}
                     <a href="/admin-panel/" class="text-slate-700 hover:text-primary-600 font-medium transition-colors">
                         Panel Administrador
                     </a>

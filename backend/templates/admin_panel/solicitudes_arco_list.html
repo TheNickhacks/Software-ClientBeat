@@ -1,0 +1,92 @@
+{% extends 'admin_panel/base.html' %}
+{% load humanize %}
+
+{% block admin_subtitle %}
+  Gestión de Solicitudes de Protección de Datos Personales ARCOPB (Ley N° 19.628 / RGPD)
+{% endblock %}
+
+{% block admin_content %}
+
+<div class="glass-effect rounded-2xl p-4 mb-6 border border-slate-100">
+  <form method="GET" class="flex flex-wrap items-center gap-3">
+    <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Filtrar por Estado:</label>
+    <select name="estado" class="input !py-1.5 text-xs rounded-xl min-w-[180px]">
+      <option value="">Todos los Estados</option>
+      {% for val, label in estados %}
+      <option value="{{ val }}" {% if estado_filtro == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn-primary !py-1.5 text-xs px-4">
+      <i class="fa fa-filter mr-1"></i> Filtrar
+    </button>
+    <a href="{% url 'adminpanel:solicitudes_arco' %}" class="btn-secondary !py-1.5 text-xs px-3">Limpiar</a>
+  </form>
+</div>
+
+<div class="glass-effect rounded-2xl overflow-hidden card-hover">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50/70 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider font-bold">
+        <tr>
+          <th class="px-5 py-3 text-left">Solicitante</th>
+          <th class="px-3 py-3 text-left">Tipo Solicitud</th>
+          <th class="px-3 py-3 text-center">Estado</th>
+          <th class="px-3 py-3 text-left">Fecha</th>
+          <th class="px-5 py-3 text-right">Acción Admin</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for s in solicitudes %}
+        <tr class="hover:bg-slate-50/60 transition">
+          <td class="px-5 py-4">
+            <div class="font-bold text-slate-800">{{ s.nombre_solicitante }}</div>
+            <div class="text-xs text-slate-500">{{ s.email_solicitante }}</div>
+            {% if s.rut_solicitante %}<div class="text-[11px] text-slate-400">RUT: {{ s.rut_solicitante }}</div>{% endif %}
+          </td>
+          <td class="px-3 py-4 text-xs font-semibold text-slate-700">
+            <span class="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg">
+              <i class="fa fa-shield"></i>{{ s.tipo_solicitud }}
+            </span>
+            {% if s.detalle %}
+            <div class="text-[11px] text-slate-500 mt-1 max-w-xs truncate" title="{{ s.detalle }}">{{ s.detalle }}</div>
+            {% endif %}
+          </td>
+          <td class="px-3 py-4 text-center">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold
+              {% if s.estado == 'RESUELTO' %}bg-emerald-100 text-emerald-700
+              {% elif s.estado == 'EN_PROCESO' %}bg-blue-100 text-blue-700
+              {% elif s.estado == 'RECHAZADO' %}bg-rose-100 text-rose-700
+              {% else %}bg-amber-100 text-amber-700{% endif %}">
+              {{ s.get_estado_display }}
+            </span>
+          </td>
+          <td class="px-3 py-4 text-xs text-slate-500 whitespace-nowrap">
+            {{ s.fecha_creacion|date:"d/m/Y H:i" }}
+          </td>
+          <td class="px-5 py-4 text-right">
+            <form method="POST" action="{% url 'adminpanel:solicitud_arco_cambiar_estado' s.pk %}" class="flex items-center justify-end gap-2">
+              {% csrf_token %}
+              <select name="estado" class="input !py-1 text-xs rounded-lg min-w-[130px]">
+                {% for val, label in estados %}
+                <option value="{{ val }}" {% if s.estado == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn-primary !py-1 text-xs px-3">Guardar</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="px-6 py-12 text-center text-slate-500">
+            <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-2xl">
+              <i class="fa fa-shield-halved"></i>
+            </div>
+            <div class="font-bold text-slate-600">No hay solicitudes ARCOPB registradas.</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

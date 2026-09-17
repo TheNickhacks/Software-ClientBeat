@@ -53,6 +53,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'django.middleware.gzip.GZipMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -102,7 +103,7 @@ DATABASES = {
         default='sqlite:///db.sqlite3'
     )
 }
-DATABASES['default']['CONN_MAX_AGE'] = 600 if not DEBUG else 0
+DATABASES['default']['CONN_MAX_AGE'] = 600
 if 'postgresql' in DATABASES['default'].get('ENGINE', ''):
     DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
     DATABASES['default']['OPTIONS'] = {
@@ -134,6 +135,7 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+WHITENOISE_MAX_AGE = 31536000
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

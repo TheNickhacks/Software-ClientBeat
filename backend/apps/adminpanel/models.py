@@ -274,3 +274,40 @@ class ConfiguracionMetricas(models.Model):
             obj.save(update_fields=['resenas_categorias_agrupacion'])
         return obj
 
+
+class SolicitudARCOPBChoices(TextChoices):
+    PENDIENTE = 'PENDIENTE', 'Pendiente'
+    EN_PROCESO = 'EN_PROCESO', 'En Proceso'
+    RESUELTO = 'RESUELTO', 'Resuelto / Finalizado'
+    RECHAZADO = 'RECHAZADO', 'Rechazado'
+
+
+class SolicitudARCOPB(models.Model):
+    """Solicitudes de Derechos ARCOPB (Acceso, Rectificación, Cancelación, Oposición, Portabilidad, Bloqueo - Ley N° 19.628)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='solicitudes_arco'
+    )
+    nombre_solicitante = models.CharField(max_length=200)
+    email_solicitante = models.EmailField()
+    rut_solicitante = models.CharField(max_length=20, blank=True, null=True)
+    tipo_solicitud = models.CharField(max_length=50, default='ELIMINACION_DATOS')
+    detalle = models.TextField(blank=True, null=True)
+    estado = models.CharField(max_length=20, choices=SolicitudARCOPBChoices.choices, default=SolicitudARCOPBChoices.PENDIENTE)
+    notas_admin = models.TextField(blank=True, null=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Solicitud ARCOPB'
+        verbose_name_plural = 'Solicitudes ARCOPB'
+        ordering = ['-fecha_creacion']
+
+    def __str__(self):
+        return f'Solicitud ARCOPB #{str(self.id)[:8]} · {self.email_solicitante} ({self.get_estado_display()})'
+
+

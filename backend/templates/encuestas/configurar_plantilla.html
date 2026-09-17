@@ -1,0 +1,467 @@
+{% extends 'base.html' %}
+{% load static widget_tweaks %}
+
+{% block title %}Configurar Encuesta Personalizada - ClientBeat{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div>
+      <div class="flex items-center gap-2">
+        <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Motor de Encuestas Personalizadas</h1>
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+          <i class="fa fa-sparkles mr-1"></i>Personalización Total
+        </span>
+      </div>
+      <p class="text-slate-600 text-sm mt-1">Configura el diseño, colores, preguntas y caritas de tus encuestas QR para tus clientes.</p>
+    </div>
+    
+    <div class="flex items-center gap-3">
+      {% if negocio.locales.first %}
+      <a href="{% url 'encuestas:encuesta_publica_qr' qr_token=negocio.locales.first.qr_token %}" target="_blank" class="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-sm transition-all">
+        <i class="fa fa-external-link text-slate-500"></i>Ver Encuesta en Vivo
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Plan Warning Banner if Custom Not Allowed -->
+  {% if not tiene_custom %}
+  <div class="mb-8 p-6 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-4">
+    <div class="w-12 h-12 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 text-xl font-bold">
+      <i class="fa fa-crown"></i>
+    </div>
+    <div>
+      <h3 class="font-bold text-amber-900 text-lg">Función Exclusiva del Plan Profesional</h3>
+      <p class="text-amber-800 text-sm mt-1">Tu plan actual no incluye la personalización de preguntas y colores de encuestas. Actualiza tu plan para desbloquear encuestas 100% a la medida de tu marca.</p>
+      <a href="{% url 'billing:planes' %}" class="inline-flex items-center gap-2 mt-3 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2 rounded-lg shadow transition-all">
+        Ver Planes y Actualizar <i class="fa fa-arrow-right"></i>
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Editor Layout (2 Columns: Form Left, Preview Right) -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    
+    <!-- Left Column: Settings Form -->
+    <div class="lg:col-span-7 space-y-6">
+      <form method="post" enctype="multipart/form-data" id="plantillaForm" class="space-y-6">
+        {% csrf_token %}
+        <input type="hidden" name="preguntas_extra_json" id="id_preguntas_extra_json" value="{{ preguntas_extra_json }}" />
+
+        <!-- Card 1: Branding y Colores -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <i class="fa fa-palette text-blue-600"></i>Identidad Visual y Colores
+          </h2>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Logo Personalizado</label>
+              {% render_field form.logo_custom class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" %}
+              {% if plantilla.logo_custom %}
+              <div class="mt-2 flex items-center gap-3">
+                <img src="{{ plantilla.logo_custom.url }}" class="h-10 w-auto object-contain border rounded p-1 bg-slate-50" />
+                <span class="text-xs text-slate-500">Logo actual cargado</span>
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="grid grid-cols-3 gap-4 pt-2">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Color Primario</label>
+                {% render_field form.color_primario class="h-10 w-full p-1 rounded-xl border border-slate-200 cursor-pointer" id="input_color_primario" %}
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Color Secundario</label>
+                {% render_field form.color_secundario class="h-10 w-full p-1 rounded-xl border border-slate-200 cursor-pointer" id="input_color_secundario" %}
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Color Fondo</label>
+                {% render_field form.color_fondo class="h-10 w-full p-1 rounded-xl border border-slate-200 cursor-pointer" id="input_color_fondo" %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Textos Principales -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <i class="fa fa-heading text-blue-600"></i>Textos de la Encuesta
+          </h2>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Título Encuesta</label>
+              {% render_field form.nombre_mostrar class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-900 focus:ring-2 focus:ring-blue-500" id="input_nombre_mostrar" %}
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Descripción / Saludo</label>
+              {% render_field form.descripcion class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-900 focus:ring-2 focus:ring-blue-500" rows=2 id="input_descripcion" %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Preguntas Base (NPS, CSAT, Comentario) -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <i class="fa fa-sliders text-blue-600"></i>Módulos Principales
+          </h2>
+
+          <div class="space-y-6">
+            <!-- NPS Toggle -->
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div class="flex items-center justify-between mb-3">
+                <span class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                  <i class="fa fa-chart-line text-blue-600"></i>Pregunta NPS (Recomendación 0-10)
+                </span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  {% render_field form.activar_nps class="sr-only peer" id="input_activar_nps" %}
+                  <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+              <div>
+                {% render_field form.titulo_nps class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" id="input_titulo_nps" %}
+              </div>
+            </div>
+
+            <!-- CSAT Toggle -->
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div class="flex items-center justify-between mb-3">
+                <span class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                  <i class="fa fa-face-smile text-emerald-600"></i>Pregunta CSAT (Caritas de Satisfacción)
+                </span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  {% render_field form.activar_csat class="sr-only peer" id="input_activar_csat" %}
+                  <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+              <div>
+                {% render_field form.titulo_csat class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" id="input_titulo_csat" %}
+              </div>
+            </div>
+
+            <!-- Comentario Toggle -->
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div class="flex items-center justify-between mb-3">
+                <span class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                  <i class="fa fa-comment-dots text-purple-600"></i>Comentario Libre
+                </span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  {% render_field form.activar_comentario class="sr-only peer" id="input_activar_comentario" %}
+                  <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+              <div class="space-y-2">
+                {% render_field form.titulo_comentario class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" id="input_titulo_comentario" %}
+                <div class="flex items-center gap-2 text-xs text-slate-600">
+                  {% render_field form.comentario_requerido class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" %}
+                  <span>Hacer el comentario obligatorio</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4: Preguntas Extra Custom Builder -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <i class="fa fa-list-check text-blue-600"></i>Preguntas Adicionales Custom
+              </h2>
+              <p class="text-xs text-slate-500">Puedes agregar hasta <strong class="text-slate-800">{{ max_preguntas }}</strong> preguntas personalizadas (Estrellas, Sí/No, Opciones, Texto).</p>
+            </div>
+            
+            {% if tiene_custom %}
+            <button type="button" id="btnAddQuestion" class="bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs px-3 py-2 rounded-xl border border-blue-200 flex items-center gap-1.5 transition-all">
+              <i class="fa fa-plus"></i>Agregar Pregunta
+            </button>
+            {% endif %}
+          </div>
+
+          <div id="customQuestionsList" class="space-y-4">
+            <!-- Dynamic Questions inserted via JS -->
+          </div>
+        </div>
+
+        <!-- Save Submit Bar -->
+        {% if tiene_custom %}
+        <div class="pt-4">
+          <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold py-4 rounded-2xl shadow-lg shadow-blue-500/20 text-lg transition-all flex items-center justify-center gap-2">
+            <i class="fa fa-floppy-disk"></i>Guardar Cambios de la Encuesta
+          </button>
+        </div>
+        {% endif %}
+      </form>
+    </div>
+
+    <!-- Right Column: Live Mobile Preview -->
+    <div class="lg:col-span-5">
+      <div class="sticky top-6">
+        <div class="flex items-center justify-between mb-3 px-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+            <i class="fa fa-eye text-blue-600"></i>Vista Previa en Tiempo Real
+          </span>
+          <span class="text-xs font-medium text-slate-500 bg-slate-200 px-2 py-0.5 rounded-full">Pantalla Celular</span>
+        </div>
+
+        <!-- Mockup Device Outer Frame -->
+        <div class="mx-auto max-w-[380px] bg-slate-900 p-4 rounded-[40px] shadow-2xl border-4 border-slate-800">
+          <div class="w-20 h-4 bg-slate-800 mx-auto rounded-full mb-3"></div>
+          
+          <!-- Mockup Screen Content -->
+          <div id="previewScreen" class="bg-slate-50 rounded-[28px] p-5 text-slate-900 min-h-[580px] flex flex-col justify-between transition-colors duration-300" style="background-color: {{ plantilla.color_fondo|default:'#f8fafc' }};">
+            <div>
+              <!-- Logo & Header -->
+              <div class="text-center mb-4">
+                <div class="h-10 flex items-center justify-center mb-2">
+                  {% if plantilla.logo_custom %}
+                  <img id="previewLogo" src="{{ plantilla.logo_custom.url }}" class="h-10 max-w-[150px] object-contain" />
+                  {% else %}
+                  <img id="previewLogo" src="{% static 'img/LogoClientBeat.png' %}" class="h-8 w-auto object-contain" />
+                  {% endif %}
+                </div>
+                <div class="inline-block bg-white/90 px-3 py-1 rounded-full text-[11px] font-bold text-slate-800 shadow-sm border border-slate-200">
+                  {{ negocio.nombre }}
+                </div>
+              </div>
+
+              <!-- Title & Desc -->
+              <div class="bg-white/90 rounded-2xl p-4 shadow-sm border border-slate-100 mb-4">
+                <h3 id="previewTitle" class="text-base font-extrabold text-center text-slate-900 mb-1">
+                  {{ plantilla.nombre_mostrar|default:"¡Tu opinión nos importa!" }}
+                </h3>
+                <p id="previewDesc" class="text-xs text-center text-slate-600">
+                  {{ plantilla.descripcion|default:"Nos ayuda a darte la mejor experiencia." }}
+                </p>
+              </div>
+
+              <!-- NPS Section -->
+              <div id="previewNPSSection" class="bg-white/90 rounded-2xl p-3 shadow-sm border border-slate-100 mb-3 {% if not plantilla.activar_nps %}hidden{% endif %}">
+                <div id="previewNPSTitle" class="text-xs font-bold text-slate-800 text-center mb-2">
+                  {{ plantilla.titulo_nps }}
+                </div>
+                <div class="grid grid-cols-11 gap-0.5">
+                  {% for n in "0123456789"|make_list %}
+                  <div class="h-6 rounded bg-slate-100 text-[10px] font-bold text-slate-600 flex items-center justify-center">{{ n }}</div>
+                  {% endfor %}
+                  <div class="h-6 rounded bg-slate-100 text-[10px] font-bold text-slate-600 flex items-center justify-center">10</div>
+                </div>
+              </div>
+
+              <!-- CSAT Section -->
+              <div id="previewCSATSection" class="bg-white/90 rounded-2xl p-3 shadow-sm border border-slate-100 mb-3 text-center {% if not plantilla.activar_csat %}hidden{% endif %}">
+                <div id="previewCSATTitle" class="text-xs font-bold text-slate-800 mb-2">
+                  {{ plantilla.titulo_csat }}
+                </div>
+                <div class="flex justify-center gap-3 text-xl">
+                  <span>😍</span><span>😊</span><span>😐</span><span>😞</span><span>😡</span>
+                </div>
+              </div>
+
+              <!-- Custom Questions Section -->
+              <div id="previewCustomQuestions" class="space-y-3 mb-3">
+                <!-- Injected via JS -->
+              </div>
+
+              <!-- Comment Section -->
+              <div id="previewCommentSection" class="bg-white/90 rounded-2xl p-3 shadow-sm border border-slate-100 mb-3 {% if not plantilla.activar_comentario %}hidden{% endif %}">
+                <div id="previewCommentTitle" class="text-xs font-bold text-slate-800 mb-1">
+                  {{ plantilla.titulo_comentario }}
+                </div>
+                <div class="h-12 bg-slate-100 rounded-lg border border-slate-200 text-[10px] p-2 text-slate-400">Escribe tu opinión...</div>
+              </div>
+            </div>
+
+            <!-- Submit Button Mock -->
+            <div>
+              <div id="previewBtn" class="w-full py-3 rounded-xl font-bold text-white text-xs text-center shadow transition-colors" style="background: linear-gradient(135deg, {{ plantilla.color_primario|default:'#0f172a' }}, {{ plantilla.color_secundario|default:'#2563eb' }});">
+                Enviar mi opinión
+              </div>
+            </div>
+          </div>
+
+          <div class="w-12 h-1 bg-slate-700 mx-auto rounded-full mt-3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const MAX_QUESTIONS = {{ max_preguntas|default:5 }};
+  let extraQuestions = [];
+  try {
+    extraQuestions = JSON.parse(document.getElementById('id_preguntas_extra_json').value || '[]');
+  } catch(e){ extraQuestions = []; }
+
+  const questionsContainer = document.getElementById('customQuestionsList');
+  const btnAdd = document.getElementById('btnAddQuestion');
+
+  function renderFormQuestions() {
+    questionsContainer.innerHTML = '';
+    extraQuestions.forEach((q, idx) => {
+      const qDiv = document.createElement('div');
+      qDiv.className = 'p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3 relative';
+      qDiv.innerHTML = `
+        <div class="flex items-center justify-between">
+          <span class="font-bold text-xs text-slate-700 uppercase">Pregunta #${idx+1}</span>
+          <button type="button" class="btn-delete-q text-rose-600 hover:text-rose-800 text-xs font-bold" data-idx="${idx}">
+            <i class="fa fa-trash mr-1"></i>Eliminar
+          </button>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Texto de la Pregunta</label>
+          <input type="text" class="q-texto w-full px-3 py-1.5 rounded-lg border border-slate-200 text-sm" value="${q.texto || ''}" data-idx="${idx}" placeholder="Ej: ¿Qué tal la rapidez del servicio?" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo de Respuesta</label>
+            <select class="q-tipo w-full px-3 py-1.5 rounded-lg border border-slate-200 text-sm" data-idx="${idx}">
+              <option value="ESTRELLAS_1_5" ${q.tipo === 'ESTRELLAS_1_5' ? 'selected':''}>1 a 5 Estrellas ⭐</option>
+              <option value="SI_NO" ${q.tipo === 'SI_NO' ? 'selected':''}>Sí / No 👍👎</option>
+              <option value="TEXTO" ${q.tipo === 'TEXTO' ? 'selected':''}>Texto Libre 📝</option>
+              <option value="OPCIONES" ${q.tipo === 'OPCIONES' ? 'selected':''}>Opciones Múltiples 📋</option>
+            </select>
+          </div>
+          <div class="flex items-center pt-5">
+            <label class="inline-flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
+              <input type="checkbox" class="q-requerido rounded border-slate-300 text-blue-600" data-idx="${idx}" ${q.requerido ? 'checked':''} />
+              <span>Obligatoria</span>
+            </label>
+          </div>
+        </div>
+        ${q.tipo === 'OPCIONES' ? `
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Opciones (separadas por coma)</label>
+          <input type="text" class="q-opciones w-full px-3 py-1.5 rounded-lg border border-slate-200 text-sm" value="${(q.opciones||[]).join(', ')}" data-idx="${idx}" placeholder="Ej: Excelente, Bueno, Regular" />
+        </div>
+        ` : ''}
+      `;
+      questionsContainer.appendChild(qDiv);
+    });
+
+    if (extraQuestions.length >= MAX_QUESTIONS) {
+      if (btnAdd) btnAdd.style.display = 'none';
+    } else {
+      if (btnAdd) btnAdd.style.display = 'inline-flex';
+    }
+
+    syncJSONAndPreview();
+  }
+
+  function syncJSONAndPreview() {
+    document.getElementById('id_preguntas_extra_json').value = JSON.stringify(extraQuestions);
+
+    // Update Live Mobile Preview
+    const pScreen = document.getElementById('previewScreen');
+    const pTitle = document.getElementById('previewTitle');
+    const pDesc = document.getElementById('previewDesc');
+    const pNPS = document.getElementById('previewNPSSection');
+    const pNPSTitle = document.getElementById('previewNPSTitle');
+    const pCSAT = document.getElementById('previewCSATSection');
+    const pCSATTitle = document.getElementById('previewCSATTitle');
+    const pComment = document.getElementById('previewCommentSection');
+    const pCommentTitle = document.getElementById('previewCommentTitle');
+    const pBtn = document.getElementById('previewBtn');
+
+    const colPrim = document.getElementById('input_color_primario').value || '#0f172a';
+    const colSec = document.getElementById('input_color_secundario').value || '#2563eb';
+    const colBg = document.getElementById('input_color_fondo').value || '#f8fafc';
+
+    pScreen.style.backgroundColor = colBg;
+    pBtn.style.background = `linear-gradient(135deg, ${colPrim}, ${colSec})`;
+
+    pTitle.innerText = document.getElementById('input_nombre_mostrar').value || '¡Tu opinión nos importa!';
+    pDesc.innerText = document.getElementById('input_descripcion').value || '';
+
+    pNPS.classList.toggle('hidden', !document.getElementById('input_activar_nps').checked);
+    pNPSTitle.innerText = document.getElementById('input_titulo_nps').value || '';
+
+    pCSAT.classList.toggle('hidden', !document.getElementById('input_activar_csat').checked);
+    pCSATTitle.innerText = document.getElementById('input_titulo_csat').value || '';
+
+    pComment.classList.toggle('hidden', !document.getElementById('input_activar_comentario').checked);
+    pCommentTitle.innerText = document.getElementById('input_titulo_comentario').value || '';
+
+    // Render Custom Extra Questions in Preview
+    const pCustomList = document.getElementById('previewCustomQuestions');
+    pCustomList.innerHTML = '';
+    extraQuestions.forEach(q => {
+      const qBox = document.createElement('div');
+      qBox.className = 'bg-white/90 rounded-2xl p-3 shadow-sm border border-slate-100';
+      let widgetHtml = '';
+      if (q.tipo === 'ESTRELLAS_1_5') {
+        widgetHtml = `<div class="text-amber-400 text-center text-sm">⭐⭐⭐⭐⭐</div>`;
+      } else if (q.tipo === 'SI_NO') {
+        widgetHtml = `<div class="flex gap-2 justify-center"><span class="px-3 py-1 bg-slate-100 rounded-lg text-[10px] font-bold">Sí</span><span class="px-3 py-1 bg-slate-100 rounded-lg text-[10px] font-bold">No</span></div>`;
+      } else if (q.tipo === 'OPCIONES') {
+        widgetHtml = `<div class="h-7 bg-slate-100 rounded border text-[10px] px-2 flex items-center text-slate-500">Seleccionar opción...</div>`;
+      } else {
+        widgetHtml = `<div class="h-8 bg-slate-100 rounded border text-[10px] p-1.5 text-slate-400">Texto...</div>`;
+      }
+      qBox.innerHTML = `<div class="text-xs font-bold text-slate-800 mb-1.5">${q.texto || 'Pregunta Custom'}</div>${widgetHtml}`;
+      pCustomList.appendChild(qBox);
+    });
+  }
+
+  // Event Listeners for inputs
+  ['input_color_primario', 'input_color_secundario', 'input_color_fondo', 'input_nombre_mostrar', 'input_descripcion', 'input_activar_nps', 'input_titulo_nps', 'input_activar_csat', 'input_titulo_csat', 'input_activar_comentario', 'input_titulo_comentario'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', syncJSONAndPreview);
+      el.addEventListener('change', syncJSONAndPreview);
+    }
+  });
+
+  if (btnAdd) {
+    btnAdd.addEventListener('click', () => {
+      if (extraQuestions.length < MAX_QUESTIONS) {
+        extraQuestions.push({ texto: '¿Cómo calificarías la limpieza?', tipo: 'ESTRELLAS_1_5', requerido: false, opciones: [] });
+        renderFormQuestions();
+      }
+    });
+  }
+
+  questionsContainer.addEventListener('click', (e) => {
+    const delBtn = e.target.closest('.btn-delete-q');
+    if (delBtn) {
+      const idx = parseInt(delBtn.dataset.idx);
+      extraQuestions.splice(idx, 1);
+      renderFormQuestions();
+    }
+  });
+
+  questionsContainer.addEventListener('input', (e) => {
+    const idx = parseInt(e.target.dataset.idx);
+    if (isNaN(idx)) return;
+    if (e.target.classList.contains('q-texto')) {
+      extraQuestions[idx].texto = e.target.value;
+    } else if (e.target.classList.contains('q-opciones')) {
+      extraQuestions[idx].opciones = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    syncJSONAndPreview();
+  });
+
+  questionsContainer.addEventListener('change', (e) => {
+    const idx = parseInt(e.target.dataset.idx);
+    if (isNaN(idx)) return;
+    if (e.target.classList.contains('q-tipo')) {
+      extraQuestions[idx].tipo = e.target.value;
+      renderFormQuestions();
+    } else if (e.target.classList.contains('q-requerido')) {
+      extraQuestions[idx].requerido = e.target.checked;
+      syncJSONAndPreview();
+    }
+  });
+
+  // Initial render
+  renderFormQuestions();
+})();
+</script>
+{% endblock %}

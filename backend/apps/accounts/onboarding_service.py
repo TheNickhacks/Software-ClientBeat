@@ -160,76 +160,161 @@ def marcar_paso3_negocio(negocio):
     return negocio
 
 
-def onboarding_pendiente(usuario):
+_ONBOARDING_CACHE_TTL_SEGUNDOS = 300  # 5 min cache en session para evitar martillar NeonDB
+
+
+def _cache_key(usuario):
+    uid = getattr(usuario, 'pk', None) or getattr(usuario, 'id', None) or str(usuario)
+    return f'ob_cache_{uid}'
+
+
+def _cache_leer(session, usuario):
+    if session is None:
+        return None
+    try:
+        data = session.get(_cache_key(usuario))
+        if not data or not isinstance(data, dict):
+            return None
+        import time as _time
+        ts = data.get('_ts', 0)
+        if _time.time() - ts > _ONBOARDING_CACHE_TTL_SEGUNDOS:
+            return None
+        return data
+    except Exception:
+        return None
+
+
+def _cache_guardar(session, usuario, data):
+    if session is None:
+        return
+    import time as _time
+    data = dict(data)
+    data['_ts'] = _time.time()
+    session[_cache_key(usuario)] = data
+    try:
+        session.modified = True
+    except Exception:
+        pass
+
+
+def onboarding_cache_invalidar(session, usuario):
+    """Llama esto SIEMPRE que modifiques algún flag de onboarding en BD."""
+    if session is None:
+        return
+    try:
+        session.pop(_cache_key(usuario), None)
+        session.modified = True
+    except Exception:
+        pass
+
+
+def onboarding_pendiente(usuario, session=None):
     """
     Devuelve True si el usuario aún debe completar el onboarding.
-    Considera el onboarding COMPLETO solo si:
-    - Es ADMIN_SOPORTE o USUARIO_EQUIPO o SUPERUSER (nunca tienen onboarding propio)
-    - O es DUEÑO y tiene al menos UN Negocio ACTIVO con onboarding_paso3_completo=True
-      (o fallback heurístico: suscripción ACTIVA O PENDIENTE — lo normal es PENDIENTE después de onboarding).
+    🏁 OPTIMIZACIÓN DEFINITIVA:
+    - Cache TTL 5min en session (si se pasa) → 0 queries NeonDB.
+    - Si no hay cache → 1 SOLA query SQL (sin prefetch_related, sin loops).
+    - Fallback heurístico: suscripción ACTIVA O PENDIENTE = onboarding ya pasó.
     """
     from apps.businesses.models import Negocio
-    from apps.billing.models import EstadoSuscripcionChoices
+    from apps.billing.models import EstadoSuscripcionChoices, Suscripcion
+    from django.db.models import Exists, OuterRef, Q
+
+    if session is not None:
+        cached = _cache_leer(session, usuario)
+        if cached is not None:
+            return bool(cached.get('pendiente', True))
+
     if not usuario.is_authenticated:
         return True
     rol_global = getattr(usuario, 'rol', None)
-    # SOLO SuperUser / ADMIN_SOPORTE / USUARIO_EQUIPO saltan onboarding.
-    # is_staff NO se considera aquí (un DUEÑO no salta onboarding por ser is_staff accidental).
     if usuario.is_superuser or rol_global in ('ADMIN_SOPORTE', 'USUARIO_EQUIPO'):
+        if session is not None:
+            _cache_guardar(session, usuario, {'pendiente': False, 'paso': 4, 'explicacion': 'Rol sin onboarding propio'})
         return False
     if rol_global != 'DUENO':
         return True
 
-    negocios = Negocio.objects.filter(dueño_id=usuario.id, estado='ACTIVO').prefetch_related('suscripciones')
-    if not negocios.exists():
-        return True
-    for n in negocios:
-        if getattr(n, 'onboarding_paso3_completo', False):
-            return False
-        # Fallback heurístico: si ya tiene suscripción (ACTIVA o PENDIENTE) = paso 3 ya pasó
-        if n.suscripciones.filter(estado__in=(EstadoSuscripcionChoices.ACTIVA, EstadoSuscripcionChoices.PENDIENTE)).exists():
-            return False
-    return True
+    # 🏁 1 SOLA QUERY con EXISTS + Subquery
+    condicion_listo = (
+        Q(onboarding_paso3_completo=True)
+        | Q(
+            Exists(
+                Suscripcion.objects.filter(
+                    negocio=OuterRef('pk'),
+                    estado__in=(EstadoSuscripcionChoices.ACTIVA, EstadoSuscripcionChoices.PENDIENTE),
+                )
+            )
+        )
+    )
+    tiene_negocio_listo = (
+        Negocio.objects
+        .filter(dueño_id=usuario.id, estado='ACTIVO')
+        .filter(condicion_listo)
+        .exists()
+    )
+    pendiente = not tiene_negocio_listo
+
+    if session is not None:
+        _cache_guardar(session, usuario, {
+            'pendiente': pendiente,
+            'paso': (1 if pendiente else 4),
+            'explicacion': ('Negocio configurado y suscripcion OK' if not pendiente else 'Falta completar onboarding')
+        })
+    return pendiente
 
 
-def onboarding_siguiente_paso(usuario):
+def onboarding_siguiente_paso(usuario, session=None):
     """
-    Dado un usuario autenticado con onboarding pendiente, devuelve el paso en que debería continuar.
-    1) Usa flags explícitos de Negocio (onboarding_paso1_completo, paso2, paso3).
-    2) Fallback heurística si flags están NULL (data antigua).
-    - Paso 2: cuenta creada (usuario autenticado, paso1=OK, pero sin Negocio O paso2=False)
-    - Paso 3: cuenta + negocio/local (paso2=OK) pero paso3=False / sin suscripción ACTIVA
-    Devuelve (paso: int, descripcion: str)
+    Devuelve (paso:int, explicacion:str).
+    Paso 1 = solo email/registro | Paso 2 = datos Negocio + Local | Paso 3 = plan | Paso 4 = TODO LISTO.
+    🏁 Con cache session. 1 sola query (solo fields mínimos).
     """
-    from apps.businesses.models import Negocio, Local
-    from apps.billing.models import EstadoSuscripcionChoices
-    if not usuario or not getattr(usuario, 'id', None):
-        return 1, 'usuario no identificado'
-    negocios = Negocio.objects.filter(dueño_id=usuario.id)
-    if not negocios.exists():
-        return 2, 'cuenta creada pero sin negocio configurado'
+    from apps.businesses.models import Negocio
 
-    negocio = negocios.first()
-    # Flags explicitos
-    p1_ok = bool(getattr(negocio, 'onboarding_paso1_completo', False))
-    p2_ok = bool(getattr(negocio, 'onboarding_paso2_completo', False))
-    p3_ok = bool(getattr(negocio, 'onboarding_paso3_completo', False))
-    if not p1_ok:
-        # Paso 1 no marcado explícitamente → probable data antigua o re-registro. Volver a paso 2 solo si hay datos.
-        if not negocio.locales.exists():
-            return 2, 'negocio sin paso1 flag y sin locales creados'
-        if not hasattr(negocio, 'suscripciones') or not negocio.suscripciones.filter(estado=EstadoSuscripcionChoices.ACTIVA).exists():
-            return 3, 'negocio con locales pero sin suscripcion (fallback sin flags)'
-    if p1_ok and not p2_ok:
-        return 2, 'paso 1 OK (registro) pero falta completar paso 2 (datos negocio + local)'
-    # Paso1 y Paso2 OK → revisar paso3 o suscripción
-    if p2_ok and not p3_ok:
-        if not negocio.locales.exists():
-            return 2, 'paso 2 marcado como OK pero sin locales (rehacer datos del local)'
-        if not hasattr(negocio, 'suscripciones') or not negocio.suscripciones.filter(estado=EstadoSuscripcionChoices.ACTIVA).exists():
-            return 3, 'paso 2 OK pero falta confirmar plan/suscripción (paso 3)'
-    if not negocio.locales.exists():
-        return 2, 'negocio sin locales creados'
-    if not hasattr(negocio, 'suscripciones') or not negocio.suscripciones.filter(estado=EstadoSuscripcionChoices.ACTIVA).exists():
-        return 3, 'negocio y local creados, falta confirmar plan/suscripción'
-    return 1, 'onboarding aparentemente completo'
+    if session is not None:
+        cached = _cache_leer(session, usuario)
+        if cached is not None:
+            return (int(cached.get('paso', 1)), cached.get('explicacion', ''))
+
+    if not usuario.is_authenticated:
+        return (1, 'Sin autenticar')
+    rol_global = getattr(usuario, 'rol', None)
+    if usuario.is_superuser or rol_global in ('ADMIN_SOPORTE', 'USUARIO_EQUIPO'):
+        if session is not None:
+            _cache_guardar(session, usuario, {'pendiente': False, 'paso': 4, 'explicacion': 'Rol salta onboarding'})
+        return (4, 'Rol salta onboarding')
+    if rol_global != 'DUENO':
+        return (1, 'Rol requiere onboarding')
+
+    # 🏁 1 sola query, solo fields que importan
+    n = (
+        Negocio.objects
+        .filter(dueño_id=usuario.id, estado='ACTIVO')
+        .only('onboarding_paso1_completo', 'onboarding_paso2_completo', 'onboarding_paso3_completo', 'id')
+        .order_by('-fecha_creacion')
+        .first()
+    )
+    paso = 1
+    explicacion = 'Solo cuenta creada — completa datos negocio (Paso 2)'
+    if n is not None:
+        p1 = bool(getattr(n, 'onboarding_paso1_completo', False))
+        p2 = bool(getattr(n, 'onboarding_paso2_completo', False))
+        p3 = bool(getattr(n, 'onboarding_paso3_completo', False))
+        if p3:
+            paso = 4
+            explicacion = 'Onboarding completo'
+        elif p2:
+            paso = 3
+            explicacion = 'Falta confirmar plan (Paso 3)'
+        elif p1:
+            paso = 2
+            explicacion = 'Falta datos Negocio + Local (Paso 2)'
+        else:
+            paso = 2
+            explicacion = 'Negocio creado pero sin flags onboarding (Paso 2)'
+
+    pendiente = (paso <= 3)
+    if session is not None:
+        _cache_guardar(session, usuario, {'pendiente': pendiente, 'paso': paso, 'explicacion': explicacion})
+    return (paso, explicacion)

@@ -20,63 +20,52 @@
   {# ============ PRELOAD CRÍTICO: FontAwesome CSS (evita flash sin iconos 200ms+) ============ #}
   <link rel="preload" as="style" fetchpriority="high" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" fetchpriority="high" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  {# ============ PROTECCIÓN DOBLE CLICK / MULTI-SUBMIT (EARLY - ANTES DE BODY) ============ #}
-  {# Captura submit/click en document en fase CAPTURE → ningún botón queda desprotegido aunque cargue después. #}
+  {# ============ PROTECCIÓN DOBLE CLICK / MULTI-SUBMIT (RÁPIDA Y SIN BLOQUEAR NAVEGACIÓN) ============ #}
   <script>
     (function(){
-      var LOCK_MS = 5000;
-      function lockOnce(el, txt){
-        if (!el || el.dataset && el.dataset.locked === '1') return;
+      var LOCK_MS = 3000;
+      function lockSubmitButton(btn, txt){
+        if (!btn || (btn.dataset && btn.dataset.locked === '1')) return;
         try {
-          el.dataset.locked = '1';
-          el.dataset.originalHtml = el.innerHTML;
-          try { el.disabled = true; } catch(_) {}
-          el.style.pointerEvents = 'none';
-          if (el.classList) {
-            el.classList.add('opacity-80', 'cursor-wait');
-          } else {
-            el.setAttribute('style', (el.getAttribute('style') || '') + ';opacity:0.8;cursor:wait;pointer-events:none');
-          }
-          var icono = '<i class="fa fa-spinner fa-spin mr-2"></i>';
-          el.innerHTML = icono + (txt || 'Procesando…');
+          btn.dataset.locked = '1';
+          btn.dataset.originalHtml = btn.innerHTML;
+          try { btn.disabled = true; } catch(_) {}
+          btn.style.pointerEvents = 'none';
+          btn.classList.add('opacity-80', 'cursor-wait');
+          var loadingText = txt || btn.getAttribute('data-loading-text') || 'Procesando…';
+          btn.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i>' + loadingText;
         } catch(_) {}
         setTimeout(function(){
           try {
-            if (!el || el.dataset.locked !== '1') return;
-            el.dataset.locked = '0';
-            if (el.dataset.originalHtml) el.innerHTML = el.dataset.originalHtml;
-            try { el.disabled = false; } catch(_) {}
-            el.style.pointerEvents = '';
-            if (el.classList) el.classList.remove('opacity-80', 'cursor-wait');
+            if (!btn || btn.dataset.locked !== '1') return;
+            btn.dataset.locked = '0';
+            if (btn.dataset.originalHtml) btn.innerHTML = btn.dataset.originalHtml;
+            try { btn.disabled = false; } catch(_) {}
+            btn.style.pointerEvents = '';
+            btn.classList.remove('opacity-80', 'cursor-wait');
           } catch(_) {}
         }, LOCK_MS);
       }
-      // Submit handler CAPTURE fase (antes que cualquier otro listener)
+      // Submit handler CAPTURE fase (solo para formularios)
       document.addEventListener('submit', function(e){
         var f = e.target;
         if (!f || f.tagName !== 'FORM') return;
-        // Buscar el submit button asociado al form
-        var btn = f.querySelector('button[type="submit"]');
-        if (!btn) {
-          // Fallback: buscar el último click pointer dentro del form
-          var all = f.querySelectorAll('button, input[type="submit"]');
-          for (var i = 0; i < all.length; i++) {
-            if (all[i].type === 'submit' || all[i].tagName === 'BUTTON') { btn = all[i]; break; }
-          }
-        }
-        if (btn) lockOnce(btn, btn.getAttribute('data-loading-text') || 'Procesando…');
+        var btn = f.querySelector('button[type="submit"]') || f.querySelector('input[type="submit"]');
+        if (btn) lockSubmitButton(btn, btn.getAttribute('data-loading-text') || 'Procesando…');
       }, true);
-      // Link buttons (btn-primary / btn-secondary) → lock al primer click
-      document.addEventListener('click', function(e){
-        var el = e.target;
-        for (var depth = 0; depth < 4 && el; depth++, el = el.parentElement) {
-          if (el.tagName === 'A') {
-            var isBtnLink = (el.className || '').match(/btn-primary|btn-secondary|href-once|data-href-once/);
-            if (isBtnLink) { lockOnce(el, 'Cargando…'); }
-            return;
-          }
+      // Desbloquear al restaurar página desde bfcache (botón atrás)
+      window.addEventListener('pageshow', function(e){
+        if (e.persisted) {
+          var lockedBtns = document.querySelectorAll('[data-locked="1"]');
+          lockedBtns.forEach(function(btn){
+            btn.dataset.locked = '0';
+            if (btn.dataset.originalHtml) btn.innerHTML = btn.dataset.originalHtml;
+            try { btn.disabled = false; } catch(_) {}
+            btn.style.pointerEvents = '';
+            btn.classList.remove('opacity-80', 'cursor-wait');
+          });
         }
-      }, true);
+      });
     })();
   </script>
   <script src="https://cdn.tailwindcss.com" fetchpriority="low" defer></script>
@@ -169,7 +158,7 @@
       </div>
       <div class="flex items-center gap-3">
         {% if user.is_authenticated %}
-          {% if user.is_admin_soporte or user.is_staff or user.is_superuser %}
+          {% if user.is_admin_soporte or user.is_superuser %}
             <a href="/admin-panel/" class="btn-secondary text-sm">
               <i class="fa-solid fa-user-shield"></i>
               Panel Administrador

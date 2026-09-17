@@ -76,7 +76,7 @@ def modulos_menu(request):
     """Menú jerárquico unificado de administración de servicios."""
     return [
         {
-            'section': 'Reportería',
+            'section': 'Reportería y Clientes',
             'key': 'reporteria',
             'icono': 'fa-chart-pie',
             'submodulos': [
@@ -84,6 +84,15 @@ def modulos_menu(request):
                 {'label': '1.2 Benchmark por rubro', 'url': reverse_lazy('adminpanel:reporteria_benchmark_rubro'), 'icono': 'fa-chart-line', 'key': 'reporteria_benchmark_rubro'},
                 {'label': '1.3 Tendencias en reseñas', 'url': reverse_lazy('adminpanel:reporteria_tendencias_resenas'), 'icono': 'fa-comments', 'key': 'reporteria_tendencias_resenas'},
                 {'label': '1.4 Reportes de Planes', 'url': reverse_lazy('adminpanel:reporteria_planes'), 'icono': 'fa-tags', 'key': 'reporteria_planes'},
+            ]
+        },
+        {
+            'section': 'Usuarios y Privacidad',
+            'key': 'usuarios_menu',
+            'icono': 'fa-user-shield',
+            'submodulos': [
+                {'label': 'Gestión de Usuarios', 'url': reverse_lazy('adminpanel:usuarios'), 'icono': 'fa-users-cog', 'key': 'usuarios'},
+                {'label': 'Solicitudes ARCOPB', 'url': reverse_lazy('adminpanel:solicitudes_arco'), 'icono': 'fa-shield-halved', 'key': 'solicitudes_arco'},
             ]
         },
         {
@@ -95,13 +104,14 @@ def modulos_menu(request):
             ]
         },
         {
-            'section': 'Métricas',
+            'section': 'Métricas y Encuestas',
             'key': 'metricas',
             'icono': 'fa-sliders-h',
             'submodulos': [
                 {'label': '3.1 Criterios de Benchmark', 'url': reverse_lazy('adminpanel:metricas_criterios_benchmark'), 'icono': 'fa-balance-scale', 'key': 'metricas_criterios_benchmark'},
                 {'label': '3.2 CSAT y NPS', 'url': reverse_lazy('adminpanel:metricas_csat_nps'), 'icono': 'fa-smile', 'key': 'metricas_csat_nps'},
                 {'label': '3.3 Reseñas Google', 'url': reverse_lazy('adminpanel:metricas_resenas_google'), 'icono': 'fa-star', 'key': 'metricas_resenas_google'},
+                {'label': '3.4 Plantillas Encuestas', 'url': reverse_lazy('adminpanel:plantillas'), 'icono': 'fa-poll', 'key': 'plantillas'},
             ]
         },
         {
@@ -2036,6 +2046,145 @@ class AdminPanelSuscripcionCreateView(AdminSoporteRequiredMixin, View):
         _auditar(request, AccionAuditoriaChoices.CREAR, ModuloAuditoriaChoices.SUSCRIPCIONES, nueva_sus, descripcion=f'Asignó plan {plan.nombre} a {negocio.nombre}')
         messages.success(request, f'Suscripción al plan "{plan.nombre}" asignada correctamente a {negocio.nombre}.')
         return redirect('adminpanel:negocio_detalle', pk=negocio.id)
+
+
+# ==============================
+# GESTIÓN DE USUARIOS
+# ==============================
+class AdminPanelUsuariosListView(AdminSoporteRequiredMixin, View):
+    def get(self, request):
+        q = request.GET.get('q', '').strip()
+        rol = request.GET.get('rol', '').strip()
+
+        users_qs = User.objects.all().order_by('-date_joined')
+        if q:
+            users_qs = users_qs.filter(Q(email__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q))
+        if rol == 'SUPERUSER':
+            users_qs = users_qs.filter(is_superuser=True)
+        elif rol == 'ADMIN_SOPORTE':
+            users_qs = users_qs.filter(is_staff=True, is_superuser=False)
+        elif rol == 'DUENO':
+            users_qs = users_qs.filter(negocios__isnull=False)
+
+        context = {
+            'menu': modulos_menu(request),
+            'menu_activo': 'usuarios',
+            'seccion_titulo': 'Gestión de Usuarios de la Plataforma',
+            'usuarios': users_qs,
+            'q': q,
+            'rol_filtro': rol,
+        }
+        return render(request, 'admin_panel/usuarios_list.html', context)
+
+
+class AdminPanelUsuarioCambiarRolView(AdminSoporteRequiredMixin, View):
+    def post(self, request, pk):
+        target_user = get_object_or_404(User, pk=pk)
+        nuevo_rol = request.POST.get('nuevo_rol')
+
+        if nuevo_rol == 'SUPERUSER':
+            target_user.is_superuser = True
+            target_user.is_staff = True
+        elif nuevo_rol == 'ADMIN_SOPORTE':
+            target_user.is_superuser = False
+            target_user.is_staff = True
+        else:
+            target_user.is_superuser = False
+            target_user.is_staff = False
+        target_user.save()
+
+        _auditar(request, AccionAuditoriaChoices.CAMBIAR_ROL, ModuloAuditoriaChoices.USUARIOS, target_user, descripcion=f'Cambió rol a {nuevo_rol}')
+        messages.success(request, f'Rol del usuario {target_user.email} actualizado a {nuevo_rol}.')
+        return redirect('adminpanel:usuarios')
+
+
+class AdminPanelUsuarioCambiarEstadoView(AdminSoporteRequiredMixin, View):
+    def post(self, request, pk):
+        target_user = get_object_or_404(User, pk=pk)
+        target_user.is_active = not target_user.is_active
+        target_user.save()
+
+        accion = AccionAuditoriaChoices.ACTIVAR if target_user.is_active else AccionAuditoriaChoices.DESACTIVAR
+        _auditar(request, accion, ModuloAuditoriaChoices.USUARIOS, target_user, descripcion=f'Cambió estado a {"ACTIVO" if target_user.is_active else "INACTIVO"}')
+        messages.success(request, f'Usuario {target_user.email} ahora está {"ACTIVO" if target_user.is_active else "DESACTIVADO"}.')
+        return redirect('adminpanel:usuarios')
+
+
+class AdminPanelUsuarioResetClaveView(AdminSoporteRequiredMixin, View):
+    def post(self, request, pk):
+        target_user = get_object_or_404(User, pk=pk)
+        nueva_clave = User.objects.make_random_password(length=10)
+        target_user.set_password(nueva_clave)
+        target_user.save()
+
+        _auditar(request, AccionAuditoriaChoices.RESETEAR_CLAVE, ModuloAuditoriaChoices.USUARIOS, target_user, descripcion='Reset clave por Admin Soporte')
+        messages.success(request, f'Clave reiniciada para {target_user.email}. La nueva clave temporal es: {nueva_clave}')
+        return redirect('adminpanel:usuarios')
+
+
+# ==============================
+# PLANTILLAS GLOBAL ENCUESTAS
+# ==============================
+class AdminPanelPlantillasListView(AdminSoporteRequiredMixin, View):
+    def get(self, request):
+        plantillas = PlantillaEncuesta.objects.filter(negocio__isnull=True).order_by('orden', 'nombre')
+        context = {
+            'menu': modulos_menu(request),
+            'menu_activo': 'plantillas',
+            'seccion_titulo': 'Plantillas de Encuestas Predeterminadas',
+            'plantillas': plantillas,
+        }
+        return render(request, 'admin_panel/plantillas_list.html', context)
+
+
+class AdminPanelPlantillaToggleActivaView(AdminSoporteRequiredMixin, View):
+    def post(self, request, pk):
+        plantilla = get_object_or_404(PlantillaEncuesta, pk=pk)
+        plantilla.activa = not plantilla.activa
+        plantilla.save()
+        _auditar(request, AccionAuditoriaChoices.EDITAR, ModuloAuditoriaChoices.PLANTILLAS_ENCUESTAS, plantilla, descripcion=f'Toggle activa={plantilla.activa}')
+        messages.success(request, f'Plantilla "{plantilla.nombre}" ahora está {"ACTIVA" if plantilla.activa else "INACTIVA"}.')
+        return redirect('adminpanel:plantillas')
+
+
+# ==============================
+# SOLICITUDES ARCOPB (PRIVACIDAD)
+# ==============================
+from .models import SolicitudARCOPB, SolicitudARCOPBChoices
+
+class AdminPanelSolicitudesARCOListView(AdminSoporteRequiredMixin, View):
+    def get(self, request):
+        estado_filtro = request.GET.get('estado', '').strip()
+        qs = SolicitudARCOPB.objects.all()
+        if estado_filtro:
+            qs = qs.filter(estado=estado_filtro)
+
+        context = {
+            'menu': modulos_menu(request),
+            'menu_activo': 'solicitudes_arco',
+            'seccion_titulo': 'Solicitudes de Protección de Datos ARCOPB (Ley N°19.628)',
+            'solicitudes': qs,
+            'estado_filtro': estado_filtro,
+            'estados': SolicitudARCOPBChoices.choices,
+        }
+        return render(request, 'admin_panel/solicitudes_arco_list.html', context)
+
+
+class AdminPanelSolicitudARCOCambiarEstadoView(AdminSoporteRequiredMixin, View):
+    def post(self, request, pk):
+        sol = get_object_or_404(SolicitudARCOPB, pk=pk)
+        nuevo_estado = request.POST.get('estado')
+        notas = request.POST.get('notas_admin', '').strip()
+
+        if nuevo_estado in dict(SolicitudARCOPBChoices.choices):
+            sol.estado = nuevo_estado
+            if notas:
+                sol.notas_admin = notas
+            sol.save()
+            _auditar(request, AccionAuditoriaChoices.EDITAR, ModuloAuditoriaChoices.OTRO, sol, descripcion=f'Cambió estado ARCOPB a {nuevo_estado}')
+            messages.success(request, f'Solicitud #{str(sol.id)[:8]} actualizada a {sol.get_estado_display()}.')
+        return redirect('adminpanel:solicitudes_arco')
+
 
 
 

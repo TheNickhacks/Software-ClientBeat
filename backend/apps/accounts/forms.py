@@ -74,9 +74,15 @@ class RegistroUsuarioForm(forms.ModelForm):
 
     def clean_email(self):
         email = self.cleaned_data.get('email', '').strip().lower()
-        if User.objects.filter(email__iexact=email).exists():
+        user_existente = User.objects.filter(email__iexact=email).first()
+        if user_existente:
+            self.user_existente = user_existente
+            p1 = self.data.get('password1')
+            if p1 and user_existente.check_password(p1):
+                # Las credenciales coinciden con el usuario existente: permitir avanzar al paso 2
+                return email
             raise ValidationError(
-                _('Este correo electrónico ya está registrado. Inicia sesión o usa otro email.'),
+                _('Este correo electrónico ya está registrado. Inicia sesión en /accounts/login/ o ingresa la contraseña correcta.'),
                 code='email_duplicado',
             )
         return email
@@ -91,12 +97,16 @@ class RegistroUsuarioForm(forms.ModelForm):
         return p2
 
     def save(self, commit=True):
+        user_existente = getattr(self, 'user_existente', None)
+        if user_existente:
+            return user_existente
+
         from datetime import date
         user = super().save(commit=False)
         user.username = self.cleaned_data['email'].split('@')[0] + '_' + secrets.token_hex(3)
         user.set_password(self.cleaned_data['password1'])
         # ================= ROLES SEGMENTACIÓN =================
-        # Todo usuario que se registra por la web = ROL = DUEÑO, is_staff=False (solo Admin Soporte real tiene is_staff).
+        # Todo usuario que se registra por la web = ROL = DUEÑO, is_staff=False
         user.rol = User.RolChoices.DUENO
         user.is_staff = False
         user.es_mayor_18 = True
@@ -105,3 +115,4 @@ class RegistroUsuarioForm(forms.ModelForm):
         if commit:
             user.save()
         return user
+

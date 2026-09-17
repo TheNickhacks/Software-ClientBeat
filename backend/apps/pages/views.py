@@ -241,15 +241,32 @@ def _estrellas_html(n):
 @login_required(login_url='/accounts/login/')
 def dashboard(request):
     # ================= ROLES SEGMENTACIÓN =================
-    # Panel Admin es EXCLUSIVO para: SuperUser o Rol Global == ADMIN_SOPORTE.
-    # is_staff NO otorga acceso (bug anterior: DUEÑOS con is_staff=True se iban a admin-panel).
     is_admin = request.user.is_superuser or getattr(request.user, 'rol', None) == 'ADMIN_SOPORTE'
     admin_preview = request.GET.get('admin_preview') == '1' or request.session.get('admin_preview_modo')
     if is_admin and not admin_preview:
         return redirect('/admin-panel/')
-    if onboarding_pendiente(request.user) and not is_admin:
-        paso, _ = onboarding_siguiente_paso(request.user)
+
+    # ================= OMITIR ONBOARDING =================
+    # Si usuario presionó "Omitir onboarding / entrar al panel", permitelo pasar aunque
+    # onboarding_pendiente=True. Nunca más CALLEJÓN SIN SALIDA si falla algo en Paso 2/3.
+    onboarding_omitido = bool(request.session.get('onboarding_omitido', False))
+    onboarding_pendiente_flag = onboarding_pendiente(request.user, session=request.session) if not onboarding_omitido else False
+    if onboarding_pendiente_flag and not is_admin and not onboarding_omitido:
+        paso, _ = onboarding_siguiente_paso(request.user, session=request.session)
         return redirect(f'/accounts/onboarding/?paso={paso}')
+
+    # Mostrar banner chico (no intrusivo) si onboarding está omitido + pendiente:
+    # invitación a completarlo después, sin obligar.
+    onboarding_incompleto = None
+    if not is_admin and onboarding_omitido:
+        # Volver a calcular (cache-safe) para saber si realmente está incompleto o ya lo completó aparte
+        if onboarding_pendiente(request.user, session=None):
+            paso, msg = onboarding_siguiente_paso(request.user, session=None)
+            onboarding_incompleto = {
+                'paso': paso,
+                'mensaje': msg,
+                'url': f'/accounts/onboarding/?paso={paso}',
+            }
 
 
 
@@ -309,6 +326,8 @@ def dashboard(request):
         'filtro_fecha_desde_obj': filtro_fecha_desde,
         'filtro_fecha_hasta_obj': filtro_fecha_hasta,
         'filtro_fecha_exacta_obj': filtro_fecha_exacta,
+        # ================= OMITIR ONBOARDING: banner chico sin obligar =================
+        'onboarding_incompleto': onboarding_incompleto,
     }
     negocio = ctx['negocio']
     if negocio is not None:
@@ -400,44 +419,40 @@ def dashboard(request):
             locales_rango = locales_rango.filter(nps_puntaje__lte=6)
 
         if locales_negocio_total:
-            promedio_nps = locales_negocio_qs.exclude(nps_puntaje__isnull=True).aggregate(avg=Avg('nps_puntaje'))['avg'] or 0
-            promotores = locales_rango.filter(nps_puntaje__gte=9).count()
-            pasivos = locales_rango.filter(nps_puntaje__in=[7, 8]).count()
-            detractores = locales_rango.filter(nps_puntaje__lte=6).count()
+            stats = locales_rango.aggregate(
+                promedio_nps=Avg('nps_puntaje'),
+                promotores=Count(Case(When(nps_puntaje__gte=9, then=1))),
+                pasivos=Count(Case(When(nps_puntaje__in=[7, 8], then=1))),
+                detractores=Count(Case(When(nps_puntaje__lte=6, then=1))),
+                muy_feliz=Count(Case(When(csat_emocion=EmocionCSATChoices.MUY_FELIZ, then=1))),
+                feliz=Count(Case(When(csat_emocion=EmocionCSATChoices.FELIZ, then=1))),
+                neutral=Count(Case(When(csat_emocion=EmocionCSATChoices.NEUTRAL, then=1))),
+                insatisfecho=Count(Case(When(csat_emocion=EmocionCSATChoices.INSATISFECHO, then=1))),
+                muy_insatisfecho=Count(Case(When(csat_emocion=EmocionCSATChoices.MUY_INSATISFECHO, then=1))),
+                csat_total=Count(Case(When(csat_emocion__isnull=False, then=1))),
+            )
+            promedio_nps = stats['promedio_nps'] or 0
+            promotores = stats['promotores'] or 0
+            pasivos = stats['pasivos'] or 0
+            detractores = stats['detractores'] or 0
             total_cat = promotores + pasivos + detractores or 1
             nps_score = round(100 * (promotores - detractores) / total_cat)
+
+            muy_feliz = stats['muy_feliz'] or 0
+            feliz = stats['feliz'] or 0
+            csat_total = stats['csat_total'] or 1
+            ctx['kpi_csat_felices_pct'] = round(100 * (muy_feliz + feliz) / csat_total) if csat_total else 0
+            ctx['kpi_csat_total'] = csat_total
+            ctx['kpi_muy_feliz'] = muy_feliz
+            ctx['kpi_feliz'] = feliz
+            ctx['kpi_neutral'] = stats['neutral'] or 0
+            ctx['kpi_insatisfecho'] = stats['insatisfecho'] or 0
+            ctx['kpi_muy_insatisfecho'] = stats['muy_insatisfecho'] or 0
         else:
             promedio_nps = 0
             promotores = pasivos = detractores = 0
             total_cat = 1
             nps_score = 0
-        ctx['kpi_nps_promedio'] = round(promedio_nps, 1) if promedio_nps else 0
-        ctx['kpi_nps_score'] = nps_score
-        ctx['kpi_promotores'] = promotores
-        ctx['kpi_pasivos'] = pasivos
-        ctx['kpi_detractores'] = detractores
-        if nps_score >= 50:
-            ctx['nps_color'] = 'emerald'
-            ctx['nps_badge'] = 'Promotor'
-        elif nps_score >= 0:
-            ctx['nps_color'] = 'amber'
-            ctx['nps_badge'] = 'Pasivo'
-        else:
-            ctx['nps_color'] = 'rose'
-            ctx['nps_badge'] = 'Detractor'
-
-        if locales_negocio_total:
-            muy_feliz = locales_rango.filter(csat_emocion=EmocionCSATChoices.MUY_FELIZ).count()
-            feliz = locales_rango.filter(csat_emocion=EmocionCSATChoices.FELIZ).count()
-            csat_total = locales_rango.exclude(csat_emocion__isnull=True).count() or 1
-            ctx['kpi_csat_felices_pct'] = round(100 * (muy_feliz + feliz) / csat_total) if csat_total else 0
-            ctx['kpi_csat_total'] = csat_total
-            ctx['kpi_muy_feliz'] = muy_feliz
-            ctx['kpi_feliz'] = feliz
-            ctx['kpi_neutral'] = locales_rango.filter(csat_emocion=EmocionCSATChoices.NEUTRAL).count()
-            ctx['kpi_insatisfecho'] = locales_rango.filter(csat_emocion=EmocionCSATChoices.INSATISFECHO).count()
-            ctx['kpi_muy_insatisfecho'] = locales_rango.filter(csat_emocion=EmocionCSATChoices.MUY_INSATISFECHO).count()
-        else:
             ctx['kpi_csat_felices_pct'] = 0
             ctx['kpi_csat_total'] = 0
             ctx['kpi_muy_feliz'] = 0
@@ -455,125 +470,131 @@ def dashboard(request):
             ctx['qr_url'] = request.build_absolute_uri('/e/' + locales_primer_local.qr_token + '/')
 
         # ==========================================================
-        #  ANÁLISIS LATENCIA + DISTRIBUCIÓN TEMPORAL
+        #  ANÁLISIS LATENCIA + DISTRIBUCIÓN TEMPORAL + TEMÁTICA 4D
+        #  (Solo si tab es 'resumen' o 'analisis')
         # ==========================================================
-        analisis_latencia = None
-        if locales_negocio_total >= 2:
-            try:
-                fechas = list(
-                    locales_rango.order_by('fecha_respuesta')
-                    .values_list('fecha_respuesta', flat=True)
-                )
-                if len(fechas) >= 2:
-                    deltas_horas = []
-                    for i in range(1, len(fechas)):
-                        d = (fechas[i] - fechas[i-1]).total_seconds() / 3600.0
-                        if d >= 0:
-                            deltas_horas.append(d)
-                    if deltas_horas:
-                        prom_horas = sum(deltas_horas) / len(deltas_horas)
-                        ctx['analisis_latencia'] = {
-                            'n_intervalos': len(deltas_horas),
-                            'promedio_horas': round(prom_horas, 1),
-                            'promedio_minutos': round(prom_horas * 60, 0),
-                            'respuestas_por_dia_prom': round(len(fechas) / max(1, temp_days), 2),
-                            'primera': fechas[0],
-                            'ultima': fechas[-1],
-                        }
-                # Distribución hora del día
-                horas_count = [0] * 24
-                dias_semana_count = [0] * 7
-                dias_labels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
-                for dt in fechas:
-                    h = timezone.localtime(dt).hour
-                    horas_count[h] += 1
-                    d = dt.weekday()  # 0=lun a 6=dom
-                    dias_semana_count[d] += 1
-                ctx['dist_horas'] = {
-                    'labels': list(range(24)),
-                    'data': horas_count,
-                    'pico_hora': max(range(24), key=lambda i: horas_count[i]),
-                }
-                ctx['dist_dias'] = {
-                    'labels': dias_labels,
-                    'data': dias_semana_count,
-                    'pico_dia': dias_labels[max(range(7), key=lambda i: dias_semana_count[i])] if any(dias_semana_count) else '—',
-                }
-            except Exception as e:
-                ctx['analisis_latencia_error'] = str(e)
+        if tab_actual in ('resumen', 'analisis'):
+            analisis_latencia = None
+            if locales_negocio_total >= 2:
+                try:
+                    fechas = list(
+                        locales_rango.order_by('fecha_respuesta')
+                        .values_list('fecha_respuesta', flat=True)
+                    )
+                    if len(fechas) >= 2:
+                        deltas_horas = []
+                        for i in range(1, len(fechas)):
+                            d = (fechas[i] - fechas[i-1]).total_seconds() / 3600.0
+                            if d >= 0:
+                                deltas_horas.append(d)
+                        if deltas_horas:
+                            prom_horas = sum(deltas_horas) / len(deltas_horas)
+                            ctx['analisis_latencia'] = {
+                                'n_intervalos': len(deltas_horas),
+                                'promedio_horas': round(prom_horas, 1),
+                                'promedio_minutos': round(prom_horas * 60, 0),
+                                'respuestas_por_dia_prom': round(len(fechas) / max(1, temp_days), 2),
+                                'primera': fechas[0],
+                                'ultima': fechas[-1],
+                            }
+                    # Distribución hora del día
+                    horas_count = [0] * 24
+                    dias_semana_count = [0] * 7
+                    dias_labels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+                    for dt in fechas:
+                        h = timezone.localtime(dt).hour
+                        horas_count[h] += 1
+                        d = dt.weekday()
+                        dias_semana_count[d] += 1
+                    ctx['dist_horas'] = {
+                        'labels': list(range(24)),
+                        'data': horas_count,
+                        'pico_hora': max(range(24), key=lambda i: horas_count[i]),
+                    }
+                    ctx['dist_dias'] = {
+                        'labels': dias_labels,
+                        'data': dias_semana_count,
+                        'pico_dia': dias_labels[max(range(7), key=lambda i: dias_semana_count[i])] if any(dias_semana_count) else '—',
+                    }
+                except Exception as e:
+                    ctx['analisis_latencia_error'] = str(e)
 
-        # ==========================================================
-        #  ANÁLISIS TEMÁTICA 4D (palabras clave)
-        # ==========================================================
-        textos_comentarios = []
-        for r in locales_rango:
-            c = getattr(r, 'comentario', None) or ''
-            if c:
-                textos_comentarios.append(c)
-        tematicas, total_menciones = _analizar_tematicas(textos_comentarios)
-        ctx['tematicas_4d'] = tematicas
-        ctx['tematicas_total_menciones'] = total_menciones
-        ctx['comentarios_analizados'] = len(textos_comentarios)
+            # ANÁLISIS TEMÁTICA 4D (palabras clave)
+            textos_comentarios = list(
+                locales_rango.exclude(comentario='').exclude(comentario__isnull=True)
+                .values_list('comentario', flat=True)
+            )
+            tematicas, total_menciones = _analizar_tematicas(textos_comentarios)
+            ctx['tematicas_4d'] = tematicas
+            ctx['tematicas_total_menciones'] = total_menciones
+            ctx['comentarios_analizados'] = len(textos_comentarios)
+            tematicas_list = list(tematicas.items())
+            tematicas_list.sort(key=lambda kv: kv[1]['menciones'], reverse=True)
+            ctx['tematicas_ranking'] = tematicas_list
 
         # ==========================================================
         #  RESEÑAS GOOGLE (estrellas 1-5 con diferenciador)
+        #  (Solo si tab es 'resumen' o 'google')
         # ==========================================================
-        from apps.reputation.models import ResenaGoogle, SentimientoChoices
-        google_qs = ResenaGoogle.objects.filter(
-            local__negocio=negocio
-        ).select_related('local').order_by('-fecha_google')
+        if tab_actual in ('resumen', 'google'):
+            from apps.reputation.models import ResenaGoogle
+            google_qs = ResenaGoogle.objects.filter(
+                local__negocio=negocio
+            ).select_related('local').order_by('-fecha_google')
 
-        if filtro_local_id:
-            try:
-                lid = int(filtro_local_id)
-                google_qs = google_qs.filter(local_id=lid)
-            except (ValueError, TypeError):
-                pass
+            if filtro_local_id:
+                try:
+                    lid = int(filtro_local_id)
+                    google_qs = google_qs.filter(local_id=lid)
+                except (ValueError, TypeError):
+                    pass
 
-        if not (filtro_fecha_desde or filtro_fecha_hasta or filtro_fecha_exacta):
-            google_rango = google_qs.filter(fecha_google__gte=desde_temp)
-        else:
-            google_rango = google_qs
-        if filtro_fecha_desde:
-            dt_desde = datetime.combine(filtro_fecha_desde, datetime.min.time(), tzinfo=timezone.get_current_timezone())
-            google_rango = google_rango.filter(fecha_google__gte=dt_desde)
-        if filtro_fecha_hasta:
-            dt_hasta = datetime.combine(filtro_fecha_hasta, datetime.max.time(), tzinfo=timezone.get_current_timezone())
-            google_rango = google_rango.filter(fecha_google__lte=dt_hasta)
-        if filtro_fecha_exacta:
-            dt1 = datetime.combine(filtro_fecha_exacta, datetime.min.time(), tzinfo=timezone.get_current_timezone())
-            dt2 = datetime.combine(filtro_fecha_exacta, datetime.max.time(), tzinfo=timezone.get_current_timezone())
-            google_rango = google_rango.filter(fecha_google__range=(dt1, dt2))
+            if not (filtro_fecha_desde or filtro_fecha_hasta or filtro_fecha_exacta):
+                google_rango = google_qs.filter(fecha_google__gte=desde_temp)
+            else:
+                google_rango = google_qs
+            if filtro_fecha_desde:
+                dt_desde = datetime.combine(filtro_fecha_desde, datetime.min.time(), tzinfo=timezone.get_current_timezone())
+                google_rango = google_rango.filter(fecha_google__gte=dt_desde)
+            if filtro_fecha_hasta:
+                dt_hasta = datetime.combine(filtro_fecha_hasta, datetime.max.time(), tzinfo=timezone.get_current_timezone())
+                google_rango = google_rango.filter(fecha_google__lte=dt_hasta)
+            if filtro_fecha_exacta:
+                dt1 = datetime.combine(filtro_fecha_exacta, datetime.min.time(), tzinfo=timezone.get_current_timezone())
+                dt2 = datetime.combine(filtro_fecha_exacta, datetime.max.time(), tzinfo=timezone.get_current_timezone())
+                google_rango = google_rango.filter(fecha_google__range=(dt1, dt2))
 
-        ctx['google_total'] = google_qs.count()
-        ctx['google_rango'] = google_rango.count()
-        google_rango_list = list(google_rango[:30])
-        if google_qs.exists():
-            rating_avg = google_qs.aggregate(avg=Avg('calificacion'))['avg'] or 0
-            ctx['google_rating_promedio'] = round(float(rating_avg), 1)
-            ctx['google_estrellas'] = _estrellas_html(rating_avg)
-            rating_counts = {}
-            for s in range(1, 6):
-                rating_counts[s] = google_qs.filter(calificacion=s).count()
-            ctx['google_rating_dist'] = rating_counts
-        else:
-            ctx['google_rating_promedio'] = 0
-            ctx['google_estrellas'] = _estrellas_html(0)
-            ctx['google_rating_dist'] = {1:0, 2:0, 3:0, 4:0, 5:0}
-        ctx['google_resenas'] = google_rango_list
+            ctx['google_total'] = google_qs.count()
+            ctx['google_rango'] = google_rango.count()
+            google_rango_list = list(google_rango[:30])
+            if google_qs.exists():
+                rating_avg = google_qs.aggregate(avg=Avg('calificacion'))['avg'] or 0
+                ctx['google_rating_promedio'] = round(float(rating_avg), 1)
+                ctx['google_estrellas'] = _estrellas_html(rating_avg)
+                rating_counts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+                for row in google_qs.values('calificacion').annotate(c=Count('id')):
+                    calif = row['calificacion']
+                    if calif in rating_counts:
+                        rating_counts[calif] = row['c']
+                ctx['google_rating_dist'] = rating_counts
+            else:
+                ctx['google_rating_promedio'] = 0
+                ctx['google_estrellas'] = _estrellas_html(0)
+                ctx['google_rating_dist'] = {1:0, 2:0, 3:0, 4:0, 5:0}
+            ctx['google_resenas'] = google_rango_list
 
-        rating_dist = ctx.get('google_rating_dist', {1:0,2:0,3:0,4:0,5:0})
-        google_total_count = ctx.get('google_total', 0) or 1
-        google_rating_rows = []
-        for stars in (5, 4, 3, 2, 1):
-            c = rating_dist.get(stars, 0)
-            google_rating_rows.append({
-                'stars': stars,
-                'estrellas': _estrellas_html(stars),
-                'count': c,
-                'pct': round(100 * c / google_total_count, 0) if google_total_count else 0,
-            })
-        ctx['google_rating_rows'] = google_rating_rows
+            rating_dist = ctx.get('google_rating_dist', {1:0,2:0,3:0,4:0,5:0})
+            google_total_count = ctx.get('google_total', 0) or 1
+            google_rating_rows = []
+            for stars in (5, 4, 3, 2, 1):
+                c = rating_dist.get(stars, 0)
+                google_rating_rows.append({
+                    'stars': stars,
+                    'estrellas': _estrellas_html(stars),
+                    'count': c,
+                    'pct': round(100 * c / google_total_count, 0) if google_total_count else 0,
+                })
+            ctx['google_rating_rows'] = google_rating_rows
 
         if 'dist_horas' in ctx:
             horas_data = ctx['dist_horas']['data']
@@ -591,126 +612,131 @@ def dashboard(request):
                 })
             ctx['dist_dias']['rows'] = dias_list
 
-        tematicas_list = list(tematicas.items())
-        tematicas_list.sort(key=lambda kv: kv[1]['menciones'], reverse=True)
-        ctx['tematicas_ranking'] = tematicas_list
-
         # ==========================================================
         #  BENCHMARK (datos por Local + Top competidores)
+        #  (Solo si tab es 'resumen' o 'benchmark')
         # ==========================================================
-        from apps.reputation.models import Benchmark
-        benchmark_locales_data = []
-        locales_negocio = negocio.locales.filter(estado='ACTIVO').order_by('fecha_creacion')
-        total_locales = locales_negocio.count()
-        locales_con_benchmark = 0
-        rating_promedio_acum = 0.0
-        posicion_promedio_acum = 0
-        diferencia_vs_rubro_acum = 0.0
-        benchmark_local_activo_id = None
-        try:
-            benchmark_local_activo_id = int(filtro_local_id) if filtro_local_id else None
-        except (ValueError, TypeError):
+        if tab_actual in ('resumen', 'benchmark'):
+            from apps.reputation.models import Benchmark
+            benchmark_locales_data = []
+            locales_negocio = negocio.locales.filter(estado='ACTIVO').order_by('fecha_creacion')
+            total_locales = locales_negocio.count()
+            locales_con_benchmark = 0
+            rating_promedio_acum = 0.0
+            posicion_promedio_acum = 0
+            diferencia_vs_rubro_acum = 0.0
             benchmark_local_activo_id = None
+            try:
+                benchmark_local_activo_id = int(filtro_local_id) if filtro_local_id else None
+            except (ValueError, TypeError):
+                benchmark_local_activo_id = None
 
-        for local_obj in locales_negocio:
-            ult_b = Benchmark.objects.filter(local=local_obj).order_by('-fecha_generacion').first()
-            entry = {
-                'local_id': local_obj.id,
-                'local_nombre': local_obj.nombre,
-                'tiene_benchmark': ult_b is not None,
-                'benchmark': ult_b,
-                'fecha_generacion': ult_b.fecha_generacion if ult_b else None,
-                'rating_local': float(ult_b.puntuacion_local) if ult_b else None,
-                'posicion_local': ult_b.posicion_local if ult_b else None,
-                'total_evaluados': ult_b.total_evaluados if ult_b else None,
-                'promedio_rubro': float(ult_b.puntuacion_promedio_rubro) if ult_b else None,
-                'top25_promedio': float(ult_b.top25_promedio) if ult_b else None,
-                'bottom25_promedio': float(ult_b.bottom25_promedio) if ult_b else None,
-                'percentiles': {},
-                'competidores_rows': [],
-                'diferencia_vs_rubro': None,
-                'delta_label': None,
-                'delta_color': 'slate',
-            }
-            if ult_b:
-                locales_con_benchmark += 1
-                rating_promedio_acum += entry['rating_local']
-                posicion_promedio_acum += entry['posicion_local']
-                diff = entry['rating_local'] - entry['promedio_rubro']
-                entry['diferencia_vs_rubro'] = round(diff, 2)
-                if diff > 0:
-                    entry['delta_label'] = "+%.2f vs rubro" % entry['diferencia_vs_rubro']
-                    entry['delta_color'] = 'emerald'
-                elif diff < 0:
-                    entry['delta_label'] = "%.2f vs rubro" % entry['diferencia_vs_rubro']
-                    entry['delta_color'] = 'rose'
-                else:
-                    entry['delta_label'] = '= al promedio rubro'
-                    entry['delta_color'] = 'amber'
-                diferencia_vs_rubro_acum += diff
-                datos_b = ult_b.datos or {}
-                entry['percentiles'] = datos_b.get('percentiles', {}) or {}
-                competidores_raw = datos_b.get('competidores', []) or []
-                comp_rows = []
-                for idx, c in enumerate(competidores_raw[:10], start=1):
-                    puntuacion = c.get('puntuacion') or c.get('rating') or 0
-                    opiniones = c.get('opiniones') or c.get('numero_opiniones') or 0
-                    try:
-                        puntuacion_f = round(float(puntuacion), 1)
-                    except Exception:
-                        puntuacion_f = 0.0
-                    try:
-                        opiniones_i = int(opiniones)
-                    except Exception:
-                        opiniones_i = 0
-                    pct_bar = int(max(0, min(100, (puntuacion_f / 5.0) * 100))) if puntuacion_f else 0
-                    if entry['rating_local'] and puntuacion_f >= entry['rating_local']:
-                        badge = 'Top competidor'
-                        badge_color = 'amber'
-                    elif entry['promedio_rubro'] and puntuacion_f >= entry['promedio_rubro']:
-                        badge = 'Sobre promedio'
-                        badge_color = 'blue'
+            all_benchmarks = Benchmark.objects.filter(local__in=locales_negocio).order_by('local_id', '-fecha_generacion')
+            benchmarks_dict = {}
+            for b in all_benchmarks:
+                if b.local_id not in benchmarks_dict:
+                    benchmarks_dict[b.local_id] = b
+
+            for local_obj in locales_negocio:
+                ult_b = benchmarks_dict.get(local_obj.id)
+                entry = {
+                    'local_id': local_obj.id,
+                    'local_nombre': local_obj.nombre,
+                    'tiene_benchmark': ult_b is not None,
+                    'benchmark': ult_b,
+                    'fecha_generacion': ult_b.fecha_generacion if ult_b else None,
+                    'rating_local': float(ult_b.puntuacion_local) if ult_b else None,
+                    'posicion_local': ult_b.posicion_local if ult_b else None,
+                    'total_evaluados': ult_b.total_evaluados if ult_b else None,
+                    'promedio_rubro': float(ult_b.puntuacion_promedio_rubro) if ult_b else None,
+                    'top25_promedio': float(ult_b.top25_promedio) if ult_b else None,
+                    'bottom25_promedio': float(ult_b.bottom25_promedio) if ult_b else None,
+                    'percentiles': {},
+                    'competidores_rows': [],
+                    'diferencia_vs_rubro': None,
+                    'delta_label': None,
+                    'delta_color': 'slate',
+                }
+                if ult_b:
+                    locales_con_benchmark += 1
+                    rating_promedio_acum += entry['rating_local']
+                    posicion_promedio_acum += entry['posicion_local']
+                    diff = entry['rating_local'] - entry['promedio_rubro']
+                    entry['diferencia_vs_rubro'] = round(diff, 2)
+                    if diff > 0:
+                        entry['delta_label'] = "+%.2f vs rubro" % entry['diferencia_vs_rubro']
+                        entry['delta_color'] = 'emerald'
+                    elif diff < 0:
+                        entry['delta_label'] = "%.2f vs rubro" % entry['diferencia_vs_rubro']
+                        entry['delta_color'] = 'rose'
                     else:
-                        badge = 'Bajo promedio'
-                        badge_color = 'slate'
-                    comp_rows.append({
-                        'pos': idx,
-                        'nombre': c.get('nombre') or c.get('place_nombre') or 'Competidor',
-                        'puntuacion': puntuacion_f,
-                        'opiniones': opiniones_i,
-                        'pct_bar': pct_bar,
-                        'badge': badge,
-                        'badge_color': badge_color,
-                        'direccion': c.get('direccion') or c.get('place_direccion') or '',
-                        'place_id': c.get('place_id') or '',
-                    })
-                entry['competidores_rows'] = comp_rows
-                if benchmark_local_activo_id is None:
-                    benchmark_local_activo_id = local_obj.id
-            benchmark_locales_data.append(entry)
+                        entry['delta_label'] = '= al promedio rubro'
+                        entry['delta_color'] = 'amber'
+                    diferencia_vs_rubro_acum += diff
+                    datos_b = ult_b.datos or {}
+                    entry['percentiles'] = datos_b.get('percentiles', {}) or {}
+                    competidores_raw = datos_b.get('competidores', []) or []
+                    comp_rows = []
+                    for idx, c in enumerate(competidores_raw[:10], start=1):
+                        puntuacion = c.get('puntuacion') or c.get('rating') or 0
+                        opiniones = c.get('opiniones') or c.get('numero_opiniones') or 0
+                        try:
+                            puntuacion_f = round(float(puntuacion), 1)
+                        except Exception:
+                            puntuacion_f = 0.0
+                        try:
+                            opiniones_i = int(opiniones)
+                        except Exception:
+                            opiniones_i = 0
+                        pct_bar = int(max(0, min(100, (puntuacion_f / 5.0) * 100))) if puntuacion_f else 0
+                        if entry['rating_local'] and puntuacion_f >= entry['rating_local']:
+                            badge = 'Top competidor'
+                            badge_color = 'amber'
+                        elif entry['promedio_rubro'] and puntuacion_f >= entry['promedio_rubro']:
+                            badge = 'Sobre promedio'
+                            badge_color = 'blue'
+                        else:
+                            badge = 'Bajo promedio'
+                            badge_color = 'slate'
+                        comp_rows.append({
+                            'pos': idx,
+                            'nombre': c.get('nombre') or c.get('place_nombre') or 'Competidor',
+                            'puntuacion': puntuacion_f,
+                            'opiniones': opiniones_i,
+                            'pct_bar': pct_bar,
+                            'badge': badge,
+                            'badge_color': badge_color,
+                            'direccion': c.get('direccion') or c.get('place_direccion') or '',
+                            'place_id': c.get('place_id') or '',
+                        })
+                    entry['competidores_rows'] = comp_rows
+                    if benchmark_local_activo_id is None:
+                        benchmark_local_activo_id = local_obj.id
+                benchmark_locales_data.append(entry)
 
-        ctx['benchmark_locales'] = benchmark_locales_data
-        ctx['benchmark_total_locales'] = total_locales
-        ctx['benchmark_locales_con_benchmark'] = locales_con_benchmark
+            ctx['benchmark_locales'] = benchmark_locales_data
+            ctx['benchmark_total_locales'] = total_locales
+            ctx['benchmark_locales_con_benchmark'] = locales_con_benchmark
 
-        if locales_con_benchmark > 0:
-            ctx['benchmark_rating_promedio'] = round(rating_promedio_acum / locales_con_benchmark, 1)
-            ctx['benchmark_posicion_promedio'] = round(posicion_promedio_acum / locales_con_benchmark, 1)
-            ctx['benchmark_diferencia_vs_rubro_promedio'] = round(diferencia_vs_rubro_acum / locales_con_benchmark, 2)
-        else:
-            ctx['benchmark_rating_promedio'] = 0
-            ctx['benchmark_posicion_promedio'] = 0
-            ctx['benchmark_diferencia_vs_rubro_promedio'] = 0
+            if locales_con_benchmark > 0:
+                ctx['benchmark_rating_promedio'] = round(rating_promedio_acum / locales_con_benchmark, 1)
+                ctx['benchmark_posicion_promedio'] = round(posicion_promedio_acum / locales_con_benchmark, 1)
+                ctx['benchmark_diferencia_vs_rubro_promedio'] = round(diferencia_vs_rubro_acum / locales_con_benchmark, 2)
+            else:
+                ctx['benchmark_rating_promedio'] = 0
+                ctx['benchmark_posicion_promedio'] = 0
+                ctx['benchmark_diferencia_vs_rubro_promedio'] = 0
 
-        ctx['benchmark_local_activo_id'] = benchmark_local_activo_id
-        activo_entry = None
-        for e in benchmark_locales_data:
-            if e['local_id'] == benchmark_local_activo_id:
-                activo_entry = e
-                break
-        if activo_entry is None and benchmark_locales_data:
-            activo_entry = benchmark_locales_data[0]
-        ctx['benchmark_activo'] = activo_entry
+            ctx['benchmark_local_activo_id'] = benchmark_local_activo_id
+            activo_entry = None
+            for e in benchmark_locales_data:
+                if e['local_id'] == benchmark_local_activo_id:
+                    activo_entry = e
+                    break
+            if activo_entry is None and benchmark_locales_data:
+                activo_entry = benchmark_locales_data[0]
+            ctx['benchmark_activo'] = activo_entry
+
 
         # ==========================================================
         #  EXPORT EXCEL

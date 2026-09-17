@@ -164,6 +164,12 @@ class Negocio(models.Model):
         verbose_name = 'Negocio'
         verbose_name_plural = 'Negocios'
         ordering = ['-fecha_creacion']
+        indexes = [
+            models.Index(fields=['dueño']),
+            models.Index(fields=['estado']),
+            models.Index(fields=['comuna']),
+            models.Index(fields=['rubro']),
+        ]
 
     def __str__(self):
         return self.nombre
@@ -450,9 +456,22 @@ class Local(models.Model):
         verbose_name = 'Local'
         verbose_name_plural = 'Locales'
         ordering = ['-fecha_creacion']
+        indexes = [
+            models.Index(fields=['negocio']),
+            models.Index(fields=['comuna']),
+            models.Index(fields=['estado']),
+            models.Index(fields=['qr_token']),
+        ]
 
     def __str__(self):
         return f'{self.nombre} ({self.negocio.nombre})'
+
+    @property
+    def google_review_url(self):
+        if self.google_place_id:
+            return f"https://search.google.com/local/writereview?placeid={self.google_place_id}"
+        query = f"{self.nombre} {self.comuna.nombre if self.comuna else ''}".strip()
+        return f"https://www.google.com/maps/search/?api=1&query={query}"
 
 
 class Competidor(models.Model):

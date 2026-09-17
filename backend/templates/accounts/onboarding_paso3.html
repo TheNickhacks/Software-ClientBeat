@@ -162,12 +162,21 @@
             <a href="?paso=2" data-href-once class="btn-secondary flex-1 sm:flex-none justify-center">
               <i class="fa fa-arrow-left"></i> Volver
             </a>
-            <button type="submit" data-submit-once class="btn-primary py-3 px-8 flex-1 sm:flex-none justify-center">
+            <button type="submit" data-loading-text="Activando plan y entrando a tu panel…" class="btn-primary py-3 px-8 flex-1 sm:flex-none justify-center">
               🎉 Activar Plan y empezar ahora
             </button>
           </div>
 
         </form>
+
+        {% if puede_omitir_onboarding %}
+          <div class="mt-7 pt-6 border-t border-slate-200 text-center">
+            <a href="?omitir_onboarding=1" data-href-once class="text-sm text-slate-500 hover:text-indigo-700 hover:underline font-medium inline-flex items-center gap-1.5">
+              <i class="fa-solid fa-forward-step-forward"></i>
+              Prefiero entrar sin activar el plan ahora (lo haré después desde mi panel)
+            </a>
+          </div>
+        {% endif %}
 
       </div>
 

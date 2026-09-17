@@ -54,6 +54,34 @@
     {% endif %}
 
 
+    {# ---------------- ONBOARDING INCOMPLETO (PERMITIDO OMITIR) ---------------- #}
+    {% if onboarding_incompleto %}
+      <div class="mb-6 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-sky-50 shadow-sm animate-fade-up">
+        <div class="p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex items-start gap-4">
+            <div class="shrink-0 w-11 h-11 rounded-2xl bg-white border border-indigo-100 flex items-center justify-center shadow-sm">
+              <i class="fa-solid fa-list-check text-xl text-indigo-600"></i>
+            </div>
+            <div>
+              <h3 class="text-base md:text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
+                ⚙️ Configuración inicial pendiente
+              </h3>
+              <p class="text-sm md:text-base text-slate-600 leading-relaxed">
+                Puedes usar el panel, pero para ver tus <b>KPIs reales, Benchmark competitividad y encuestas QR</b>,
+                termina la configuración cuando tengas un minuto más →
+                <span class="text-indigo-600 font-semibold">Paso {{ onboarding_incompleto.paso }} · {{ onboarding_incompleto.mensaje }}</span>.
+              </p>
+            </div>
+          </div>
+          <a href="{{ onboarding_incompleto.url }}" class="btn-primary shrink-0 justify-center">
+            <i class="fa-solid fa-arrow-right"></i>
+            Continuar configuración
+          </a>
+        </div>
+      </div>
+    {% endif %}
+
+
     {# ---------------- ESTADO SUSCRIPCIÓN (PENDIENTE / VENCIDA / SUSPENDIDA) ---------------- #}
     {% if suscripcion_ultima and suscripcion_estado_color != 'emerald' %}
       <div class="mb-8 rounded-2xl overflow-hidden shadow animate-fade-up delay-1">
@@ -135,6 +163,12 @@
         </p>
       </div>
       <div class="flex flex-wrap gap-3">
+        {% if negocio %}
+          <a href="{% url 'encuestas:configurar_plantilla' %}"
+             class="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold px-5 py-3 rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all">
+            <i class="fa fa-sliders"></i> Encuesta Personalizada
+          </a>
+        {% endif %}
         {% if puede_exportar_excel and negocio %}
           <button type="submit" form="filtrosDashboardForm" name="export" value="excel"
                   class="inline-flex items-center gap-2 bg-gradient-to-r from-cbgreen to-cbgreen-700 text-white font-semibold px-5 py-3 rounded-xl shadow-lg shadow-cbgreen-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all">

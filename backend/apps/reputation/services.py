@@ -125,6 +125,34 @@ class GooglePlacesSyncService:
                 pass
         return pid
 
+    def _calcular_sub_ratings(self, calificacion: int, comentario: Optional[str]) -> dict:
+        base = float(calificacion)
+        txt = (comentario or '').lower()
+
+        atencion = base
+        if any(w in txt for w in ['lento', 'espera', 'malo', 'pésimo', 'pesimo', 'pesima', 'grosero', 'demora']):
+            atencion = max(1.0, base - 1.0)
+        elif any(w in txt for w in ['excelente atención', 'amable', 'rapido', 'rápido', 'cordial', 'simpatico']):
+            atencion = min(5.0, base + 0.5)
+
+        producto = base
+        if any(w in txt for w in ['frío', 'frio', 'caro', 'feo', 'mala calidad', 'desabrido']):
+            producto = max(1.0, base - 1.0)
+        elif any(w in txt for w in ['rico', 'delicioso', 'buena calidad', 'buen precio', 'fresco', 'espectacular']):
+            producto = min(5.0, base + 0.5)
+
+        ambiente = base
+        if any(w in txt for w in ['sucio', 'ruidoso', 'incómodo', 'incomodo', 'chico', 'apretado', 'calor']):
+            ambiente = max(1.0, base - 1.0)
+        elif any(w in txt for w in ['limpio', 'ordenado', 'agradable', 'bonito', 'cómodo', 'comodo', 'acogedor']):
+            ambiente = min(5.0, base + 0.5)
+
+        return {
+            'atencion_cliente': round(atencion, 1),
+            'valoracion_producto': round(producto, 1),
+            'ambiente_local': round(ambiente, 1),
+        }
+
     # --------- upsert reseñas ---------
     @transaction.atomic
     def _upsert_resenas(self, local: Local, opiniones: List[GooglePlaceReview]) -> Tuple[int, int, int]:
@@ -138,24 +166,31 @@ class GooglePlacesSyncService:
             )
             existente = qs.first()
             sent, score = AnalizadorSentimientoSimple.analizar(rev.comentario)
+            sub_ratings = self._calcular_sub_ratings(rev.calificacion, rev.comentario)
             data = dict(
                 autor_nombre=rev.autor_nombre,
                 autor_foto_url=rev.autor_foto_url,
                 calificacion=rev.calificacion,
                 comentario=rev.comentario,
                 fecha_google=rev.fecha_google,
+                sub_ratings=sub_ratings,
             )
             if sent is not None:
                 data['sentimiento'] = sent
             if score is not None:
                 data['score_sentimiento'] = score
             if existente is None:
-                ResenaGoogle.objects.create(
+                nueva_resena = ResenaGoogle.objects.create(
                     local=local,
                     google_review_id=rev.google_review_id,
                     **data,
                 )
                 nuevas += 1
+                try:
+                    from apps.notifications.services import NotificationService
+                    NotificationService.despachar_alerta_resena_negativa(nueva_resena)
+                except Exception:
+                    pass
             else:
                 cambiado = False
                 for k, v in data.items():
