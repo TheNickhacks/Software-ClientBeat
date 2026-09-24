@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import views as auth_views, login as auth_login
+from django.contrib.auth import views as auth_views, login as auth_login, update_session_auth_hash
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.views import View
 from django.utils.decorators import method_decorator
@@ -525,3 +526,203 @@ class OnboardingWizardView(View):
 
 
 onboarding = OnboardingWizardView.as_view()
+
+
+from django.utils import timezone
+from apps.billing.models import Plan, Suscripcion, EstadoSuscripcionChoices, CambioPlan, MotivoCambioPlanChoices
+
+
+class PerfilUsuarioView(LoginRequiredMixin, View):
+    """
+    Vista de Perfil y Configuración de Cuenta de Usuario.
+    Permite visualizar/editar datos personales, información del negocio/locales,
+    gestionar y cambiar plan, cancelar o reactivar suscripción, cambiar contraseña y contactar soporte.
+    """
+    template_name = 'accounts/perfil.html'
+
+    def get_context_data(self, request):
+        from apps.businesses.models import Negocio
+
+        user = request.user
+        negocios = user.negocios_permitidos_qs()
+        negocio = negocios.first() if negocios.exists() else None
+        locales = negocio.locales.filter(estado='ACTIVO') if negocio else []
+        cant_locales = locales.count() or 1
+
+        suscripcion = None
+        if negocio:
+            suscripcion = (
+                Suscripcion.objects.filter(negocio=negocio)
+                .order_by('-fecha_inicio')
+                .first()
+            )
+
+        planes_disponibles = Plan.objects.filter(activo=True).order_by('orden', '-fecha_creacion')
+        planes_info = []
+        for p in planes_disponibles:
+            desglose = p.desglose_mensual(cant_locales)
+            planes_info.append({
+                'plan': p,
+                'desglose': desglose,
+                'es_actual': bool(suscripcion and suscripcion.plan_id == p.id),
+            })
+
+        return {
+            'usuario': user,
+            'negocio': negocio,
+            'locales': locales,
+            'suscripcion': suscripcion,
+            'plan_activo': suscripcion.plan if suscripcion else None,
+            'planes_disponibles': planes_disponibles,
+            'planes_info': planes_info,
+            'rol_label': user.get_rol_display(),
+        }
+
+    def get(self, request, *args, **kwargs):
+        context = self.get_context_data(request)
+        return render(request, self.template_name, context)
+
+    def post(self, request, *args, **kwargs):
+        action = request.POST.get('action')
+        user = request.user
+
+        if action == 'update_profile':
+            first_name = request.POST.get('first_name', '').strip()
+            last_name = request.POST.get('last_name', '').strip()
+            telefono = request.POST.get('telefono', '').strip()
+
+            user.first_name = first_name
+            user.last_name = last_name
+            user.telefono = telefono
+            user.save()
+
+            messages.success(request, '✅ Tus datos personales fueron actualizados correctamente.')
+
+        elif action == 'update_business':
+            from apps.businesses.models import Negocio
+            negocios = user.negocios_permitidos_qs()
+            negocio = negocios.first() if negocios.exists() else None
+
+            if negocio and (user.is_dueno or negocio.dueño_id == user.id):
+                nombre = request.POST.get('nombre_negocio', '').strip()
+                direccion = request.POST.get('direccion_negocio', '').strip()
+                ciudad = request.POST.get('ciudad_negocio', '').strip()
+                sitio_web = request.POST.get('sitio_web', '').strip()
+
+                if nombre:
+                    negocio.nombre = nombre
+                negocio.direccion = direccion
+                negocio.ciudad = ciudad
+                negocio.sitio_web = sitio_web
+                negocio.save()
+
+                messages.success(request, '✅ La información de tu negocio fue actualizada exitosamente.')
+            else:
+                messages.error(request, '⚠️ No tienes permisos para modificar este negocio.')
+
+        elif action == 'change_plan':
+            nuevo_plan_id = request.POST.get('plan_id')
+            negocios = user.negocios_permitidos_qs()
+            negocio = negocios.first() if negocios.exists() else None
+
+            if not negocio:
+                messages.error(request, '⚠️ No se encontró un negocio asociado para cambiar de plan.')
+            else:
+                try:
+                    nuevo_plan = Plan.objects.get(id=nuevo_plan_id, activo=True)
+                    suscripcion = Suscripcion.objects.filter(negocio=negocio).order_by('-fecha_inicio').first()
+                    plan_anterior = suscripcion.plan if suscripcion else None
+
+                    if suscripcion:
+                        suscripcion.plan = nuevo_plan
+                        suscripcion.estado = EstadoSuscripcionChoices.ACTIVA
+                        suscripcion.save(update_fields=['plan', 'estado'])
+
+                        CambioPlan.objects.create(
+                            suscripcion=suscripcion,
+                            plan_anterior=plan_anterior,
+                            plan_nuevo=nuevo_plan,
+                            motivo=MotivoCambioPlanChoices.SOLICITUD_DUENO,
+                            realizado_por=user,
+                            precio_antes_clp=plan_anterior.precio_clp if plan_anterior else 0,
+                            precio_despues_clp=nuevo_plan.precio_clp or 0,
+                        )
+
+                        messages.success(
+                            request,
+                            f'🎉 Tu plan se actualizó exitosamente a "{nuevo_plan.get_nombre_mostrar()}".'
+                        )
+                    else:
+                        messages.warning(request, '⚠️ No cuentas con una suscripción activa previa.')
+                except Plan.DoesNotExist:
+                    messages.error(request, '⚠️ El plan seleccionado no existe o no está activo.')
+
+        elif action == 'cancel_subscription':
+            motivo = request.POST.get('motivo_cancelacion', '').strip() or 'Solicitado por el cliente desde su perfil'
+            negocios = user.negocios_permitidos_qs()
+            negocio = negocios.first() if negocios.exists() else None
+
+            if negocio:
+                suscripcion = Suscripcion.objects.filter(negocio=negocio).order_by('-fecha_inicio').first()
+                if suscripcion:
+                    suscripcion.estado = EstadoSuscripcionChoices.CANCELADA
+                    suscripcion.cancelada_en = timezone.now()
+                    suscripcion.motivo_cancelacion = motivo
+                    suscripcion.renovacion_automatica = False
+                    suscripcion.save(update_fields=['estado', 'cancelada_en', 'motivo_cancelacion', 'renovacion_automatica'])
+
+                    messages.warning(
+                        request,
+                        '⚠️ Tu suscripción ha sido cancelada. Mantendrás el acceso a la plataforma hasta el final de tu periodo de facturación actual.'
+                    )
+                else:
+                    messages.error(request, '⚠️ No hay una suscripción activa para cancelar.')
+
+        elif action == 'reactivate_subscription':
+            negocios = user.negocios_permitidos_qs()
+            negocio = negocios.first() if negocios.exists() else None
+
+            if negocio:
+                suscripcion = Suscripcion.objects.filter(negocio=negocio).order_by('-fecha_inicio').first()
+                if suscripcion:
+                    suscripcion.estado = EstadoSuscripcionChoices.ACTIVA
+                    suscripcion.renovacion_automatica = True
+                    suscripcion.cancelada_en = None
+                    suscripcion.save(update_fields=['estado', 'renovacion_automatica', 'cancelada_en'])
+
+                    messages.success(request, '⚡ ¡Tu suscripción ha sido reactivada exitosamente!')
+                else:
+                    messages.error(request, '⚠️ No hay una suscripción previa para reactivar.')
+
+        elif action == 'change_password':
+            pass_actual = request.POST.get('current_password', '')
+            pass_nueva = request.POST.get('new_password', '')
+            pass_confirm = request.POST.get('confirm_password', '')
+
+            if not user.check_password(pass_actual):
+                messages.error(request, '❌ La contraseña actual no es correcta.')
+            elif len(pass_nueva) < 8:
+                messages.error(request, '⚠️ La nueva contraseña debe tener al menos 8 caracteres.')
+            elif pass_nueva != pass_confirm:
+                messages.error(request, '⚠️ Las contraseñas no coinciden.')
+            else:
+                user.set_password(pass_nueva)
+                user.save()
+                update_session_auth_hash(request, user)
+                messages.success(request, '🔒 Tu contraseña se ha actualizado con éxito.')
+
+        elif action == 'contact_support':
+            asunto = request.POST.get('asunto', '').strip()
+            mensaje = request.POST.get('mensaje', '').strip()
+
+            if asunto and mensaje:
+                messages.success(
+                    request,
+                    f'📩 Mensaje enviado a soporte@clientbeat.cl. Asunto: "{asunto}". Nos pondremos en contacto contigo a {user.email} a la brevedad.'
+                )
+            else:
+                messages.error(request, '⚠️ Por favor ingresa el asunto y el mensaje para el equipo de soporte.')
+
+        context = self.get_context_data(request)
+        return render(request, self.template_name, context)
+

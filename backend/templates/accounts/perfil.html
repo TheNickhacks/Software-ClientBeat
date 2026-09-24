@@ -1,0 +1,493 @@
+{% extends 'base.html' %}
+{% block title %}Mi Perfil y Configuración · ClientBeat{% endblock %}
+
+{% block content %}
+<section class="pt-28 pb-20">
+  <div class="container mx-auto px-6 max-w-6xl">
+
+    {# Breadcrumb #}
+    <div class="mb-6 flex items-center justify-between">
+      <a href="{% url 'pages:dashboard' %}" class="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-cbblue font-semibold transition-colors">
+        <i class="fa fa-arrow-left"></i> Volver a Mi Panel
+      </a>
+      <span class="inline-flex items-center gap-2 bg-cbblue-50 text-cbblue-700 text-xs font-bold px-3 py-1 rounded-full">
+        <i class="fa fa-user-gear"></i> Configuración de Cuenta
+      </span>
+    </div>
+
+    {# Header Banner #}
+    <div class="glass-effect rounded-2xl p-6 md:p-8 mb-8 border border-slate-200/60 shadow-sm animate-fade-up">
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div class="flex items-center gap-5">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-cbblue to-cbgreen text-white flex items-center justify-center text-2xl font-black shadow-lg">
+            {{ usuario.first_name|default:usuario.email|slice:":1"|upper }}
+          </div>
+          <div>
+            <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900">
+              {{ usuario.get_full_name|default:usuario.email }}
+            </h1>
+            <div class="flex flex-wrap items-center gap-2 mt-1">
+              <span class="text-sm text-slate-500"><i class="fa fa-envelope mr-1"></i>{{ usuario.email }}</span>
+              <span class="text-slate-300">|</span>
+              <span class="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                <i class="fa fa-shield-halved"></i> {{ rol_label }}
+              </span>
+            </div>
+          </div>
+        </div>
+        {% if negocio %}
+        <div class="shrink-0 bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-right">
+          <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Negocio asociado</div>
+          <div class="text-sm font-bold text-slate-800"><i class="fa fa-building text-cbblue mr-1"></i>{{ negocio.nombre }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Main Grid Sections #}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-up delay-2">
+
+      {# Navigation / Shortcuts Sidebar #}
+      <div class="lg:col-span-1 space-y-6">
+        <div class="glass-effect rounded-2xl p-6 border border-slate-200/60 shadow-sm">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Navegación de Ajustes</h3>
+          <nav class="space-y-1">
+            <a href="#personal" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 hover:bg-cbblue-50 hover:text-cbblue transition-colors">
+              <i class="fa fa-user text-cbblue w-5"></i> Información Personal
+            </a>
+            <a href="#negocio" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 hover:bg-cbblue-50 hover:text-cbblue transition-colors">
+              <i class="fa fa-store text-cbgreen w-5"></i> Mi Negocio y Locales
+            </a>
+            <a href="#plan" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 hover:bg-cbblue-50 hover:text-cbblue transition-colors">
+              <i class="fa fa-credit-card text-amber-500 w-5"></i> Plan y Suscripción
+            </a>
+            <a href="#seguridad" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 hover:bg-cbblue-50 hover:text-cbblue transition-colors">
+              <i class="fa fa-lock text-rose-500 w-5"></i> Cambio de Contraseña
+            </a>
+            <a href="#soporte" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 hover:bg-cbblue-50 hover:text-cbblue transition-colors">
+              <i class="fa fa-headset text-indigo-500 w-5"></i> Soporte y Ayuda
+            </a>
+          </nav>
+        </div>
+
+        {# Contacto Soporte Box #}
+        <div class="rounded-2xl p-6 bg-gradient-to-br from-cbblue via-cbblue-700 to-slate-900 text-white shadow-lg">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
+              <i class="fa fa-life-ring text-lg"></i>
+            </div>
+            <h4 class="font-bold text-base">¿Necesitas ayuda?</h4>
+          </div>
+          <p class="text-xs text-slate-200 leading-relaxed mb-4">
+            Nuestro equipo de Admin Soporte está disponible para resolver cualquier duda técnica o asistirte con tu plan.
+          </p>
+          <a href="mailto:soporte@clientbeat.cl" class="inline-flex items-center justify-center gap-2 w-full py-2.5 bg-white text-cbblue font-bold rounded-xl text-xs hover:bg-slate-100 transition-colors shadow">
+            <i class="fa fa-paper-plane"></i> Contactar Soporte ClientBeat
+          </a>
+        </div>
+      </div>
+
+      {# Detailed Form Content Columns #}
+      <div class="lg:col-span-2 space-y-8">
+
+        {# Section 1: Personal Info #}
+        <div id="personal" class="glass-effect rounded-2xl p-6 md:p-8 border border-slate-200/60 shadow-sm scroll-mt-28">
+          <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+            <div class="w-10 h-10 rounded-xl bg-cbblue-50 text-cbblue flex items-center justify-center">
+              <i class="fa fa-user text-lg"></i>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-slate-900">Información Personal</h2>
+              <p class="text-xs text-slate-500">Actualiza tus nombres y teléfono de contacto.</p>
+            </div>
+          </div>
+
+          <form method="POST" class="space-y-5">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_profile">
+
+            <div class="grid md:grid-cols-2 gap-5">
+              <div>
+                <label class="form-label">Nombre</label>
+                <input type="text" name="first_name" value="{{ usuario.first_name }}" class="form-input" placeholder="Tu nombre">
+              </div>
+              <div>
+                <label class="form-label">Apellido(s)</label>
+                <input type="text" name="last_name" value="{{ usuario.last_name }}" class="form-input" placeholder="Tus apellidos">
+              </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-5">
+              <div>
+                <label class="form-label">Correo electrónico (solo lectura)</label>
+                <input type="email" value="{{ usuario.email }}" readonly class="form-input bg-slate-100 text-slate-500 cursor-not-allowed">
+              </div>
+              <div>
+                <label class="form-label">Teléfono de contacto</label>
+                <input type="text" name="telefono" value="{{ usuario.telefono|default:'' }}" class="form-input" placeholder="+56 9 1234 5678">
+              </div>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+              <button type="submit" class="btn-primary">
+                <i class="fa fa-floppy-disk"></i> Guardar Cambios Personales
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {# Section 2: Business & Locales #}
+        <div id="negocio" class="glass-effect rounded-2xl p-6 md:p-8 border border-slate-200/60 shadow-sm scroll-mt-28">
+          <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+            <div class="w-10 h-10 rounded-xl bg-cbgreen-50 text-cbgreen flex items-center justify-center">
+              <i class="fa fa-store text-lg"></i>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-slate-900">Mi Negocio y Locales</h2>
+              <p class="text-xs text-slate-500">Configuración corporativa y sucursales activas.</p>
+            </div>
+          </div>
+
+          {% if negocio %}
+          <form method="POST" class="space-y-5">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_business">
+
+            <div class="grid md:grid-cols-2 gap-5">
+              <div>
+                <label class="form-label">Nombre del Negocio</label>
+                <input type="text" name="nombre_negocio" value="{{ negocio.nombre }}" class="form-input" required>
+              </div>
+              <div>
+                <label class="form-label">Rubro / Categoría</label>
+                <input type="text" value="{{ negocio.rubro.nombre|default:'Gastronomía / General' }}" readonly class="form-input bg-slate-100 text-slate-500 cursor-not-allowed">
+              </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-5">
+              <div>
+                <label class="form-label">Dirección Principal</label>
+                <input type="text" name="direccion_negocio" value="{{ negocio.direccion|default:'' }}" class="form-input" placeholder="Ej: Av. Providencia 1234">
+              </div>
+              <div>
+                <label class="form-label">Ciudad / Comuna</label>
+                <input type="text" name="ciudad_negocio" value="{{ negocio.ciudad|default:'' }}" class="form-input" placeholder="Ej: Santiago">
+              </div>
+            </div>
+
+            <div>
+              <label class="form-label">Sitio Web / Red Social</label>
+              <input type="url" name="sitio_web" value="{{ negocio.sitio_web|default:'' }}" class="form-input" placeholder="https://minegocio.cl">
+            </div>
+
+            <div class="pt-2 flex justify-end">
+              <button type="submit" class="btn-primary">
+                <i class="fa fa-floppy-disk"></i> Actualizar Datos del Negocio
+              </button>
+            </div>
+          </form>
+
+          {# List of Locales #}
+          <div class="mt-8 pt-6 border-t border-slate-100">
+            <h4 class="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
+              <i class="fa fa-location-dot text-cbblue"></i> Locales registrados ({{ locales|length }})
+            </h4>
+            <div class="space-y-2">
+              {% for loc in locales %}
+              <div class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 text-xs">
+                <div>
+                  <b class="text-slate-800 text-sm block">{{ loc.nombre }}</b>
+                  <span class="text-slate-500"><i class="fa fa-map-pin mr-1"></i>{{ loc.direccion|default:'Sin dirección' }}, {{ loc.ciudad|default:'' }}</span>
+                </div>
+                <span class="px-2.5 py-1 rounded-full font-bold bg-cbgreen-100 text-cbgreen-700 text-[11px]">Activo</span>
+              </div>
+              {% empty %}
+              <p class="text-xs text-slate-400 italic">No tienes locales adicionales configurados.</p>
+              {% endfor %}
+            </div>
+          </div>
+          {% else %}
+          <div class="text-center py-6 text-slate-500 italic">No tienes un negocio activo asignado a tu cuenta.</div>
+          {% endif %}
+        </div>
+
+        {# Section 3: Plan and Subscription #}
+        <div id="plan" class="glass-effect rounded-2xl p-6 md:p-8 border border-slate-200/60 shadow-sm scroll-mt-28">
+          <div class="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100 flex-wrap">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <i class="fa fa-credit-card text-lg"></i>
+              </div>
+              <div>
+                <h2 class="text-lg font-bold text-slate-900">Plan y Suscripción</h2>
+                <p class="text-xs text-slate-500">Detalles de tu plan contratado y pasarela de pago Flow.</p>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" onclick="document.getElementById('modalCambiarPlan').classList.remove('hidden')" class="btn-primary text-xs !py-2">
+                <i class="fa fa-arrows-rotate"></i> Cambiar / Mejorar Plan
+              </button>
+              {% if suscripcion and suscripcion.estado == 'CANCELADA' %}
+                <form method="POST" class="inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="reactivate_subscription">
+                  <button type="submit" class="btn-secondary text-xs !py-2 !bg-emerald-50 !text-emerald-700 !border-emerald-200 hover:!bg-emerald-100">
+                    <i class="fa fa-bolt"></i> Reactivar Suscripción
+                  </button>
+                </form>
+              {% elif suscripcion and suscripcion.estado != 'CANCELADA' %}
+                <button type="button" onclick="document.getElementById('modalCancelarSuscripcion').classList.remove('hidden')" class="px-3 py-2 bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 text-xs font-bold rounded-xl transition-colors">
+                  <i class="fa fa-ban"></i> Cancelar Suscripción
+                </button>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if plan_activo %}
+          <div class="p-5 rounded-2xl bg-gradient-to-r from-indigo-50 via-slate-50 to-emerald-50 border border-indigo-100 mb-6">
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Plan Contratado Actual</span>
+                <h3 class="text-2xl font-black text-slate-900">{{ plan_activo.get_nombre_mostrar }}</h3>
+                <p class="text-xs text-slate-600 mt-1">{{ plan_activo.descripcion|default:'Acceso a Benchmark competitividad, módulo Encuestas QR y Análisis Google.' }}</p>
+              </div>
+              <div class="text-right">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold
+                  {% if suscripcion.estado == 'ACTIVA' %}bg-cbgreen-100 text-cbgreen-700
+                  {% elif suscripcion.estado == 'PENDIENTE' %}bg-amber-100 text-amber-700
+                  {% else %}bg-rose-100 text-rose-700{% endif %}">
+                  <i class="fa fa-circle text-[8px]"></i> Estado: {{ suscripcion.get_estado_display|default:'Activa' }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-3 gap-4 text-xs mb-4">
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+              <span class="text-slate-400 block mb-1">Días de prueba gratis</span>
+              <b class="text-sm text-slate-800">{{ plan_activo.dias_prueba_gratis|default:365 }} días</b>
+            </div>
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+              <span class="text-slate-400 block mb-1">Fecha de activación</span>
+              <b class="text-sm text-slate-800">{{ suscripcion.fecha_inicio|date:"d/m/Y"|default:"Al completar registro" }}</b>
+            </div>
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+              <span class="text-slate-400 block mb-1">Pasarela de Pago</span>
+              <b class="text-sm text-cbblue flex items-center gap-1"><i class="fa fa-credit-card"></i> Flow Chile (API v2)</b>
+            </div>
+          </div>
+          {% else %}
+          <div class="p-4 rounded-xl bg-amber-50 text-amber-800 text-xs font-semibold flex items-center justify-between">
+            <span>⚠️ No tienes una suscripción activa registrada.</span>
+            <button type="button" onclick="document.getElementById('modalCambiarPlan').classList.remove('hidden')" class="underline font-bold">Seleccionar Plan</button>
+          </div>
+          {% endif %}
+        </div>
+
+        {# ================= MODAL CAMBIAR PLAN / FLOW ================= #}
+        <div id="modalCambiarPlan" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div class="bg-white rounded-3xl max-w-4xl w-full p-6 md:p-8 shadow-2xl relative my-8 animate-fade-up">
+            <button type="button" onclick="document.getElementById('modalCambiarPlan').classList.add('hidden')" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700 text-lg w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+              <i class="fa fa-xmark"></i>
+            </button>
+
+            <div class="text-center mb-6">
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-cbblue-50 text-cbblue mb-2">
+                <i class="fa fa-rocket"></i> Planes Disponibles ClientBeat
+              </span>
+              <h3 class="text-2xl font-black text-slate-900">Selecciona o Actualiza tu Plan</h3>
+              <p class="text-xs md:text-sm text-slate-500 max-w-lg mx-auto mt-1">Elige el plan que mejor se adapte al crecimiento de tus sucursales. Puedes abonar mediante Flow.</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-5">
+              {% for info in planes_info %}
+              {% with p=info.plan d=info.desglose es_act=info.es_actual %}
+              <div class="rounded-2xl p-5 border {% if es_act %}border-cbblue bg-cbblue-50/20 shadow-md relative{% else %}border-slate-200 bg-white hover:border-cbblue-300{% endif %} flex flex-col justify-between">
+                {% if es_act %}
+                <span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-cbblue text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  Plan Actual
+                </span>
+                {% endif %}
+
+                <div>
+                  <h4 class="font-extrabold text-slate-900 text-lg mb-1">{{ p.get_nombre_mostrar }}</h4>
+                  <p class="text-xs text-slate-500 line-clamp-2 mb-4">{{ p.descripcion|default:'Plan completo de monitoreo de reputación.' }}</p>
+
+                  <div class="my-3 pb-3 border-b border-slate-100">
+                    <div class="text-2xl font-black text-slate-900">
+                      {% if p.precio_clp %}${{ p.precio_clp|stringformat:"d" }} <span class="text-xs font-normal text-slate-500">CLP/mes</span>{% else %}Gratis{% endif %}
+                    </div>
+                    {% if d.local_extra_clp > 0 %}
+                    <div class="text-[11px] text-amber-600 font-semibold mt-1">
+                      +${{ d.local_extra_clp }} por {{ d.local_extra_cantidad }} locales extras
+                    </div>
+                    {% endif %}
+                  </div>
+
+                  <ul class="space-y-2 text-xs text-slate-600 mb-6">
+                    <li class="flex items-center gap-2">
+                      <i class="fa fa-check text-cbgreen"></i> {{ p.locales_gratis_incluidos }} locales incluidos
+                    </li>
+                    <li class="flex items-center gap-2">
+                      <i class="fa {% if p.tiene_analisis_google %}fa-check text-cbgreen{% else %}fa-xmark text-slate-300{% endif %}"></i> Análisis Google
+                    </li>
+                    <li class="flex items-center gap-2">
+                      <i class="fa {% if p.tiene_qr_clientbeat %}fa-check text-cbgreen{% else %}fa-xmark text-slate-300{% endif %}"></i> Encuestas QR NPS/CSAT
+                    </li>
+                    <li class="flex items-center gap-2">
+                      <i class="fa {% if p.tiene_benchmark_clientbeat %}fa-check text-cbgreen{% else %}fa-xmark text-slate-300{% endif %}"></i> Benchmark Competitivo
+                    </li>
+                  </ul>
+                </div>
+
+                <div>
+                  {% if es_act %}
+                  <button type="button" disabled class="w-full py-2.5 bg-slate-200 text-slate-500 font-bold rounded-xl text-xs cursor-default">
+                    Actualmente Contratado
+                  </button>
+                  {% else %}
+                  <div class="space-y-2">
+                    <form method="POST">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="change_plan">
+                      <input type="hidden" name="plan_id" value="{{ p.id }}">
+                      <button type="submit" class="w-full py-2.5 bg-slate-900 text-white hover:bg-slate-800 font-bold rounded-xl text-xs transition-colors shadow">
+                        Selección Rápida
+                      </button>
+                    </form>
+                    {% if negocio %}
+                    <form method="POST" action="{% url 'billing:flow_iniciar' %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="plan_id" value="{{ p.id }}">
+                      <input type="hidden" name="negocio_id" value="{{ negocio.id }}">
+                      <button type="submit" class="w-full py-2 bg-gradient-to-r from-cbblue to-cbgreen text-white font-bold rounded-xl text-xs hover:opacity-95 transition-opacity shadow flex items-center justify-center gap-1.5">
+                        <i class="fa fa-credit-card"></i> Pagar con Flow
+                      </button>
+                    </form>
+                    {% endif %}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+              {% endwith %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        {# ================= MODAL CANCELAR SUSCRIPCIÓN ================= #}
+        <div id="modalCancelarSuscripcion" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div class="bg-white rounded-3xl max-w-md w-full p-6 md:p-8 shadow-2xl relative animate-fade-up">
+            <button type="button" onclick="document.getElementById('modalCancelarSuscripcion').classList.add('hidden')" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700 text-lg w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+              <i class="fa fa-xmark"></i>
+            </button>
+
+            <div class="text-center mb-6">
+              <div class="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 mx-auto flex items-center justify-center text-2xl mb-3">
+                <i class="fa fa-triangle-exclamation"></i>
+              </div>
+              <h3 class="text-xl font-bold text-slate-900">¿Deseas cancelar tu suscripción?</h3>
+              <p class="text-xs text-slate-500 mt-1">Mantendrás acceso a todas tus métricas hasta el término del período vigente.</p>
+            </div>
+
+            <form method="POST" class="space-y-4">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="cancel_subscription">
+
+              <div>
+                <label class="form-label text-xs">Motivo de cancelación (opcional)</label>
+                <textarea name="motivo_cancelacion" rows="3" class="form-input text-xs" placeholder="Cuéntanos brevemente por qué decides cancelar..."></textarea>
+              </div>
+
+              <div class="flex items-center gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('modalCancelarSuscripcion').classList.add('hidden')" class="btn-secondary flex-1 justify-center text-xs">
+                  Volver / Mantener
+                </button>
+                <button type="submit" class="px-4 py-2.5 bg-rose-600 text-white font-bold rounded-xl text-xs hover:bg-rose-700 flex-1 justify-center transition-colors shadow">
+                  Confirmar Cancelación
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {# Section 4: Security / Password Change #}
+        <div id="seguridad" class="glass-effect rounded-2xl p-6 md:p-8 border border-slate-200/60 shadow-sm scroll-mt-28">
+          <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+            <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+              <i class="fa fa-lock text-lg"></i>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-slate-900">Seguridad y Contraseña</h2>
+              <p class="text-xs text-slate-500">Mantén protegida tu cuenta actualizando tu clave periódicamente.</p>
+            </div>
+          </div>
+
+          <form method="POST" class="space-y-5">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="change_password">
+
+            <div>
+              <label class="form-label">Contraseña Actual</label>
+              <input type="password" name="current_password" required class="form-input" placeholder="••••••••">
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-5">
+              <div>
+                <label class="form-label">Nueva Contraseña</label>
+                <input type="password" name="new_password" required class="form-input" placeholder="Mínimo 8 caracteres">
+              </div>
+              <div>
+                <label class="form-label">Confirmar Nueva Contraseña</label>
+                <input type="password" name="confirm_password" required class="form-input" placeholder="Repite la nueva clave">
+              </div>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+              <button type="submit" class="btn-primary !bg-rose-600 hover:!bg-rose-700">
+                <i class="fa fa-key"></i> Cambiar Contraseña
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {# Section 5: Support Contact Form #}
+        <div id="soporte" class="glass-effect rounded-2xl p-6 md:p-8 border border-slate-200/60 shadow-sm scroll-mt-28">
+          <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+            <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <i class="fa fa-headset text-lg"></i>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-slate-900">Soporte Técnico y Consultas</h2>
+              <p class="text-xs text-slate-500">Envía un mensaje directo a nuestro equipo de soporte.</p>
+            </div>
+          </div>
+
+          <form method="POST" class="space-y-5">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="contact_support">
+
+            <div>
+              <label class="form-label">Asunto de la consulta</label>
+              <input type="text" name="asunto" required class="form-input" placeholder="Ej: Consulta sobre actualización de datos o sucursales">
+            </div>
+
+            <div>
+              <label class="form-label">Detalle o Mensaje</label>
+              <textarea name="mensaje" rows="4" required class="form-input" placeholder="Describe brevemente en qué podemos ayudarte..."></textarea>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+              <button type="submit" class="btn-primary">
+                <i class="fa fa-paper-plane"></i> Enviar Mensaje a Soporte
+              </button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
