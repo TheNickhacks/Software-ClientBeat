@@ -138,17 +138,26 @@
 
         {# Section 2: Business & Locales #}
         <div id="negocio" class="glass-effect rounded-2xl p-6 md:p-8 border border-slate-200/60 shadow-sm scroll-mt-28">
-          <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-            <div class="w-10 h-10 rounded-xl bg-cbgreen-50 text-cbgreen flex items-center justify-center">
-              <i class="fa fa-store text-lg"></i>
+          <div class="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100 flex-wrap">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-cbgreen-50 text-cbgreen flex items-center justify-center">
+                <i class="fa fa-store text-lg"></i>
+              </div>
+              <div>
+                <h2 class="text-lg font-bold text-slate-900">Mi Negocio y Locales</h2>
+                <p class="text-xs text-slate-500">Configuración corporativa y sucursales activas.</p>
+              </div>
             </div>
-            <div>
-              <h2 class="text-lg font-bold text-slate-900">Mi Negocio y Locales</h2>
-              <p class="text-xs text-slate-500">Configuración corporativa y sucursales activas.</p>
-            </div>
+
+            {% if es_dueno and negocio %}
+            <button type="button" onclick="document.getElementById('modalAgregarLocal').classList.remove('hidden')" class="btn-primary text-xs !py-2 !bg-cbgreen hover:!bg-emerald-600 transition-colors shadow">
+              <i class="fa fa-plus"></i> Agregar Nueva Sucursal
+            </button>
+            {% endif %}
           </div>
 
           {% if negocio %}
+          {% if es_dueno %}
           <form method="POST" class="space-y-5">
             {% csrf_token %}
             <input type="hidden" name="action" value="update_business">
@@ -186,23 +195,52 @@
               </button>
             </div>
           </form>
+          {% else %}
+          {# Vista lectura para colaboradores #}
+          <div class="grid md:grid-cols-2 gap-4 text-xs">
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+              <span class="text-slate-400 block mb-1">Nombre del Negocio</span>
+              <b class="text-slate-800 text-sm">{{ negocio.nombre }}</b>
+            </div>
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+              <span class="text-slate-400 block mb-1">Rubro</span>
+              <b class="text-slate-800 text-sm">{{ negocio.rubro.nombre|default:'General' }}</b>
+            </div>
+          </div>
+          {% endif %}
 
           {# List of Locales #}
           <div class="mt-8 pt-6 border-t border-slate-100">
-            <h4 class="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
-              <i class="fa fa-location-dot text-cbblue"></i> Locales registrados ({{ locales|length }})
-            </h4>
+            <div class="flex items-center justify-between gap-2 mb-4 flex-wrap">
+              <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                <i class="fa fa-location-dot text-cbblue"></i> Sucursales / Locales Registrados ({{ locales|length }})
+              </h4>
+              {% if plan_activo %}
+              <div class="text-xs bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1 rounded-full font-semibold">
+                Plan incluye: <strong class="text-slate-900">{{ plan_activo.locales_gratis_incluidos }} locales gratis</strong>
+                {% if plan_activo.costo_local_adicional_clp > 0 %}
+                | Adicional: <strong class="text-amber-700">+${{ plan_activo.costo_local_adicional_clp|stringformat:"d" }} CLP/mes</strong>
+                {% endif %}
+              </div>
+              {% endif %}
+            </div>
+
             <div class="space-y-2">
               {% for loc in locales %}
               <div class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 text-xs">
                 <div>
-                  <b class="text-slate-800 text-sm block">{{ loc.nombre }}</b>
+                  <b class="text-slate-800 text-sm block flex items-center gap-1.5">
+                    <i class="fa fa-building text-cbblue"></i> {{ loc.nombre }}
+                  </b>
                   <span class="text-slate-500"><i class="fa fa-map-pin mr-1"></i>{{ loc.direccion|default:'Sin dirección' }}, {{ loc.ciudad|default:'' }}</span>
                 </div>
-                <span class="px-2.5 py-1 rounded-full font-bold bg-cbgreen-100 text-cbgreen-700 text-[11px]">Activo</span>
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-1 rounded-full font-bold bg-cbgreen-100 text-cbgreen-700 text-[11px]">Activo</span>
+                  <span class="text-[11px] font-mono text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded">QR: {{ loc.qr_token }}</span>
+                </div>
               </div>
               {% empty %}
-              <p class="text-xs text-slate-400 italic">No tienes locales adicionales configurados.</p>
+              <p class="text-xs text-slate-400 italic">No tienes sucursales adicionales configuradas.</p>
               {% endfor %}
             </div>
           </div>
@@ -224,6 +262,7 @@
               </div>
             </div>
 
+            {% if es_dueno %}
             <div class="flex flex-wrap items-center gap-2">
               <button type="button" onclick="document.getElementById('modalCambiarPlan').classList.remove('hidden')" class="btn-primary text-xs !py-2">
                 <i class="fa fa-arrows-rotate"></i> Cambiar / Mejorar Plan
@@ -242,7 +281,18 @@
                 </button>
               {% endif %}
             </div>
+            {% endif %}
           </div>
+
+          {% if not es_dueno %}
+          <div class="p-4 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs flex items-center gap-3 mb-6">
+            <i class="fa fa-shield-halved text-amber-600 text-base shrink-0"></i>
+            <div>
+              <b class="block text-amber-950 font-bold mb-0.5">Perfil Colaborador / Equipo (Solo lectura)</b>
+              <span>Solo el dueño del negocio (<strong>{{ negocio.dueño.get_full_name|default:negocio.dueño.email }}</strong>) tiene permisos para modificar la suscripción, cambiar de plan o realizar pagos.</span>
+            </div>
+          </div>
+          {% endif %}
 
           {% if plan_activo %}
           <div class="p-5 rounded-2xl bg-gradient-to-r from-indigo-50 via-slate-50 to-emerald-50 border border-indigo-100 mb-6">
@@ -261,6 +311,24 @@
                 </span>
               </div>
             </div>
+
+            {% if desglose_actual %}
+            <div class="mt-4 pt-3 border-t border-indigo-100/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span class="text-slate-600">
+                <i class="fa fa-calculator text-cbblue mr-1"></i> Facturación mensual estimada:
+                <strong class="text-slate-900 text-sm font-black">${{ desglose_actual.total_clp|stringformat:"d" }} CLP/mes</strong>
+              </span>
+              {% if desglose_actual.local_extra_cantidad > 0 %}
+              <span class="text-amber-800 bg-amber-100/80 border border-amber-200 px-2.5 py-0.5 rounded-full font-semibold">
+                Incluye {{ desglose_actual.local_extra_cantidad }} sucursal(es) extra (+${{ desglose_actual.local_extra_clp|stringformat:"d" }} CLP)
+              </span>
+              {% else %}
+              <span class="text-emerald-700 bg-emerald-100/80 border border-emerald-200 px-2.5 py-0.5 rounded-full font-semibold">
+                {{ cant_locales }} sucursal(es) dentro del límite gratis (hasta {{ plan_activo.locales_gratis_incluidos }})
+              </span>
+              {% endif %}
+            </div>
+            {% endif %}
           </div>
 
           <div class="grid md:grid-cols-3 gap-4 text-xs mb-4">
@@ -280,12 +348,81 @@
           {% else %}
           <div class="p-4 rounded-xl bg-amber-50 text-amber-800 text-xs font-semibold flex items-center justify-between">
             <span>⚠️ No tienes una suscripción activa registrada.</span>
+            {% if es_dueno %}
             <button type="button" onclick="document.getElementById('modalCambiarPlan').classList.remove('hidden')" class="underline font-bold">Seleccionar Plan</button>
+            {% endif %}
           </div>
           {% endif %}
         </div>
 
+        {# ================= MODAL AGREGAR LOCAL / SUCURSAL ================= #}
+        {% if es_dueno %}
+        <div id="modalAgregarLocal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div class="bg-white rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative animate-fade-up">
+            <button type="button" onclick="document.getElementById('modalAgregarLocal').classList.add('hidden')" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700 text-lg w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+              <i class="fa fa-xmark"></i>
+            </button>
+
+            <div class="text-center mb-6">
+              <div class="w-14 h-14 rounded-2xl bg-cbgreen-50 text-cbgreen mx-auto flex items-center justify-center text-2xl mb-3">
+                <i class="fa fa-store"></i>
+              </div>
+              <h3 class="text-xl font-bold text-slate-900">Agregar Nueva Sucursal / Local</h3>
+              <p class="text-xs text-slate-500 mt-1">Registra un nuevo punto de atención para generar su código QR único y monitorear reseñas.</p>
+            </div>
+
+            <form method="POST" class="space-y-4">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="add_local">
+
+              <div>
+                <label class="form-label text-xs">Nombre de la Sucursal</label>
+                <input type="text" name="nombre_local" required class="form-input text-xs" placeholder="Ej: Café del Centro - Sucursal Providencia">
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="form-label text-xs">Dirección</label>
+                  <input type="text" name="direccion_local" class="form-input text-xs" placeholder="Ej: Av. Providencia 1234">
+                </div>
+                <div>
+                  <label class="form-label text-xs">Ciudad / Comuna</label>
+                  <input type="text" name="ciudad_local" class="form-input text-xs" placeholder="Ej: Providencia">
+                </div>
+              </div>
+
+              {% if plan_activo %}
+              <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+                <div class="font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                  <i class="fa fa-calculator text-cbblue"></i> Facturación de Sucursales ({{ plan_activo.get_nombre_mostrar }})
+                </div>
+                <ul class="space-y-1 text-[11px] text-slate-500">
+                  <li>• Locales gratis incluidos en tu plan: <strong>{{ plan_activo.locales_gratis_incluidos }} sucursales</strong></li>
+                  <li>• Locales activos actuales: <strong>{{ locales|length }} sucursales</strong></li>
+                  {% if locales|length < plan_activo.locales_gratis_incluidos %}
+                  <li class="text-emerald-600 font-semibold">• 🎉 Esta sucursal estará <strong>INCLUIDA SIN COSTO EXTRA</strong>.</li>
+                  {% else %}
+                  <li class="text-amber-700 font-semibold">• 💳 Esta sucursal agregará <strong>+${{ plan_activo.costo_local_adicional_clp|stringformat:"d" }} CLP/mes</strong> a tu facturación.</li>
+                  {% endif %}
+                </ul>
+              </div>
+              {% endif %}
+
+              <div class="flex items-center gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('modalAgregarLocal').classList.add('hidden')" class="btn-secondary flex-1 justify-center text-xs">
+                  Cancelar
+                </button>
+                <button type="submit" class="btn-primary flex-1 justify-center text-xs !bg-cbgreen hover:!bg-emerald-600">
+                  <i class="fa fa-plus"></i> Crear Sucursal
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+        {% endif %}
+
         {# ================= MODAL CAMBIAR PLAN / FLOW ================= #}
+        {% if es_dueno %}
         <div id="modalCambiarPlan" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div class="bg-white rounded-3xl max-w-4xl w-full p-6 md:p-8 shadow-2xl relative my-8 animate-fade-up">
             <button type="button" onclick="document.getElementById('modalCambiarPlan').classList.add('hidden')" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700 text-lg w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
@@ -297,7 +434,7 @@
                 <i class="fa fa-rocket"></i> Planes Disponibles ClientBeat
               </span>
               <h3 class="text-2xl font-black text-slate-900">Selecciona o Actualiza tu Plan</h3>
-              <p class="text-xs md:text-sm text-slate-500 max-w-lg mx-auto mt-1">Elige el plan que mejor se adapte al crecimiento de tus sucursales. Puedes abonar mediante Flow.</p>
+              <p class="text-xs md:text-sm text-slate-500 max-w-lg mx-auto mt-1">Elige el plan que mejor se adapte al crecimiento de tus sucursales. Calculado para tus {{ cant_locales }} sucursales actuales.</p>
             </div>
 
             <div class="grid md:grid-cols-3 gap-5">
@@ -316,11 +453,15 @@
 
                   <div class="my-3 pb-3 border-b border-slate-100">
                     <div class="text-2xl font-black text-slate-900">
-                      {% if p.precio_clp %}${{ p.precio_clp|stringformat:"d" }} <span class="text-xs font-normal text-slate-500">CLP/mes</span>{% else %}Gratis{% endif %}
+                      {% if p.precio_clp %}${{ d.total_clp|stringformat:"d" }} <span class="text-xs font-normal text-slate-500">CLP/mes</span>{% else %}Gratis{% endif %}
                     </div>
                     {% if d.local_extra_clp > 0 %}
                     <div class="text-[11px] text-amber-600 font-semibold mt-1">
-                      +${{ d.local_extra_clp }} por {{ d.local_extra_cantidad }} locales extras
+                      (Base ${{ d.base_clp|stringformat:"d" }} + ${{ d.local_extra_clp|stringformat:"d" }} por {{ d.local_extra_cantidad }} sucursales extra)
+                    </div>
+                    {% else %}
+                    <div class="text-[11px] text-emerald-600 font-semibold mt-1">
+                      (Base ${{ d.base_clp|stringformat:"d" }} - {{ p.locales_gratis_incluidos }} sucursales incluidas)
                     </div>
                     {% endif %}
                   </div>
@@ -362,7 +503,7 @@
                       <input type="hidden" name="plan_id" value="{{ p.id }}">
                       <input type="hidden" name="negocio_id" value="{{ negocio.id }}">
                       <button type="submit" class="w-full py-2 bg-gradient-to-r from-cbblue to-cbgreen text-white font-bold rounded-xl text-xs hover:opacity-95 transition-opacity shadow flex items-center justify-center gap-1.5">
-                        <i class="fa fa-credit-card"></i> Pagar con Flow
+                        <i class="fa fa-credit-card"></i> Pagar con Flow (${{ d.total_clp|stringformat:"d" }})
                       </button>
                     </form>
                     {% endif %}
@@ -375,8 +516,10 @@
             </div>
           </div>
         </div>
+        {% endif %}
 
         {# ================= MODAL CANCELAR SUSCRIPCIÓN ================= #}
+        {% if es_dueno %}
         <div id="modalCancelarSuscripcion" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div class="bg-white rounded-3xl max-w-md w-full p-6 md:p-8 shadow-2xl relative animate-fade-up">
             <button type="button" onclick="document.getElementById('modalCancelarSuscripcion').classList.add('hidden')" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700 text-lg w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
@@ -411,6 +554,7 @@
             </form>
           </div>
         </div>
+        {% endif %}
 
         {# Section 4: Security / Password Change #}
         <div id="seguridad" class="glass-effect rounded-2xl p-6 md:p-8 border border-slate-200/60 shadow-sm scroll-mt-28">

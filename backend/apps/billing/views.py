@@ -24,15 +24,21 @@ class IniciarPagoFlowView(LoginRequiredMixin, View):
         negocio_id = request.POST.get('negocio_id')
 
         plan = get_object_or_404(Plan, id=plan_id, activo=True)
+        negocios = request.user.negocios_permitidos_qs()
         if negocio_id:
-            negocio = get_object_or_404(Negocio, id=negocio_id, dueño=request.user)
+            negocio = get_object_or_404(negocios, id=negocio_id)
         else:
-            negocio = request.user.negocios.first()
+            negocio = negocios.first()
             if not negocio:
                 messages.error(request, 'Debes registrar un negocio antes de realizar un pago.')
                 return redirect('accounts:onboarding')
 
-        cant_locales = negocio.locales.count() or 1
+        es_dueno = bool(request.user.is_admin_soporte or request.user.is_dueno or negocio.dueño_id == request.user.id)
+        if not es_dueno:
+            messages.error(request, '🔒 Permiso denegado: Solo el dueño del negocio tiene autorización para procesar pagos y suscripciones en Flow.')
+            return redirect('accounts:perfil')
+
+        cant_locales = negocio.locales.filter(estado='ACTIVO').count() or 1
         monto_total = plan.calcular_monto_mensual(cant_locales)
 
         suscripcion = Suscripcion.objects.filter(negocio=negocio).first()
@@ -55,10 +61,12 @@ class IniciarPagoFlowView(LoginRequiredMixin, View):
         url_retorno = f"{domain}/billing/flow/retorno/"
         url_confirmacion = f"{domain}/billing/flow/webhook/"
 
+        concepto_pago = f"Suscripción {plan.get_nombre_mostrar()} ({cant_locales} sucursal/es) - {negocio.nombre}"
+
         resultado = flow_service.crear_orden_pago(
             orden_compra=orden_compra,
             monto=monto_total,
-            concepto=f"Suscripción Plan {plan.get_nombre_mostrar()} - {negocio.nombre}",
+            concepto=concepto_pago,
             email_pagador=request.user.email,
             url_retorno=url_retorno,
             url_confirmacion=url_confirmacion,

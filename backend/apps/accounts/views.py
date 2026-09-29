@@ -536,7 +536,8 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
     """
     Vista de Perfil y Configuración de Cuenta de Usuario.
     Permite visualizar/editar datos personales, información del negocio/locales,
-    gestionar y cambiar plan, cancelar o reactivar suscripción, cambiar contraseña y contactar soporte.
+    agregar sucursales, gestionar y cambiar plan, cancelar o reactivar suscripción,
+    cambiar contraseña y contactar soporte.
     """
     template_name = 'accounts/perfil.html'
 
@@ -549,6 +550,8 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
         locales = negocio.locales.filter(estado='ACTIVO') if negocio else []
         cant_locales = locales.count() or 1
 
+        es_dueno = bool(user.is_admin_soporte or user.is_dueno or (negocio and negocio.dueño_id == user.id))
+
         suscripcion = None
         if negocio:
             suscripcion = (
@@ -556,6 +559,9 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
                 .order_by('-fecha_inicio')
                 .first()
             )
+
+        plan_activo = suscripcion.plan if suscripcion else Plan.get_plan_default()
+        desglose_actual = plan_activo.desglose_mensual(cant_locales) if plan_activo else None
 
         planes_disponibles = Plan.objects.filter(activo=True).order_by('orden', '-fecha_creacion')
         planes_info = []
@@ -571,11 +577,14 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
             'usuario': user,
             'negocio': negocio,
             'locales': locales,
+            'cant_locales': cant_locales,
             'suscripcion': suscripcion,
-            'plan_activo': suscripcion.plan if suscripcion else None,
+            'plan_activo': plan_activo,
+            'desglose_actual': desglose_actual,
             'planes_disponibles': planes_disponibles,
             'planes_info': planes_info,
             'rol_label': user.get_rol_display(),
+            'es_dueno': es_dueno,
         }
 
     def get(self, request, *args, **kwargs):
@@ -585,6 +594,19 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         action = request.POST.get('action')
         user = request.user
+
+        negocios = user.negocios_permitidos_qs()
+        negocio = negocios.first() if negocios.exists() else None
+        es_dueno = bool(user.is_admin_soporte or user.is_dueno or (negocio and negocio.dueño_id == user.id))
+
+        # Restricción RBAC: Solo el Dueño o Admin Soporte pueden modificar la cuenta, plan o agregar locales
+        if action in ['update_business', 'change_plan', 'cancel_subscription', 'reactivate_subscription', 'add_local'] and not es_dueno:
+            messages.error(
+                request,
+                '🔒 Permiso denegado: Solo el dueño del negocio tiene atribuciones para modificar los datos corporativos, planes, facturación o agregar sucursales.'
+            )
+            context = self.get_context_data(request)
+            return render(request, self.template_name, context)
 
         if action == 'update_profile':
             first_name = request.POST.get('first_name', '').strip()
@@ -599,11 +621,7 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
             messages.success(request, '✅ Tus datos personales fueron actualizados correctamente.')
 
         elif action == 'update_business':
-            from apps.businesses.models import Negocio
-            negocios = user.negocios_permitidos_qs()
-            negocio = negocios.first() if negocios.exists() else None
-
-            if negocio and (user.is_dueno or negocio.dueño_id == user.id):
+            if negocio:
                 nombre = request.POST.get('nombre_negocio', '').strip()
                 direccion = request.POST.get('direccion_negocio', '').strip()
                 ciudad = request.POST.get('ciudad_negocio', '').strip()
@@ -620,10 +638,56 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
             else:
                 messages.error(request, '⚠️ No tienes permisos para modificar este negocio.')
 
+        elif action == 'add_local':
+            import secrets
+            from apps.businesses.models import Local
+
+            if not negocio:
+                messages.error(request, '⚠️ Debes estar asociado a un negocio activo para registrar una sucursal.')
+            else:
+                nombre_local = request.POST.get('nombre_local', '').strip()
+                direccion_local = request.POST.get('direccion_local', '').strip()
+                ciudad_local = request.POST.get('ciudad_local', '').strip()
+
+                if not nombre_local:
+                    messages.error(request, '⚠️ Debes ingresar un nombre representativo para la nueva sucursal.')
+                else:
+                    qr_tok = f"CB-{secrets.token_urlsafe(16).upper()[:10]}"
+                    local_nuevo = Local.objects.create(
+                        negocio=negocio,
+                        nombre=nombre_local,
+                        direccion=direccion_local or negocio.direccion,
+                        ciudad=ciudad_local or negocio.ciudad,
+                        estado=Local.EstadoChoices.ACTIVO,
+                        qr_token=qr_tok,
+                        comuna=negocio.comuna,
+                    )
+
+                    suscripcion = Suscripcion.objects.filter(negocio=negocio).order_by('-fecha_inicio').first()
+                    plan_activo = suscripcion.plan if suscripcion else Plan.get_plan_default()
+                    locales_activos = negocio.locales.filter(estado='ACTIVO').count()
+
+                    desglose = plan_activo.desglose_mensual(locales_activos) if plan_activo else None
+
+                    if desglose and desglose['local_extra_cantidad'] > 0:
+                        msg_facturacion = (
+                            f' Tu plan incluye {plan_activo.locales_gratis_incluidos} locales gratis. '
+                            f'Al contar ahora con {locales_activos} sucursales activas, tu facturación mensual ajustada es de '
+                            f'${desglose["total_clp"]:,} CLP (incluye {desglose["local_extra_cantidad"]} local(es) adicional(es) '
+                            f'a ${plan_activo.costo_local_adicional_clp:,} CLP/mes).'
+                        ).replace(',', '.')
+                    else:
+                        msg_facturacion = (
+                            f' Incluido sin costo adicional en los {plan_activo.locales_gratis_incluidos} locales gratis de tu plan.'
+                        )
+
+                    messages.success(
+                        request,
+                        f'🎉 ¡Sucursal "{local_nuevo.nombre}" agregada exitosamente con código QR único ({local_nuevo.qr_token})!{msg_facturacion}'
+                    )
+
         elif action == 'change_plan':
             nuevo_plan_id = request.POST.get('plan_id')
-            negocios = user.negocios_permitidos_qs()
-            negocio = negocios.first() if negocios.exists() else None
 
             if not negocio:
                 messages.error(request, '⚠️ No se encontró un negocio asociado para cambiar de plan.')
@@ -659,8 +723,6 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
 
         elif action == 'cancel_subscription':
             motivo = request.POST.get('motivo_cancelacion', '').strip() or 'Solicitado por el cliente desde su perfil'
-            negocios = user.negocios_permitidos_qs()
-            negocio = negocios.first() if negocios.exists() else None
 
             if negocio:
                 suscripcion = Suscripcion.objects.filter(negocio=negocio).order_by('-fecha_inicio').first()
@@ -679,9 +741,6 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
                     messages.error(request, '⚠️ No hay una suscripción activa para cancelar.')
 
         elif action == 'reactivate_subscription':
-            negocios = user.negocios_permitidos_qs()
-            negocio = negocios.first() if negocios.exists() else None
-
             if negocio:
                 suscripcion = Suscripcion.objects.filter(negocio=negocio).order_by('-fecha_inicio').first()
                 if suscripcion:
