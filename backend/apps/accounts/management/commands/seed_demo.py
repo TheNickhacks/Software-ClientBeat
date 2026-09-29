@@ -47,6 +47,23 @@ class Command(BaseCommand):
             MonedaChoices,
         )
 
+        from apps.geo.models import Rubro, Comuna
+        from django.core.management import call_command
+
+        if Rubro.objects.count() == 0:
+            self.stdout.write('📦 Cargando catálogo de Rubros...')
+            try:
+                call_command('seed_rubros')
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f'⚠️ Error en seed_rubros: {e}'))
+
+        if Comuna.objects.count() == 0:
+            self.stdout.write('🗺 Cargando catálogo de Comunas y Regiones...')
+            try:
+                call_command('seed_geo')
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f'⚠️ Error en seed_geo: {e}'))
+
         pw = options.get('pw') or 'ClienBeat2026!'
         reset = options.get('reset')
 
@@ -88,13 +105,12 @@ class Command(BaseCommand):
                 'is_active': True,
             }
         )
-        if created:
-            super_user.set_password(pw)
-            super_user.save()
-        elif not super_user.is_superuser:
-            super_user.is_superuser = True
-            super_user.is_staff = True
-            super_user.save(update_fields=['is_superuser', 'is_staff'])
+        super_user.rol = User.RolChoices.ADMIN_SOPORTE
+        super_user.is_superuser = True
+        super_user.is_staff = True
+        super_user.is_active = True
+        super_user.set_password(pw)
+        super_user.save()
         self.stdout.write(self.style.SUCCESS(f'  ✅ {super_user.email} (SUPERUSER Django) | pw: {pw} | entra a /admin/ raw'))
 
         # ======== 1. ADMIN SOPORTE CLIENT BEAT (NO TÉCNICO, entra a /admin-panel/) ========
@@ -114,19 +130,12 @@ class Command(BaseCommand):
                 'is_active': True,
             }
         )
-        if created:
-            admin_user.set_password(pw)
-            admin_user.save()
-        else:
-            actualizar = False
-            if admin_user.is_superuser:
-                admin_user.is_superuser = False
-                actualizar = True
-            if not admin_user.is_staff:
-                admin_user.is_staff = True
-                actualizar = True
-            if actualizar:
-                admin_user.save(update_fields=['is_superuser', 'is_staff'])
+        admin_user.rol = User.RolChoices.ADMIN_SOPORTE
+        admin_user.is_superuser = False
+        admin_user.is_staff = True
+        admin_user.is_active = True
+        admin_user.set_password(pw)
+        admin_user.save()
         self.stdout.write(self.style.SUCCESS(f'  ✅ {admin_user.email} (ADMIN_SOPORTE, NO superuser) | pw: {pw} | entra a /admin-panel/'))
 
         # ======== 2. DUEÑO DE NEGOCIO ========
@@ -146,9 +155,12 @@ class Command(BaseCommand):
                 'is_active': True,
             }
         )
-        if created:
-            dueno_user.set_password(pw)
-            dueno_user.save()
+        dueno_user.rol = User.RolChoices.DUENO
+        dueno_user.is_superuser = False
+        dueno_user.is_staff = True
+        dueno_user.is_active = True
+        dueno_user.set_password(pw)
+        dueno_user.save()
         self.stdout.write(self.style.SUCCESS(f'  ✅ {dueno_user.email} | pw: {pw}'))
 
         # ======== 3. USUARIO EQUIPO ========
@@ -168,9 +180,12 @@ class Command(BaseCommand):
                 'is_active': True,
             }
         )
-        if created:
-            equipo_user.set_password(pw)
-            equipo_user.save()
+        equipo_user.rol = User.RolChoices.USUARIO_EQUIPO
+        equipo_user.is_superuser = False
+        equipo_user.is_staff = False
+        equipo_user.is_active = True
+        equipo_user.set_password(pw)
+        equipo_user.save()
         self.stdout.write(self.style.SUCCESS(f'  ✅ {equipo_user.email} | pw: {pw}'))
 
         # ======== 3.5 PLANES REALES CLIENT BEAT (Doc Excel "Análisis comparativo.xlsx" hoja Planes) ========

@@ -5,6 +5,7 @@ services:
     command: >
       bash -c "cd backend &&
                python manage.py migrate --noinput &&
+               python manage.py seed_demo &&
                python manage.py collectstatic --noinput --clear 2>/dev/null || true &&
                python -m gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120"
     volumes:
