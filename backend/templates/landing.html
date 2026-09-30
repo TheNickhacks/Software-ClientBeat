@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize currency_tags %}
+{% load static humanize currency_tags %}
 {% block title %}Client Beat — Mide la Satisfacción de tus Clientes{% endblock %}
 
 {% block content %}
@@ -13,7 +13,7 @@
       <div class="mb-8 relative group">
         <div class="absolute -inset-1 bg-gradient-to-r from-cbblue via-indigo-500 to-purple-500 rounded-full blur-xl opacity-50 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
         <img
-          src="https://storage.googleapis.com/hostinger-horizons-assets-prod/1a278a57-ddc3-48d4-9216-30f7b1b4e998/216e817e9696a1575f704e812c10a089.png"
+          src="{% static 'img/LogoClientBeat.png' %}"
           alt="Client Beat Logo"
           class="relative h-44 md:h-56 w-auto object-contain mx-auto drop-shadow-[0_15px_30px_rgba(0,0,0,0.5)]"
         />

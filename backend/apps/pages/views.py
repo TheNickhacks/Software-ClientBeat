@@ -192,7 +192,7 @@ DIMENSIONES_TEMATICAS = {
 
 def landing(request):
     from apps.billing.models import Plan
-    planes = Plan.objects.filter(activo=True).order_by('orden', 'precio_clp')
+    planes = Plan.objects.filter(activo=True).order_by('orden', 'precio_clp')[:3]
     return render(request, 'landing.html', {'planes': planes})
 
 
