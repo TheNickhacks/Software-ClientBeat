@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invitación a colaborar en {{ negocio_nombre }} · ClientBeat</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #1e293b;">
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 16px;">
+    <tr>
+      <td align="center">
+        <!-- Main Card Container -->
+        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08); border: 1px solid #e2e8f0;">
+          
+          <!-- Header Gradient Banner -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0B3EA6 0%, #047857 100%); padding: 36px 32px; text-align: center;">
+              <div style="display: inline-block; background: rgba(255, 255, 255, 0.15); padding: 8px 16px; border-radius: 9999px; color: #ffffff; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 12px; backdrop-filter: blur(4px);">
+                ✨ Invitación de Equipo · ClientBeat
+              </div>
+              <h1 style="color: #ffffff; font-size: 24px; font-weight: 800; margin: 0 0 8px 0; line-height: 1.3;">
+                ¡Fuiste invitado/a a unirte a {{ negocio_nombre }}!
+              </h1>
+              <p style="color: #e0e7ff; font-size: 14px; margin: 0; opacity: 0.95;">
+                El pulso de la reputación y experiencia de tus clientes
+              </p>
+            </td>
+          </tr>
+
+          <!-- Content Body -->
+          <tr>
+            <td style="padding: 36px 32px;">
+              <p style="font-size: 16px; font-weight: 700; color: #0f172a; margin: 0 0 16px 0;">
+                ¡Hola{% if invitado_nombre %} {{ invitado_nombre }}{% endif %}! 👋
+              </p>
+              
+              <p style="font-size: 14px; line-height: 1.6; color: #334155; margin: 0 0 24px 0;">
+                <strong>{{ dueno_nombre }}</strong> ({{ dueno_email }}) te ha invitado a formar parte del equipo de trabajo de <strong>{{ negocio_nombre }}</strong> en la plataforma <strong>ClientBeat</strong> con el rol de <strong>{{ rol_display }}</strong>.
+              </p>
+
+              <!-- Highlight Box -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f1f5f9; border-left: 4px solid #0B3EA6; border-radius: 12px; margin-bottom: 28px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 8px; tracking: 0.5px;">
+                      📋 Detalles de la Invitación
+                    </div>
+                    <div style="font-size: 14px; color: #0f172a; margin-bottom: 6px;">
+                      🏢 <strong>Negocio:</strong> {{ negocio_nombre }}
+                    </div>
+                    <div style="font-size: 14px; color: #0f172a; margin-bottom: 6px;">
+                      👤 <strong>Rol Asignado:</strong> {{ rol_display }}
+                    </div>
+                    <div style="font-size: 14px; color: #0f172a;">
+                      ✉️ <strong>Invitado por:</strong> {{ dueno_nombre }}
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="font-size: 14px; line-height: 1.6; color: #334155; margin: 0 0 28px 0;">
+                Con ClientBeat podrás colaborar en la gestión de métricas de satisfacción de clientes, visualizar encuestas QR y monitorear evaluaciones. Haz clic en el botón a continuación para aceptar la invitación y configurar tu contraseña de acceso:
+              </p>
+
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 28px;">
+                <tr>
+                  <td align="center">
+                    <a href="{{ url_invitacion }}" target="_blank" style="background: linear-gradient(135deg, #0B3EA6 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 14px; font-weight: 800; font-size: 15px; display: inline-block; shadow: 0 4px 14px rgba(11, 62, 166, 0.35);">
+                      🚀 Aceptar Invitación y Crear Mi Perfil &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Fallback Direct Link -->
+              <div style="background-color: #fafafa; border: 1px dashed #cbd5e1; padding: 14px 16px; border-radius: 10px; font-size: 12px; color: #64748b; line-height: 1.5; word-break: break-all; text-align: center;">
+                Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+                <a href="{{ url_invitacion }}" style="color: #0B3EA6; font-weight: 600; text-decoration: underline;">{{ url_invitacion }}</a>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; padding: 24px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
+              <p style="font-size: 12px; color: #94a3b8; margin: 0 0 8px 0;">
+                Este correo fue enviado automáticamente por <strong>ClientBeat</strong> a solicitud de {{ dueno_nombre }}.
+              </p>
+              <p style="font-size: 12px; color: #94a3b8; margin: 0;">
+                © 2026 ClientBeat SpA · Rancagua, Chile. Todos los derechos reservados.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

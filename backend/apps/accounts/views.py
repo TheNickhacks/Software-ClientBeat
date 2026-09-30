@@ -542,7 +542,7 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
     template_name = 'accounts/perfil.html'
 
     def get_context_data(self, request):
-        from apps.businesses.models import Negocio
+        from apps.businesses.models import Negocio, MiembroEquipo, InvitacionEquipo
 
         user = request.user
         negocios = user.negocios_permitidos_qs()
@@ -573,6 +573,27 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
                 'es_actual': bool(suscripcion and suscripcion.plan_id == p.id),
             })
 
+        # ================= GESTIÓN DE EQUIPO / COLABORADORES =================
+        miembros_equipo = []
+        invitaciones_pendientes = []
+        limite_colaboradores = plan_activo.usuarios_permitidos if plan_activo else 2
+        total_colaboradores_usados = 0
+        puede_invitar_colaborador = False
+
+        if negocio:
+            miembros_equipo = list(
+                MiembroEquipo.objects.filter(negocio=negocio)
+                .select_related('usuario', 'invitado_por')
+                .order_by('fecha_invitacion')
+            )
+            invitaciones_pendientes = list(
+                InvitacionEquipo.objects.filter(negocio=negocio, estado='PENDIENTE')
+                .select_related('invitado_por')
+                .order_by('-fecha_invitacion')
+            )
+            total_colaboradores_usados = len(miembros_equipo) + len(invitaciones_pendientes)
+            puede_invitar_colaborador = total_colaboradores_usados < limite_colaboradores
+
         return {
             'usuario': user,
             'negocio': negocio,
@@ -585,6 +606,12 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
             'planes_info': planes_info,
             'rol_label': user.get_rol_display(),
             'es_dueno': es_dueno,
+            'miembros_equipo': miembros_equipo,
+            'invitaciones_pendientes': invitaciones_pendientes,
+            'limite_colaboradores': limite_colaboradores,
+            'total_colaboradores_usados': total_colaboradores_usados,
+            'puede_invitar_colaborador': puede_invitar_colaborador,
+            'rol_choices': MiembroEquipo.RolChoices.choices if negocio else [],
         }
 
     def get(self, request, *args, **kwargs):
@@ -592,6 +619,9 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
         return render(request, self.template_name, context)
 
     def post(self, request, *args, **kwargs):
+        import secrets
+        from apps.businesses.models import MiembroEquipo, InvitacionEquipo
+
         action = request.POST.get('action')
         user = request.user
 
@@ -599,16 +629,96 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
         negocio = negocios.first() if negocios.exists() else None
         es_dueno = bool(user.is_admin_soporte or user.is_dueno or (negocio and negocio.dueño_id == user.id))
 
-        # Restricción RBAC: Solo el Dueño o Admin Soporte pueden modificar la cuenta, plan o agregar locales
-        if action in ['update_business', 'change_plan', 'cancel_subscription', 'reactivate_subscription', 'add_local'] and not es_dueno:
+        # Restricción RBAC: Solo el Dueño o Admin Soporte pueden modificar la cuenta, plan, agregar locales o gestionar colaboradores
+        if action in ['update_business', 'change_plan', 'cancel_subscription', 'reactivate_subscription', 'add_local', 'invite_collaborator', 'resend_invitation', 'cancel_invitation', 'remove_member'] and not es_dueno:
             messages.error(
                 request,
-                '🔒 Permiso denegado: Solo el dueño del negocio tiene atribuciones para modificar los datos corporativos, planes, facturación o agregar sucursales.'
+                '🔒 Permiso denegado: Solo el dueño del negocio tiene atribuciones para modificar datos corporativos, planes, sucursales o equipo.'
             )
             context = self.get_context_data(request)
             return render(request, self.template_name, context)
 
-        if action == 'update_profile':
+        if action == 'invite_collaborator':
+            if not negocio:
+                messages.error(request, '⚠️ Debes tener un negocio configurado para invitar colaboradores.')
+            else:
+                suscripcion = Suscripcion.objects.filter(negocio=negocio).order_by('-fecha_inicio').first()
+                plan_activo = suscripcion.plan if suscripcion else Plan.get_plan_default()
+                limite = plan_activo.usuarios_permitidos if plan_activo else 2
+
+                miembros_cnt = MiembroEquipo.objects.filter(negocio=negocio).count()
+                invitaciones_cnt = InvitacionEquipo.objects.filter(negocio=negocio, estado='PENDIENTE').count()
+                total_actual = miembros_cnt + invitaciones_cnt
+
+                if total_actual >= limite:
+                    messages.error(
+                        request,
+                        f'⚠️ Has alcanzado el límite de {limite} colaboradores de tu plan ({plan_activo.get_nombre_mostrar()}). Para invitar más miembros, actualiza tu plan en la sección "Plan y Suscripción".'
+                    )
+                else:
+                    email_inv = request.POST.get('email_colaborador', '').strip().lower()
+                    nombre_inv = request.POST.get('nombre_colaborador', '').strip()
+                    rol_inv = request.POST.get('rol_colaborador', MiembroEquipo.RolChoices.USUARIO_EQUIPO)
+
+                    if not email_inv:
+                        messages.error(request, '⚠️ Ingresa una dirección de correo válida para invitar.')
+                    elif MiembroEquipo.objects.filter(negocio=negocio, usuario__email__iexact=email_inv).exists():
+                        messages.error(request, f'⚠️ El usuario {email_inv} ya es miembro activo de este negocio.')
+                    else:
+                        inv_existente = InvitacionEquipo.objects.filter(negocio=negocio, email__iexact=email_inv, estado='PENDIENTE').first()
+                        if inv_existente:
+                            enviar_email_invitacion(inv_existente, request)
+                            messages.info(request, f'ℹ️ Se reenvió el correo de invitación a {email_inv}.')
+                        else:
+                            token_inv = f"INV-{secrets.token_urlsafe(24)}"
+                            nueva_inv = InvitacionEquipo.objects.create(
+                                negocio=negocio,
+                                email=email_inv,
+                                nombre=nombre_inv,
+                                rol=rol_inv,
+                                token=token_inv,
+                                invitado_por=user,
+                                estado='PENDIENTE',
+                            )
+                            enviar_email_invitacion(nueva_inv, request)
+                            messages.success(
+                                request,
+                                f'✉️ Invitación enviada exitosamente a {email_inv} con el rol de {nueva_inv.get_rol_display()}.'
+                            )
+
+        elif action == 'resend_invitation':
+            inv_id = request.POST.get('invitacion_id')
+            inv = InvitacionEquipo.objects.filter(id=inv_id, negocio=negocio, estado='PENDIENTE').first()
+            if inv:
+                enviar_email_invitacion(inv, request)
+                messages.success(request, f'📩 Correo de invitación reenviado exitosamente a {inv.email}.')
+            else:
+                messages.error(request, '⚠️ No se encontró la invitación pendiente.')
+
+        elif action == 'cancel_invitation':
+            inv_id = request.POST.get('invitacion_id')
+            inv = InvitacionEquipo.objects.filter(id=inv_id, negocio=negocio, estado='PENDIENTE').first()
+            if inv:
+                inv.estado = 'CANCELADA'
+                inv.save(update_fields=['estado'])
+                messages.warning(request, f'🚫 Invitación a {inv.email} cancelada.')
+            else:
+                messages.error(request, '⚠️ No se encontró la invitación.')
+
+        elif action == 'remove_member':
+            miembro_id = request.POST.get('miembro_id')
+            miembro = MiembroEquipo.objects.filter(id=miembro_id, negocio=negocio).first()
+            if miembro:
+                if miembro.usuario_id == negocio.dueño_id:
+                    messages.error(request, '❌ No es posible remover al dueño del negocio.')
+                else:
+                    email_m = miembro.usuario.email
+                    miembro.delete()
+                    messages.warning(request, f'🗑️ {email_m} ha sido removido del equipo de {negocio.nombre}.')
+            else:
+                messages.error(request, '⚠️ No se encontró el miembro del equipo.')
+
+        elif action == 'update_profile':
             first_name = request.POST.get('first_name', '').strip()
             last_name = request.POST.get('last_name', '').strip()
             telefono = request.POST.get('telefono', '').strip()
@@ -639,7 +749,6 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
                 messages.error(request, '⚠️ No tienes permisos para modificar este negocio.')
 
         elif action == 'add_local':
-            import secrets
             from apps.businesses.models import Local
 
             if not negocio:
@@ -784,4 +893,140 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
 
         context = self.get_context_data(request)
         return render(request, self.template_name, context)
+
+
+def enviar_email_invitacion(invitacion, request):
+    from django.core.mail import send_mail
+    from django.template.loader import render_to_string
+    from django.conf import settings
+
+    url_invitacion = request.build_absolute_uri(f'/accounts/invitacion/{invitacion.token}/')
+    dueno = invitacion.invitado_por
+    dueno_nombre = dueno.get_full_name() or dueno.email if dueno else 'El dueño del negocio'
+
+    html_message = render_to_string('emails/invitacion_colaborador.html', {
+        'invitacion': invitacion,
+        'negocio_nombre': invitacion.negocio.nombre,
+        'dueno_nombre': dueno_nombre,
+        'dueno_email': dueno.email if dueno else '',
+        'invitado_nombre': invitacion.nombre or '',
+        'rol_display': invitacion.get_rol_display(),
+        'url_invitacion': url_invitacion,
+    })
+
+    send_mail(
+        subject=f'¡{dueno_nombre} te ha invitado a unirte a {invitacion.negocio.nombre} en ClientBeat!',
+        message=f'Hola! {dueno_nombre} te ha invitado a unirte a {invitacion.negocio.nombre}. Ingresa a: {url_invitacion}',
+        from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'contacto@avaapp.cl'),
+        recipient_list=[invitacion.email],
+        html_message=html_message,
+        fail_silently=True,
+    )
+
+
+class AceptarInvitacionView(View):
+    template_name = 'accounts/invitacion_aceptar.html'
+
+    def get(self, request, token, *args, **kwargs):
+        from apps.businesses.models import InvitacionEquipo, MiembroEquipo
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        invitacion = InvitacionEquipo.objects.filter(token=token, estado='PENDIENTE').select_related('negocio', 'invitado_por').first()
+        if not invitacion:
+            messages.error(request, '⚠️ El enlace de invitación no es válido o ya fue utilizado.')
+            return redirect('/accounts/login/')
+
+        if request.user.is_authenticated and request.user.email.lower() == invitacion.email.lower():
+            MiembroEquipo.objects.get_or_create(
+                negocio=invitacion.negocio,
+                usuario=request.user,
+                defaults={
+                    'rol': invitacion.rol,
+                    'estado': MiembroEquipo.EstadoChoices.ACTIVO,
+                    'invitado_por': invitacion.invitado_por,
+                }
+            )
+            invitacion.estado = InvitacionEquipo.EstadoChoices.ACEPTADA
+            invitacion.fecha_aceptacion = timezone.now()
+            invitacion.save()
+
+            messages.success(request, f'🎉 ¡Te has unido exitosamente al equipo de {invitacion.negocio.nombre}!')
+            return redirect('/dashboard/?welcome=1')
+
+        user_existente = User.objects.filter(email__iexact=invitacion.email).exists()
+        return render(request, self.template_name, {
+            'invitacion': invitacion,
+            'user_existente': user_existente,
+        })
+
+    def post(self, request, token, *args, **kwargs):
+        import secrets
+        from django.contrib.auth import get_user_model, authenticate, login as auth_login
+        from apps.businesses.models import InvitacionEquipo, MiembroEquipo
+
+        User = get_user_model()
+        invitacion = InvitacionEquipo.objects.filter(token=token, estado='PENDIENTE').select_related('negocio', 'invitado_por').first()
+        if not invitacion:
+            messages.error(request, '⚠️ El enlace de invitación no es válido o ya venció.')
+            return redirect('/accounts/login/')
+
+        user_existente = User.objects.filter(email__iexact=invitacion.email).first()
+
+        if user_existente:
+            password = request.POST.get('password', '')
+            user = authenticate(request, username=user_existente.email, password=password)
+            if user is None:
+                messages.error(request, '❌ Contraseña incorrecta. Por favor verifica tus credenciales.')
+                return render(request, self.template_name, {'invitacion': invitacion, 'user_existente': True})
+        else:
+            first_name = request.POST.get('first_name', '').strip()
+            last_name = request.POST.get('last_name', '').strip()
+            telefono = request.POST.get('telefono', '').strip()
+            password = request.POST.get('password', '')
+            confirm_password = request.POST.get('confirm_password', '')
+
+            if len(password) < 8:
+                messages.error(request, '⚠️ La contraseña debe tener al menos 8 caracteres.')
+                return render(request, self.template_name, {'invitacion': invitacion, 'user_existente': False})
+            if password != confirm_password:
+                messages.error(request, '⚠️ Las contraseñas no coinciden.')
+                return render(request, self.template_name, {'invitacion': invitacion, 'user_existente': False})
+
+            user = User.objects.create_user(
+                username=invitacion.email.split('@')[0] + '_' + secrets.token_hex(3),
+                email=invitacion.email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+                telefono=telefono,
+                rol=User.RolChoices.USUARIO_EQUIPO,
+                is_staff=False,
+                es_mayor_18=True,
+            )
+
+        miembro, _ = MiembroEquipo.objects.get_or_create(
+            negocio=invitacion.negocio,
+            usuario=user,
+            defaults={
+                'rol': invitacion.rol,
+                'estado': MiembroEquipo.EstadoChoices.ACTIVO,
+                'invitado_por': invitacion.invitado_por,
+            }
+        )
+        if miembro.estado != MiembroEquipo.EstadoChoices.ACTIVO:
+            miembro.estado = MiembroEquipo.EstadoChoices.ACTIVO
+            miembro.save()
+
+        invitacion.estado = InvitacionEquipo.EstadoChoices.ACEPTADA
+        invitacion.fecha_aceptacion = timezone.now()
+        invitacion.save()
+
+        backend = 'django.contrib.auth.backends.ModelBackend'
+        user.backend = backend
+        auth_login(request, user, backend=backend)
+
+        messages.success(request, f'🎉 ¡Perfil configurado con éxito! Bienvenido al equipo de {invitacion.negocio.nombre}.')
+        return redirect('/dashboard/?welcome=1')
+
 

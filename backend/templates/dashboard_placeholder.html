@@ -182,7 +182,7 @@
                {% else %}
                  text-slate-600 hover:bg-slate-100
                {% endif %}">
-            {{ t.label }}
+            {{ t.label }}{% if t.key == 'benchmark' %}<span class="text-[10px] font-extrabold bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded-full uppercase ml-1">🔒 Próximamente</span>{% endif %}
           </a>
         {% endfor %}
       </div>
@@ -772,6 +772,89 @@
         });
         </script>
         {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# ============================================================ #}
+    {#  TAB 2 · BENCHMARK GOOGLE (VISTA BLOQUEADA / PRÓXIMAMENTE)   #}
+    {# ============================================================ #}
+    {% if tab_actual == 'benchmark' %}
+    <div class="animate-fade-up delay-4 mb-10">
+      <div class="glass-effect rounded-3xl p-8 md:p-12 border border-indigo-100 shadow-xl relative overflow-hidden text-center max-w-5xl mx-auto">
+        
+        <!-- Glowing background elements -->
+        <div class="absolute -top-24 -right-24 w-96 h-96 bg-gradient-to-br from-cbblue/20 to-purple-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-gradient-to-tr from-cbgreen/20 to-amber-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <!-- Lock Badge & Icon -->
+        <div class="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold text-xs px-4 py-1.5 rounded-full uppercase tracking-widest shadow-md mb-6 animate-pulse">
+          <i class="fa fa-lock"></i> Próximamente · Funcionalidad Exclusiva en Desarrollo
+        </div>
+
+        <h2 class="text-3xl md:text-5xl font-black text-slate-900 mb-4 leading-tight">
+          🚀 Próximamente: <span class="gradient-text">Benchmark Avanzado & Competencia Google</span>
+        </h2>
+
+        <p class="text-slate-600 text-base md:text-lg max-w-3xl mx-auto leading-relaxed mb-8">
+          Estamos construyendo el motor de <b>Inteligencia Artificial y Benchmarking de Competencia de Google Maps</b> más potente de Chile. Próximamente generaremos mayores funcionalidades para comparar tu negocio en tiempo real contra los <b>Top competidores directos de tu zona geográfica</b>, descubrir fallas operativas de la competencia y posicionar tu local en el <b>#1 de tu rubro</b>.
+        </p>
+
+        <!-- Preview Mockup Grid (Teaser Cards) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 text-left">
+          
+          <div class="relative bg-white/80 backdrop-blur rounded-2xl p-6 border border-slate-200 shadow-sm overflow-hidden group hover:border-cbblue transition-all">
+            <div class="w-10 h-10 rounded-xl bg-cbblue-50 text-cbblue flex items-center justify-center font-bold mb-3">
+              <i class="fa fa-trophy"></i>
+            </div>
+            <h3 class="font-extrabold text-slate-900 text-base mb-1">Radar de Posicionamiento</h3>
+            <p class="text-xs text-slate-500 leading-relaxed mb-3">Ranking dinámico en 5km y 10km con análisis comparativo de estrellas y opiniones.</p>
+            <div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full bg-cbblue w-3/4 rounded-full"></div></div>
+          </div>
+
+          <div class="relative bg-white/80 backdrop-blur rounded-2xl p-6 border border-slate-200 shadow-sm overflow-hidden group hover:border-purple-500 transition-all">
+            <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold mb-3">
+              <i class="fa fa-wand-magic-sparkles"></i>
+            </div>
+            <h3 class="font-extrabold text-slate-900 text-base mb-1">Intelligence IA Sentimiento</h3>
+            <p class="text-xs text-slate-500 leading-relaxed mb-3">Detección de patrones de quejas de la competencia para captar sus clientes insatisfechos.</p>
+            <div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full bg-purple-500 w-5/6 rounded-full"></div></div>
+          </div>
+
+          <div class="relative bg-white/80 backdrop-blur rounded-2xl p-6 border border-slate-200 shadow-sm overflow-hidden group hover:border-cbgreen transition-all">
+            <div class="w-10 h-10 rounded-xl bg-cbgreen-50 text-cbgreen flex items-center justify-center font-bold mb-3">
+              <i class="fa fa-bullseye"></i>
+            </div>
+            <h3 class="font-extrabold text-slate-900 text-base mb-1">Alertas de Brecha de Mercado</h3>
+            <p class="text-xs text-slate-500 leading-relaxed mb-3">Notificaciones automáticas cuando un competidor sube su calificación o lanza campañas.</p>
+            <div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div class="h-full bg-cbgreen w-2/3 rounded-full"></div></div>
+          </div>
+
+        </div>
+
+        <!-- Commercial Hype & CTA Box -->
+        <div class="p-6 md:p-8 rounded-2xl bg-gradient-to-r from-cbblue via-cbblue-700 to-indigo-900 text-white shadow-xl relative overflow-hidden">
+          <div class="max-w-2xl mx-auto space-y-4">
+            <div class="inline-block text-amber-300 text-xs md:text-sm font-extrabold uppercase tracking-wider">
+              🔥 ¿Quieres ser el primero en desbloquear este poder?
+            </div>
+            <h3 class="text-xl md:text-2xl font-black">
+              Solicita tu acceso anticipado exclusivo o mejora tu suscripción
+            </h3>
+            <p class="text-xs md:text-sm text-slate-200 leading-relaxed">
+              Las mayores funcionalidades de Benchmark de Competidores Google se asignarán de manera prioritaria a nuestros clientes. ¡Contáctanos hoy para agendar una demostración o reservar tu cupo prioritario!
+            </p>
+            <div class="flex flex-wrap items-center justify-center gap-4 pt-2">
+              <a href="mailto:comercial@clientbeat.cl?subject=Solicitud%20de%20Acceso%20Anticipado%20Benchmark%20Google&body=Hola%20equipo%20ClientBeat,%20me%20interesa%20obtener%20acceso%20anticipado%20al%20modulo%20de%20Benchmark%20de%20Competencia%20Google." class="px-6 py-3.5 bg-amber-400 text-slate-950 font-black rounded-xl text-xs md:text-sm hover:bg-amber-300 transition-all shadow-lg flex items-center gap-2">
+                <i class="fa fa-star"></i> Solicitar Acceso Anticipado Comercial
+              </a>
+              <a href="{% url 'perfil' %}#plan" class="px-6 py-3.5 bg-white/15 backdrop-blur text-white border border-white/20 font-bold rounded-xl text-xs md:text-sm hover:bg-white/25 transition-all flex items-center gap-2">
+                <i class="fa fa-arrow-up-right-dots"></i> Ver Planes y Mejorar mi Cuenta
+              </a>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
     {% endif %}

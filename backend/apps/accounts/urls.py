@@ -7,4 +7,6 @@ urlpatterns = [
     path('register/', views.OnboardingWizardView.as_view(), name='register'),
     path('onboarding/', views.OnboardingWizardView.as_view(), name='onboarding'),
     path('perfil/', views.PerfilUsuarioView.as_view(), name='perfil'),
+    path('invitacion/<str:token>/', views.AceptarInvitacionView.as_view(), name='aceptar_invitacion'),
 ]
+

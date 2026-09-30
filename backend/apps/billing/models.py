@@ -113,6 +113,10 @@ class Plan(models.Model):
         help_text='Orden en que aparecen los planes en la UI (menor = primero).'
     )
     activo = models.BooleanField(default=True)
+    disponible_para_venta = models.BooleanField(
+        default=True,
+        help_text='Si es False, deshabilita la contratación directa y muestra el CTA "Aún no disponible para la venta - Próximamente".'
+    )
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     # ======= FEATURE FLAGS NUEVOS (Planes Excel: Plan1 Solo Google / Plan2 Google+QR CB / Plan3 Full + Benchmark CB) =======

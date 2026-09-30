@@ -296,6 +296,75 @@ class MiembroEquipo(models.Model):
         return permiso in self.permisos_por_rol
 
 
+class InvitacionEquipo(models.Model):
+    class EstadoChoices(models.TextChoices):
+        PENDIENTE = 'PENDIENTE', 'Pendiente'
+        ACEPTADA = 'ACEPTADA', 'Aceptada'
+        CANCELADA = 'CANCELADA', 'Cancelada'
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
+    )
+    negocio = models.ForeignKey(
+        Negocio,
+        on_delete=models.CASCADE,
+        related_name='invitaciones_equipo',
+        verbose_name='Negocio'
+    )
+    email = models.EmailField(
+        verbose_name='Correo electrónico del colaborador'
+    )
+    nombre = models.CharField(
+        max_length=150,
+        blank=True,
+        null=True,
+        verbose_name='Nombre del colaborador'
+    )
+    rol = models.CharField(
+        max_length=30,
+        choices=MiembroEquipo.RolChoices.choices,
+        default=MiembroEquipo.RolChoices.USUARIO_EQUIPO,
+        verbose_name='Rol en el negocio'
+    )
+    token = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name='Token de invitación'
+    )
+    invitado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='invitaciones_enviadas',
+        verbose_name='Invitado por'
+    )
+    estado = models.CharField(
+        max_length=20,
+        choices=EstadoChoices.choices,
+        default=EstadoChoices.PENDIENTE,
+        verbose_name='Estado'
+    )
+    fecha_invitacion = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de invitación'
+    )
+    fecha_aceptacion = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='Fecha de aceptación'
+    )
+
+    class Meta:
+        verbose_name = 'Invitación de equipo'
+        verbose_name_plural = 'Invitaciones de equipo'
+        ordering = ['-fecha_invitacion']
+
+    def __str__(self):
+        return f'Invitación a {self.email} en {self.negocio.nombre}'
+
+
+
 class Local(models.Model):
     class EstadoChoices(models.TextChoices):
         ACTIVO = 'ACTIVO', 'Activo'

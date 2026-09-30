@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize %}
+{% load humanize currency_tags %}
 {% block title %}Client Beat — Mide la Satisfacción de tus Clientes{% endblock %}
 
 {% block content %}
@@ -162,13 +162,13 @@
           <div class="mb-6 pb-6 border-b border-slate-100">
             <div class="flex items-baseline gap-1">
               <span class="text-4xl font-extrabold text-slate-900">
-                {% if p.precio_clp %}${{ p.precio_clp|intcomma }}{% elif p.precio_uf %}{{ p.precio_uf }} UF{% else %}Consultar{% endif %}
+                {% if p.precio_clp %}${{ p.precio_clp|clp_format }}{% elif p.precio_uf %}{{ p.precio_uf }} UF{% else %}Consultar{% endif %}
               </span>
               <span class="text-slate-500 text-xs font-bold">/ mes + IVA</span>
             </div>
             {% if p.costo_local_adicional_clp > 0 %}
               <div class="text-[11px] font-semibold text-slate-500 mt-2">
-                <i class="fa fa-plus-circle text-cbblue"></i> Incluye {{ p.locales_gratis_incluidos }} locales ($30.000 por local extra)
+                <i class="fa fa-plus-circle text-cbblue"></i> Incluye {{ p.locales_gratis_incluidos }} local{% if p.locales_gratis_incluidos > 1 %}es{% endif %} (${{ p.costo_local_adicional_clp|clp_format }}/mes por local extra + IVA)
               </div>
             {% else %}
               <div class="text-[11px] font-semibold text-emerald-600 mt-2">
@@ -198,7 +198,7 @@
               </div>
               <div class="flex items-start gap-2.5 text-xs text-slate-700 font-medium">
                 <i class="fa fa-check text-emerald-500 mt-0.5 shrink-0"></i>
-                <span>Benchmarking por rubro y competidores Google</span>
+                <span>Análisis de Reseñas de Google</span>
               </div>
             {% endif %}
           </div>
@@ -206,11 +206,17 @@
 
         {# Botón de Contratación #}
         <div>
-          <a href="/accounts/register/?plan_id={{ p.id }}"
-             class="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all
-                    {% if p.es_plan_default %}bg-cbblue hover:bg-blue-700 text-white shadow-lg shadow-cbblue/20{% else %}bg-slate-900 hover:bg-slate-800 text-white{% endif %}">
-            <i class="fa fa-credit-card"></i> Contratar Plan Ahora
-          </a>
+          {% if p.disponible_para_venta %}
+            <a href="/accounts/register/?plan_id={{ p.id }}"
+               class="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all
+                      {% if p.es_plan_default %}bg-cbblue hover:bg-blue-700 text-white shadow-lg shadow-cbblue/20{% else %}bg-slate-900 hover:bg-slate-800 text-white{% endif %}">
+              <i class="fa fa-credit-card"></i> Contratar Plan Ahora
+            </a>
+          {% else %}
+            <div class="w-full text-center px-4 py-3.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed flex items-center justify-center gap-2">
+              <i class="fa fa-lock text-amber-500"></i> Aún no disponible para la venta - Próximamente
+            </div>
+          {% endif %}
         </div>
       </div>
       {% empty %}

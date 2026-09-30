@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load humanize currency_tags %}
 {% block title %}Mi Perfil y Configuración · ClientBeat{% endblock %}
 
 {% block content %}
@@ -58,6 +59,11 @@
             <a href="#negocio" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 hover:bg-cbblue-50 hover:text-cbblue transition-colors">
               <i class="fa fa-store text-cbgreen w-5"></i> Mi Negocio y Locales
             </a>
+            {% if es_dueno %}
+            <a href="#equipo" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 hover:bg-cbblue-50 hover:text-cbblue transition-colors">
+              <i class="fa fa-users text-purple-500 w-5"></i> Equipo y Colaboradores
+            </a>
+            {% endif %}
             <a href="#plan" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 hover:bg-cbblue-50 hover:text-cbblue transition-colors">
               <i class="fa fa-credit-card text-amber-500 w-5"></i> Plan y Suscripción
             </a>
@@ -249,6 +255,179 @@
           {% endif %}
         </div>
 
+        {# Section: Team & Collaborators #}
+        {% if es_dueno and negocio %}
+        <div id="equipo" class="glass-effect rounded-2xl p-6 md:p-8 border border-slate-200/60 shadow-sm scroll-mt-28">
+          <div class="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100 flex-wrap">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                <i class="fa fa-users text-lg"></i>
+              </div>
+              <div>
+                <h2 class="text-lg font-bold text-slate-900">Equipo y Colaboradores</h2>
+                <p class="text-xs text-slate-500">Gestiona accesos e invita a colaboradores de tu negocio.</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <span class="text-xs bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1 rounded-full font-semibold">
+                Cupos en plan: <strong class="text-slate-900">{{ total_colaboradores_usados }} / {{ limite_colaboradores }} usuarios</strong>
+              </span>
+              {% if puede_invitar_colaborador %}
+              <button type="button" onclick="document.getElementById('modalInvitarColaborador').classList.remove('hidden')" class="btn-primary text-xs !py-2 !bg-purple-600 hover:!bg-purple-700 transition-colors shadow">
+                <i class="fa fa-user-plus"></i> Invitar Colaborador
+              </button>
+              {% else %}
+              <button type="button" disabled class="px-3 py-2 bg-slate-200 text-slate-500 text-xs font-bold rounded-xl cursor-not-allowed" title="Límite alcanzado">
+                <i class="fa fa-lock"></i> Límite de Plan Alcanzado
+              </button>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            {# Active Members #}
+            <div>
+              <h4 class="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
+                <i class="fa fa-circle-check text-emerald-500"></i> Miembros Activos en el Negocio ({{ miembros_equipo|length }})
+              </h4>
+              <div class="space-y-2">
+                {% for m in miembros_equipo %}
+                <div class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 text-xs">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs shrink-0">
+                      {{ m.usuario.first_name|default:m.usuario.email|slice:":1"|upper }}
+                    </div>
+                    <div>
+                      <b class="text-slate-800 text-sm block">{{ m.usuario.get_full_name|default:m.usuario.email }}</b>
+                      <span class="text-slate-500"><i class="fa fa-envelope mr-1"></i>{{ m.usuario.email }}</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="px-2.5 py-1 rounded-full font-bold bg-indigo-50 text-indigo-700 text-[11px]">
+                      <i class="fa fa-shield-halved mr-1"></i>{{ m.get_rol_display }}
+                    </span>
+                    {% if m.usuario_id != negocio.dueño_id %}
+                    <form method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de remover a este colaborador del equipo?');">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="remove_member">
+                      <input type="hidden" name="miembro_id" value="{{ m.id }}">
+                      <button type="submit" class="text-rose-600 hover:text-rose-800 text-xs font-bold p-1" title="Remover miembro">
+                        <i class="fa fa-trash-can"></i>
+                      </button>
+                    </form>
+                    {% else %}
+                    <span class="text-[11px] font-bold text-cbblue bg-cbblue-50 px-2 py-0.5 rounded-full">Dueño</span>
+                    {% endif %}
+                  </div>
+                </div>
+                {% empty %}
+                <p class="text-xs text-slate-400 italic">No hay otros miembros activos aún.</p>
+                {% endfor %}
+              </div>
+            </div>
+
+            {# Pending Invitations #}
+            {% if invitaciones_pendientes %}
+            <div class="pt-4 border-t border-slate-100">
+              <h4 class="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
+                <i class="fa fa-clock text-amber-500"></i> Invitaciones Pendientes por Correo ({{ invitaciones_pendientes|length }})
+              </h4>
+              <div class="space-y-2">
+                {% for inv in invitaciones_pendientes %}
+                <div class="flex items-center justify-between p-3.5 rounded-xl bg-amber-50/50 border border-amber-200/60 text-xs">
+                  <div>
+                    <b class="text-slate-800 text-sm block flex items-center gap-1.5">
+                      <i class="fa fa-envelope-open-text text-amber-600"></i> {{ inv.email }}
+                      {% if inv.nombre %}<span class="text-slate-500 font-normal">({{ inv.nombre }})</span>{% endif %}
+                    </b>
+                    <span class="text-slate-400 text-[11px]">Enviada {{ inv.fecha_invitacion|date:"d/m/Y H:i" }} · Rol: <strong>{{ inv.get_rol_display }}</strong></span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <form method="POST" class="inline">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="resend_invitation">
+                      <input type="hidden" name="invitacion_id" value="{{ inv.id }}">
+                      <button type="submit" class="btn-secondary text-[11px] !py-1 !px-2.5" title="Reenviar correo">
+                        <i class="fa fa-paper-plane text-cbblue"></i> Reenviar
+                      </button>
+                    </form>
+                    <form method="POST" class="inline" onsubmit="return confirm('¿Deseas cancelar esta invitación?');">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="cancel_invitation">
+                      <input type="hidden" name="invitacion_id" value="{{ inv.id }}">
+                      <button type="submit" class="text-rose-600 hover:text-rose-800 text-xs font-bold p-1" title="Cancelar invitación">
+                        <i class="fa fa-xmark"></i>
+                      </button>
+                    </form>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+
+          </div>
+        </div>
+
+        {# MODAL INVITAR COLABORADOR #}
+        <div id="modalInvitarColaborador" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div class="bg-white rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative animate-fade-up">
+            <button type="button" onclick="document.getElementById('modalInvitarColaborador').classList.add('hidden')" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700 text-lg w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+              <i class="fa fa-xmark"></i>
+            </button>
+
+            <div class="text-center mb-6">
+              <div class="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 mx-auto flex items-center justify-center text-2xl mb-3">
+                <i class="fa fa-user-plus"></i>
+              </div>
+              <h3 class="text-xl font-bold text-slate-900">Invitar Nuevo Colaborador</h3>
+              <p class="text-xs text-slate-500 mt-1">Le enviaremos un correo electrónico amigable con un enlace único para que cree su perfil y acceda a tu negocio.</p>
+            </div>
+
+            <form method="POST" class="space-y-4">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="invite_collaborator">
+
+              <div>
+                <label class="form-label text-xs">Correo Electrónico del Colaborador</label>
+                <input type="email" name="email_colaborador" required class="form-input text-xs" placeholder="colaborador@tuempresa.cl">
+              </div>
+
+              <div>
+                <label class="form-label text-xs">Nombre del Colaborador (opcional)</label>
+                <input type="text" name="nombre_colaborador" class="form-input text-xs" placeholder="Ej: Roberto">
+              </div>
+
+              <div>
+                <label class="form-label text-xs">Rol en el Negocio</label>
+                <select name="rol_colaborador" class="form-input text-xs !bg-white">
+                  {% for r_val, r_label in rol_choices %}
+                    {% if r_val != 'DUENO' %}
+                    <option value="{{ r_val }}" {% if r_val == 'USUARIO_EQUIPO' %}selected{% endif %}>{{ r_label }}</option>
+                    {% endif %}
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="p-3.5 rounded-xl bg-purple-50 border border-purple-100 text-xs text-purple-900">
+                <i class="fa fa-info-circle text-purple-600 mr-1"></i>
+                Tu plan <strong>{{ plan_activo.get_nombre_mostrar }}</strong> permite hasta <strong>{{ limite_colaboradores }} usuarios colaboradores</strong>. Actualmente tienes <strong>{{ total_colaboradores_usados }} cupos ocupados</strong>.
+              </div>
+
+              <div class="flex items-center gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('modalInvitarColaborador').classList.add('hidden')" class="btn-secondary flex-1 justify-center text-xs">
+                  Cancelar
+                </button>
+                <button type="submit" class="btn-primary flex-1 justify-center text-xs !bg-purple-600 hover:!bg-purple-700">
+                  <i class="fa fa-paper-plane"></i> Enviar Invitación Por Correo
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+        {% endif %}
+
         {# Section 3: Plan and Subscription #}
         <div id="plan" class="glass-effect rounded-2xl p-6 md:p-8 border border-slate-200/60 shadow-sm scroll-mt-28">
           <div class="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100 flex-wrap">
@@ -316,11 +495,11 @@
             <div class="mt-4 pt-3 border-t border-indigo-100/80 flex flex-wrap items-center justify-between gap-2 text-xs">
               <span class="text-slate-600">
                 <i class="fa fa-calculator text-cbblue mr-1"></i> Facturación mensual estimada:
-                <strong class="text-slate-900 text-sm font-black">${{ desglose_actual.total_clp|stringformat:"d" }} CLP/mes</strong>
+                <strong class="text-slate-900 text-sm font-black">${{ desglose_actual.total_clp|clp_format }} CLP/mes + IVA</strong>
               </span>
               {% if desglose_actual.local_extra_cantidad > 0 %}
               <span class="text-amber-800 bg-amber-100/80 border border-amber-200 px-2.5 py-0.5 rounded-full font-semibold">
-                Incluye {{ desglose_actual.local_extra_cantidad }} sucursal(es) extra (+${{ desglose_actual.local_extra_clp|stringformat:"d" }} CLP)
+                Incluye {{ desglose_actual.local_extra_cantidad }} sucursal(es) extra (+${{ desglose_actual.local_extra_clp|clp_format }} CLP/mes + IVA)
               </span>
               {% else %}
               <span class="text-emerald-700 bg-emerald-100/80 border border-emerald-200 px-2.5 py-0.5 rounded-full font-semibold">
@@ -402,7 +581,7 @@
                   {% if locales|length < plan_activo.locales_gratis_incluidos %}
                   <li class="text-emerald-600 font-semibold">• 🎉 Esta sucursal estará <strong>INCLUIDA SIN COSTO EXTRA</strong>.</li>
                   {% else %}
-                  <li class="text-amber-700 font-semibold">• 💳 Esta sucursal agregará <strong>+${{ plan_activo.costo_local_adicional_clp|stringformat:"d" }} CLP/mes</strong> a tu facturación.</li>
+                  <li class="text-amber-700 font-semibold">• 💳 Esta sucursal agregará <strong>+${{ plan_activo.costo_local_adicional_clp|clp_format }} CLP/mes + IVA</strong> a tu facturación.</li>
                   {% endif %}
                 </ul>
               </div>
@@ -453,31 +632,34 @@
 
                   <div class="my-3 pb-3 border-b border-slate-100">
                     <div class="text-2xl font-black text-slate-900">
-                      {% if p.precio_clp %}${{ d.total_clp|stringformat:"d" }} <span class="text-xs font-normal text-slate-500">CLP/mes</span>{% else %}Gratis{% endif %}
+                      {% if p.precio_clp %}${{ d.total_clp|clp_format }} <span class="text-xs font-normal text-slate-500">CLP/mes + IVA</span>{% else %}Gratis{% endif %}
                     </div>
                     {% if d.local_extra_clp > 0 %}
                     <div class="text-[11px] text-amber-600 font-semibold mt-1">
-                      (Base ${{ d.base_clp|stringformat:"d" }} + ${{ d.local_extra_clp|stringformat:"d" }} por {{ d.local_extra_cantidad }} sucursales extra)
+                      (Base ${{ d.base_clp|clp_format }} + ${{ d.local_extra_clp|clp_format }} por {{ d.local_extra_cantidad }} sucursal{% if d.local_extra_cantidad > 1 %}es{% endif %} extra + IVA)
                     </div>
                     {% else %}
                     <div class="text-[11px] text-emerald-600 font-semibold mt-1">
-                      (Base ${{ d.base_clp|stringformat:"d" }} - {{ p.locales_gratis_incluidos }} sucursales incluidas)
+                      (Base ${{ d.base_clp|clp_format }} + IVA — {{ p.locales_gratis_incluidos }} sucursal{% if p.locales_gratis_incluidos > 1 %}es{% endif %} incluida{% if p.locales_gratis_incluidos > 1 %}s{% endif %})
                     </div>
                     {% endif %}
                   </div>
 
                   <ul class="space-y-2 text-xs text-slate-600 mb-6">
                     <li class="flex items-center gap-2">
-                      <i class="fa fa-check text-cbgreen"></i> {{ p.locales_gratis_incluidos }} locales incluidos
+                      <i class="fa fa-check text-cbgreen font-bold"></i> {{ p.locales_gratis_incluidos }} local{% if p.locales_gratis_incluidos > 1 %}es{% endif %} incluido{% if p.locales_gratis_incluidos > 1 %}s{% endif %}
                     </li>
                     <li class="flex items-center gap-2">
-                      <i class="fa {% if p.tiene_analisis_google %}fa-check text-cbgreen{% else %}fa-xmark text-slate-300{% endif %}"></i> Análisis Google
+                      <i class="fa {% if p.tiene_qr_clientbeat %}fa-check text-cbgreen font-bold{% else %}fa-xmark text-slate-300{% endif %}"></i> Encuestas QR NPS & CSAT
                     </li>
                     <li class="flex items-center gap-2">
-                      <i class="fa {% if p.tiene_qr_clientbeat %}fa-check text-cbgreen{% else %}fa-xmark text-slate-300{% endif %}"></i> Encuestas QR NPS/CSAT
+                      <i class="fa {% if p.tiene_analisis_google %}fa-check text-cbgreen font-bold{% else %}fa-xmark text-slate-300{% endif %}"></i> Análisis Reseñas Google
                     </li>
                     <li class="flex items-center gap-2">
-                      <i class="fa {% if p.tiene_benchmark_clientbeat %}fa-check text-cbgreen{% else %}fa-xmark text-slate-300{% endif %}"></i> Benchmark Competitivo
+                      <i class="fa {% if p.tiene_benchmark_clientbeat %}fa-check text-cbgreen font-bold{% else %}fa-xmark text-slate-300{% endif %}"></i> Benchmark ClientBeat por Rubro
+                    </li>
+                    <li class="flex items-center gap-2 text-slate-500">
+                      <i class="fa fa-lock text-amber-500"></i> Benchmark Google (Próximamente)
                     </li>
                   </ul>
                 </div>
@@ -486,6 +668,10 @@
                   {% if es_act %}
                   <button type="button" disabled class="w-full py-2.5 bg-slate-200 text-slate-500 font-bold rounded-xl text-xs cursor-default">
                     Actualmente Contratado
+                  </button>
+                  {% elif not p.disponible_para_venta %}
+                  <button type="button" disabled class="w-full py-2.5 bg-slate-100 text-slate-500 border border-slate-200 font-bold rounded-xl text-xs cursor-not-allowed flex items-center justify-center gap-1.5" title="Este plan estará disponible muy pronto">
+                    <i class="fa fa-lock text-amber-500"></i> Aún no disponible para la venta - Próximamente
                   </button>
                   {% else %}
                   <div class="space-y-2">
@@ -503,7 +689,7 @@
                       <input type="hidden" name="plan_id" value="{{ p.id }}">
                       <input type="hidden" name="negocio_id" value="{{ negocio.id }}">
                       <button type="submit" class="w-full py-2 bg-gradient-to-r from-cbblue to-cbgreen text-white font-bold rounded-xl text-xs hover:opacity-95 transition-opacity shadow flex items-center justify-center gap-1.5">
-                        <i class="fa fa-credit-card"></i> Pagar con Flow (${{ d.total_clp|stringformat:"d" }})
+                        <i class="fa fa-credit-card"></i> Pagar con Flow (${{ d.total_clp|clp_format }} CLP + IVA)
                       </button>
                     </form>
                     {% endif %}
