@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import exports
 
 app_name = 'adminpanel'
 
@@ -15,9 +16,24 @@ urlpatterns = [
     # 1. REPORTERÍA
     # ==============================
     path('reporteria/clientes/', views.ReporteriaClientesView.as_view(), name='reporteria_clientes'),
-    path('reporteria/benchmark-rubro/', views.ReporteriaBenchmarkRubroView.as_view(), name='reporteria_benchmark_rubro'),
+    path('reporteria/clientes/export/', exports.export_clientes_excel, name='reporteria_clientes_export'),
+
+    path('reporteria/benchmark-rubro/', views.ReporteriaBenchmarkGoogleView.as_view(), name='reporteria_benchmark_rubro'),
+    path('reporteria/benchmark-google/', views.ReporteriaBenchmarkGoogleView.as_view(), name='reporteria_benchmark_google'),
+    path('reporteria/benchmark-google/export/', exports.export_benchmark_google_excel, name='reporteria_benchmark_google_export'),
+
+    path('reporteria/benchmark-clientbeat/', views.ReporteriaBenchmarkClientBeatView.as_view(), name='reporteria_benchmark_clientbeat'),
+    path('reporteria/benchmark-clientbeat/export/', exports.export_benchmark_clientbeat_excel, name='reporteria_benchmark_clientbeat_export'),
+
+    path('reporteria/benchmark-nps-csat/', views.ReporteriaBenchmarkNpsCsatView.as_view(), name='reporteria_benchmark_nps_csat'),
+    path('reporteria/benchmark-nps-csat/export/', exports.export_benchmark_nps_csat_excel, name='reporteria_benchmark_nps_csat_export'),
+
     path('reporteria/tendencias-resenas/', views.ReporteriaTendenciasResenasView.as_view(), name='reporteria_tendencias_resenas'),
+    path('reporteria/tendencias-resenas/export/', exports.export_tendencias_resenas_excel, name='reporteria_tendencias_resenas_export'),
+
     path('reporteria/planes/', views.ReporteriaPlanesView.as_view(), name='reporteria_planes'),
+    path('reporteria/planes/export/', exports.export_planes_excel, name='reporteria_planes_export'),
+
 
     # ==============================
     # 2. DATA GOOGLE

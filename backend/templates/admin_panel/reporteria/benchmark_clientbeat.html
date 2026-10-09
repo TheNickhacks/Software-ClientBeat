@@ -1,0 +1,108 @@
+{% extends 'admin_panel/base.html' %}
+{% block admin_subtitle %}1.3 Benchmark de satisfacción y recomendación en encuestas QR ClientBeat por rubro{% endblock %}
+
+{% block admin_header_actions %}
+  <a href="{% url 'adminpanel:reporteria_benchmark_clientbeat_export' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+     download="ClientBeat_Benchmark_ClientBeat.xlsx"
+     class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all">
+    <i class="fa-solid fa-file-excel text-sm"></i> Exportar a Excel
+  </a>
+{% endblock %}
+
+{% block admin_content %}
+{# Header explicativo del flujo de cálculo ClientBeat #}
+<div class="mb-6 rounded-2xl border border-cbblue-100 bg-cbblue-50/80 p-5 shadow-xs">
+  <div class="flex items-start gap-4">
+    <div class="w-10 h-10 rounded-xl bg-cbblue text-white flex items-center justify-center shrink-0 shadow-md">
+      <i class="fa fa-chart-line text-lg"></i>
+    </div>
+    <div>
+      <h3 class="text-sm font-bold text-cbblue-900 flex items-center gap-2">
+        📊 Flujo de Cálculo: Benchmark ClientBeat (Encuestas QR)
+      </h3>
+      <p class="text-xs text-cbblue-700/90 mt-1 leading-relaxed">
+        Este reporte procesa exclusivamente las **respuestas capturadas a través de los códigos QR de ClientBeat** en cada local. Mide la tasa de satisfacción CSAT (emociones felices) y el Net Promoter Score (NPS net score de -100 a +100).
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 mb-6">
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div>
+      <h2 class="text-lg font-bold text-slate-900">Desglose Benchmark ClientBeat por Rubro</h2>
+      <p class="text-xs text-slate-500 mt-1">Comparativa de resultados de encuestas directas QR por sector</p>
+    </div>
+
+    <a href="{% url 'adminpanel:reporteria_benchmark_clientbeat_export' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+       download="ClientBeat_Benchmark_ClientBeat.xlsx"
+       class="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold text-xs rounded-xl transition-all shadow-2xs">
+      <i class="fa-solid fa-file-excel text-emerald-600 text-sm"></i> Exportar a Excel
+    </a>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-xs text-slate-700">
+      <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200">
+        <tr>
+          <th class="py-3.5 px-4">Rubro Comercial</th>
+          <th class="py-3.5 px-4 text-center">Empresas</th>
+          <th class="py-3.5 px-4 text-center">Respuestas QR</th>
+          <th class="py-3.5 px-4 text-center">CSAT % Felices</th>
+          <th class="py-3.5 px-4 text-center">NPS Net Score</th>
+          <th class="py-3.5 px-4 text-center">Nivel Desempeño</th>
+          <th class="py-3.5 px-4 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100 font-medium">
+        {% for r in rubros_stats %}
+        <tr class="hover:bg-slate-50/80 transition-colors">
+          <td class="py-3.5 px-4 font-bold text-slate-900">
+            <div class="flex items-center gap-2">
+              <span class="w-7 h-7 rounded-lg bg-cbblue-50 text-cbblue flex items-center justify-center text-xs">
+                <i class="fa fa-qrcode"></i>
+              </span>
+              {{ r.nombre }}
+            </div>
+          </td>
+          <td class="py-3.5 px-4 text-center font-bold text-slate-800">{{ r.total_negocios }}</td>
+          <td class="py-3.5 px-4 text-center font-bold text-slate-800">{{ r.total_respuestas }}</td>
+          <td class="py-3.5 px-4 text-center">
+            <span class="inline-flex items-center gap-1 font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 text-xs">
+              <i class="fa fa-face-smile text-[10px]"></i> {{ r.csat_felices_pct }}%
+            </span>
+          </td>
+          <td class="py-3.5 px-4 text-center font-extrabold text-slate-900 text-sm">
+            {% if r.nps_score >= 50 %}
+              <span class="text-emerald-600">+{{ r.nps_score }}</span>
+            {% elif r.nps_score >= 0 %}
+              <span class="text-amber-600">+{{ r.nps_score }}</span>
+            {% else %}
+              <span class="text-rose-600">{{ r.nps_score }}</span>
+            {% endif %}
+          </td>
+          <td class="py-3.5 px-4 text-center">
+            {% if r.nps_score >= 50 %}
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">Sobresaliente</span>
+            {% elif r.nps_score >= 0 %}
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">Aceptable</span>
+            {% else %}
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300">En Riesgo</span>
+            {% endif %}
+          </td>
+          <td class="py-3.5 px-4 text-right">
+            <a href="{% url 'adminpanel:reporteria_benchmark_nps_csat' %}" class="btn-secondary text-xs py-1 px-3">
+              Ver Detalle NPS/CSAT
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="py-8 text-center text-slate-400 italic">No hay datos de encuestas QR registrados.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

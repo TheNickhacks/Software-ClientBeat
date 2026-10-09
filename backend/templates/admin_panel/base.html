@@ -3,91 +3,164 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0B3EA6" />
+  <meta name="color-scheme" content="light" />
   <title>{% block title %}{{ menu_activo|default:"Panel Administrativo" }} · ClientBeat · El Pulso de tu Marca{% endblock %}</title>
   {% load static %}
   <link rel="icon" type="image/png" sizes="512x512" href="{% static 'img/LogoClientBeat.png' %}" />
   <link rel="apple-touch-icon" href="{% static 'img/LogoClientBeat.png' %}" />
+
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin="anonymous" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin="anonymous" />
+  <link rel="dns-prefetch" href="https://cdn.tailwindcss.com" />
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
+
+  <link rel="preload" as="style" fetchpriority="high" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" fetchpriority="high" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            cbblue: { DEFAULT: '#0B3EA6', 50: '#eef4ff', 100: '#d9e7ff', 600: '#08337a', 700: '#062556', 900: '#041B3A' },
-            cbgreen: { DEFAULT: '#00B879', 50: '#ecfbf4', 600: '#008E5C', 700: '#00633F' },
+    (function initTailwindCfg(){
+      var cfg = {
+        theme: {
+          extend: {
+            colors: {
+              cbblue: { DEFAULT: '#0B3EA6', 50: '#eef4ff', 100: '#d9e7ff', 600: '#08337a', 700: '#062556', 900: '#041B3A' },
+              cbgreen: { DEFAULT: '#00B879', 50: '#ecfbf4', 600: '#008E5C', 700: '#00633F' },
+            }
           }
         }
+      };
+      function applyCfg(){
+        if (window.tailwind && typeof window.tailwind.config !== 'undefined') {
+          window.tailwind.config = cfg;
+          return true;
+        }
+        return false;
       }
-    }
+      if (!applyCfg()) {
+        var tries = 0;
+        var intervalo = setInterval(function(){
+          if (applyCfg() || tries++ > 80) clearInterval(intervalo);
+        }, 50);
+        window.addEventListener('load', function(){ applyCfg(); clearInterval(intervalo); }, { once: true });
+      }
+    })();
   </script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  
   <style>
     .gradient-text {
       background: linear-gradient(90deg, #0B3EA6 0%, #00B879 100%);
-      -webkit-background-clip: text; background-clip: text; color: transparent;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
     }
+    .btn-primary {
+      background: linear-gradient(90deg, #0B3EA6 0%, #008E5C 100%);
+      color: white;
+      padding: 0.55rem 1.15rem;
+      border-radius: 0.75rem;
+      font-weight: 600;
+      box-shadow: 0 6px 18px -6px rgba(11, 62, 166, 0.45);
+      transition: all 0.18s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .btn-secondary {
+      background: white;
+      color: #08337a;
+      padding: 0.5rem 1rem;
+      border-radius: 0.75rem;
+      font-weight: 600;
+      border: 1px solid #d9e7ff;
+      box-shadow: 0 2px 8px -2px rgba(11,62,166,0.08);
+      transition: all 0.18s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .btn-secondary:hover { border-color: #00B879; color: #00633F; box-shadow: 0 6px 16px -6px rgba(0,184,121,0.25); }
     .dropdown:hover .dropdown-menu { display: block; }
+    .glass-nav {
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col font-sans">
+
   {% if messages %}
   <div id="msg-toast-container" class="fixed top-20 right-4 z-[90] space-y-2 w-full max-w-md">
     {% for m in messages %}
-    <div class="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-lg flex items-start gap-3
-                {% if m.tags == 'error' %}border-rose-200 bg-rose-50 text-rose-700
-                {% elif m.tags == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-700
-                {% elif m.tags == 'warning' %}border-amber-200 bg-amber-50 text-amber-700
-                {% else %}border-cbblue-100 bg-cbblue-50 text-cbblue-700{% endif %}">
-      <i class="fa {% if m.tags == 'error' %}fa-exclamation-circle{% elif m.tags == 'success' %}fa-check-circle{% elif m.tags == 'warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %} text-lg mt-0.5"></i>
-      <div class="text-xs leading-relaxed flex-1 font-medium">{{ m }}</div>
-      <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600 text-lg leading-none ml-1">×</button>
+    <div class="bg-white/95 backdrop-blur border rounded-2xl p-4 shadow-xl flex items-start gap-3 transition-all duration-300
+                {% if m.tags == 'error' %}border-rose-200 bg-rose-50/90 text-rose-800
+                {% elif m.tags == 'success' %}border-emerald-200 bg-emerald-50/90 text-emerald-800
+                {% elif m.tags == 'warning' %}border-amber-200 bg-amber-50/90 text-amber-800
+                {% else %}border-cbblue-200 bg-cbblue-50/90 text-cbblue-900{% endif %}">
+      <div class="w-8 h-8 rounded-xl shrink-0 flex items-center justify-center text-sm font-bold
+                  {% if m.tags == 'error' %}bg-rose-100 text-rose-600
+                  {% elif m.tags == 'success' %}bg-emerald-100 text-emerald-600
+                  {% elif m.tags == 'warning' %}bg-amber-100 text-amber-600
+                  {% else %}bg-cbblue-100 text-cbblue-600{% endif %}">
+        <i class="fa {% if m.tags == 'error' %}fa-circle-exclamation{% elif m.tags == 'success' %}fa-circle-check{% elif m.tags == 'warning' %}fa-triangle-exclamation{% else %}fa-circle-info{% endif %}"></i>
+      </div>
+      <div class="text-xs leading-relaxed flex-1 font-medium pt-1">{{ m }}</div>
+      <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600 text-lg leading-none p-1">×</button>
     </div>
     {% endfor %}
   </div>
   {% endif %}
 
-  {# ========= TOP NAVIGATION BAR ========= #}
-  <header class="bg-slate-900 text-slate-100 border-b border-slate-800 sticky top-0 z-50 shadow-md">
+  {# ========= TOP NAVIGATION BAR (Matching User Panel Style) ========= #}
+  <header class="fixed top-0 left-0 right-0 z-50 glass-nav border-b border-slate-200/70 shadow-xs">
     <div class="container mx-auto px-4 md:px-6">
       <div class="flex items-center justify-between h-16">
 
         {# Brand & Title #}
-        <div class="flex items-center gap-4">
-          <a href="{% url 'adminpanel:dashboard' %}" class="flex items-center gap-3">
-            <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" class="h-8 w-auto object-contain bg-white rounded p-1" />
-            <div>
-              <span class="text-sm font-bold tracking-wide text-white">ClientBeat</span>
-              <span class="hidden sm:inline-block text-[10px] bg-cbblue text-white px-2 py-0.5 rounded font-semibold ml-2">Administración</span>
+        <div class="flex items-center gap-3">
+          <a href="{% url 'adminpanel:dashboard' %}" class="flex items-center gap-3 hover:opacity-90 transition-opacity">
+            <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" class="h-10 w-auto object-contain" />
+            <div class="flex items-center gap-2">
+              <span class="text-base font-extrabold tracking-tight text-slate-900">ClientBeat</span>
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-gradient-to-r from-cbblue/15 to-cbgreen/15 text-cbblue border border-cbblue/20 shadow-2xs">
+                <i class="fa-solid fa-user-shield text-cbblue text-[10px]"></i> Administrador
+              </span>
             </div>
           </a>
         </div>
 
         {# Dropdown Tabs Navigation (Desktop) #}
-        <nav class="hidden lg:flex items-center gap-1">
+        <nav class="hidden lg:flex items-center gap-1.5">
           <a href="{% url 'adminpanel:dashboard' %}"
-             class="px-3 py-2 rounded-lg text-xs font-bold transition-all {% if menu_activo == 'Dashboard' %}bg-cbblue text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} flex items-center gap-1.5">
+             class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 {% if menu_activo == 'Dashboard' %}bg-gradient-to-r from-cbblue to-cbgreen text-white shadow-md shadow-cbblue/20{% else %}text-slate-600 hover:bg-slate-100 hover:text-cbblue{% endif %}">
             <i class="fa fa-th-large"></i> Dashboard
           </a>
 
           {% for mod in menu %}
           <div class="relative dropdown">
-            <button type="button" class="px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-all flex items-center gap-1.5">
+            <button type="button" class="px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-cbblue transition-all flex items-center gap-1.5">
               <i class="fa {{ mod.icono }} text-cbgreen-600 text-xs"></i>
               <span>{{ mod.section }}</span>
               <i class="fa fa-chevron-down text-[9px] text-slate-400 ml-0.5"></i>
             </button>
             
-            <div class="dropdown-menu hidden absolute left-0 top-full pt-1 w-56 z-50">
-              <div class="bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 overflow-hidden">
+            <div class="dropdown-menu hidden absolute left-0 top-full pt-2 w-64 z-50 animate-fade-down">
+              <div class="bg-white rounded-2xl shadow-xl border border-slate-200/90 py-2 px-1.5 overflow-hidden">
                 {% for sub in mod.submodulos %}
                 <a href="{{ sub.url }}"
-                   class="flex items-center justify-between px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
-                  <span class="flex items-center gap-2 truncate">
-                    <i class="fa {{ sub.icono }} text-[11px] text-slate-400"></i>
+                   class="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                  <span class="flex items-center gap-2.5 truncate">
+                    <span class="w-6 h-6 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] group-hover:bg-cbblue-50 group-hover:text-cbblue">
+                      <i class="fa {{ sub.icono }}"></i>
+                    </span>
                     <span class="truncate">{{ sub.label }}</span>
                   </span>
+                  <i class="fa fa-chevron-right text-[9px] text-slate-300"></i>
                 </a>
                 {% endfor %}
               </div>
@@ -97,59 +170,98 @@
         </nav>
 
         {# User Actions Dropdown / Profile #}
-        <div class="flex items-center gap-3">
-          <a href="{% url 'adminpanel:preview_cliente' %}" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors">
-            <i class="fa fa-eye text-cbgreen-600"></i> Vista Cliente
+        <div class="flex items-center gap-2.5">
+          <a href="{% url 'adminpanel:preview_cliente' %}" class="btn-secondary text-xs shadow-2xs py-1.5 px-3">
+            <i class="fa-solid fa-eye text-cbgreen"></i>
+            <span class="hidden sm:inline">Vista Cliente</span>
           </a>
 
-          <a href="{% url 'adminpanel:perfil' %}" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition-all border border-slate-700">
-            <i class="fa fa-user-circle text-cbblue text-sm"></i>
-            <span class="hidden md:inline max-w-[120px] truncate">{{ user.first_name|default:user.email }}</span>
+          <a href="{% url 'adminpanel:perfil' %}" class="btn-secondary text-xs shadow-2xs py-1.5 px-3">
+            <i class="fa-solid fa-circle-user text-cbblue"></i>
+            <span class="hidden md:inline max-w-[110px] truncate">{{ user.first_name|default:user.email }}</span>
           </a>
 
           <form method="POST" action="/accounts/logout/" class="inline">
             {% csrf_token %}
-            <button type="submit" class="px-2.5 py-1.5 text-rose-400 hover:text-rose-300 text-xs font-semibold flex items-center gap-1 transition-colors">
-              <i class="fa fa-sign-out-alt"></i>
+            <button type="submit" title="Cerrar sesión" class="p-2 rounded-xl text-rose-500 hover:bg-rose-50 hover:text-rose-600 text-xs font-semibold transition-colors">
+              <i class="fa-solid fa-right-from-bracket text-sm"></i>
             </button>
           </form>
         </div>
 
       </div>
     </div>
+
+    {# ========= SECONDARY QUICK-ACCESS NAVIGATION TABS (Visual Parity with User Dashboard) ========= #}
+    <div class="border-t border-slate-200/60 bg-white/70 backdrop-blur-sm">
+      <div class="container mx-auto px-4 md:px-6 py-1.5 flex items-center overflow-x-auto gap-1 text-xs font-semibold text-slate-600 no-scrollbar">
+        <a href="{% url 'adminpanel:dashboard' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 {% if menu_activo == 'Dashboard' %}bg-cbblue/10 text-cbblue font-bold border border-cbblue/20{% else %}hover:bg-slate-100 hover:text-slate-900{% endif %}">
+          <i class="fa fa-chart-line text-xs"></i> Inicio
+        </a>
+        <a href="{% url 'adminpanel:reporteria_clientes' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 {% if menu_activo == 'reporteria_clientes' %}bg-cbblue/10 text-cbblue font-bold border border-cbblue/20{% else %}hover:bg-slate-100 hover:text-slate-900{% endif %}">
+          <i class="fa fa-building text-xs text-cbblue"></i> Clientes
+        </a>
+        <a href="{% url 'adminpanel:suscripciones' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 hover:bg-slate-100 hover:text-slate-900">
+          <i class="fa fa-credit-card text-xs text-cbgreen"></i> Suscripciones
+        </a>
+        <a href="{% url 'adminpanel:usuarios' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 hover:bg-slate-100 hover:text-slate-900">
+          <i class="fa fa-users-gear text-xs text-indigo-500"></i> Usuarios
+        </a>
+        <a href="{% url 'adminpanel:reporteria_benchmark_rubro' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 hover:bg-slate-100 hover:text-slate-900">
+          <i class="fa fa-chart-pie text-xs text-amber-500"></i> Benchmark
+        </a>
+        <a href="{% url 'adminpanel:reporteria_tendencias_resenas' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 hover:bg-slate-100 hover:text-slate-900">
+          <i class="fa fa-comments text-xs text-sky-500"></i> Reseñas
+        </a>
+        <a href="{% url 'adminpanel:planes_editar' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 hover:bg-slate-100 hover:text-slate-900">
+          <i class="fa fa-tags text-xs text-emerald-600"></i> Planes
+        </a>
+        <a href="{% url 'adminpanel:notificaciones' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 hover:bg-slate-100 hover:text-slate-900">
+          <i class="fa fa-bell text-xs text-rose-500"></i> Notificaciones
+        </a>
+        <a href="{% url 'adminpanel:datagoogle_rubros' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 hover:bg-slate-100 hover:text-slate-900">
+          <i class="fa fa-layer-group text-xs text-purple-500"></i> Data Google
+        </a>
+        <a href="{% url 'adminpanel:solicitudes_arco' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 hover:bg-slate-100 hover:text-slate-900">
+          <i class="fa fa-shield-halved text-xs text-slate-500"></i> ARCO
+        </a>
+      </div>
+    </div>
   </header>
 
-  {# Mobile Nav Links #}
-  <div class="lg:hidden bg-slate-800 border-b border-slate-700 px-4 py-2 flex overflow-x-auto gap-2 text-xs font-semibold text-slate-200">
-    <a href="{% url 'adminpanel:dashboard' %}" class="whitespace-nowrap px-2.5 py-1 rounded bg-cbblue text-white">Dashboard</a>
-    <a href="{% url 'adminpanel:reporteria_clientes' %}" class="whitespace-nowrap px-2.5 py-1 rounded hover:bg-slate-700">1. Clientes</a>
-    <a href="{% url 'adminpanel:reporteria_benchmark_rubro' %}" class="whitespace-nowrap px-2.5 py-1 rounded hover:bg-slate-700">2. Benchmark Rubro</a>
-    <a href="{% url 'adminpanel:datagoogle_rubros' %}" class="whitespace-nowrap px-2.5 py-1 rounded hover:bg-slate-700">3. Data Rubros</a>
-    <a href="{% url 'adminpanel:metricas_criterios_benchmark' %}" class="whitespace-nowrap px-2.5 py-1 rounded hover:bg-slate-700">4. Criterios Métricas</a>
-    <a href="{% url 'adminpanel:planes_editar' %}" class="whitespace-nowrap px-2.5 py-1 rounded hover:bg-slate-700">5. Planes</a>
-    <a href="{% url 'adminpanel:notificaciones' %}" class="whitespace-nowrap px-2.5 py-1 rounded hover:bg-slate-700">6. Notificaciones</a>
-  </div>
-
   {# ========= CONTENIDO PRINCIPAL ========= #}
-  <main class="flex-1 container mx-auto px-4 md:px-6 py-6">
-    {# Título sección #}
-    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <main class="flex-1 container mx-auto px-4 md:px-6 pt-28 pb-16">
+    {# Header Sección / Título #}
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h1 class="text-xl md:text-2xl font-extrabold gradient-text">
+        <h1 class="text-2xl md:text-3xl font-extrabold gradient-text">
           {{ seccion_titulo|default:menu_activo|default:"Panel Administrativo" }}
         </h1>
-        <p class="text-xs text-slate-500 mt-0.5">
+        <p class="text-xs md:text-sm text-slate-500 mt-1">
           {% block admin_subtitle %}Gestión centralizada de servicios ClientBeat.{% endblock %}
         </p>
       </div>
-      {% block admin_header_actions %}{% endblock %}
+      <div class="flex items-center gap-3">
+        {% block admin_header_actions %}{% endblock %}
+      </div>
     </div>
 
     {% block admin_content %}{% endblock %}
   </main>
 
-  <footer class="py-4 text-center text-xs text-slate-400 border-t border-slate-200 bg-white">
-    © ClientBeat SpA · RUT 77.607.311-3 · Asturias 790 E, Rancagua · Chile · El Pulso de tu Marca
+  <footer class="py-6 text-center text-xs text-slate-400 border-t border-slate-200 bg-white">
+    <div class="container mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div>
+        © {% now "Y" %} ClientBeat SpA · RUT 77.607.311-3 · El Pulso de tu Marca
+      </div>
+      <div class="flex items-center gap-4 text-slate-500">
+        <a href="/legal/terms/" class="hover:text-cbblue transition-colors">Términos</a>
+        <a href="/legal/privacy/" class="hover:text-cbblue transition-colors">Privacidad</a>
+        <a href="mailto:soporte@clientbeat.cl" class="hover:text-cbblue transition-colors">soporte@clientbeat.cl</a>
+      </div>
+    </div>
   </footer>
+
 </body>
 </html>
+

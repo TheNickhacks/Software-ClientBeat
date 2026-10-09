@@ -1,0 +1,114 @@
+{% extends 'admin_panel/base.html' %}
+{% block admin_subtitle %}1.4 Benchmark comparativo dedicado de indicadores Net Promoter Score (NPS) y Customer Satisfaction (CSAT) por rubro{% endblock %}
+
+{% block admin_header_actions %}
+  <a href="{% url 'adminpanel:reporteria_benchmark_nps_csat_export' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+     download="ClientBeat_Benchmark_NPS_CSAT.xlsx"
+     class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all">
+    <i class="fa-solid fa-file-excel text-sm"></i> Exportar a Excel
+  </a>
+{% endblock %}
+
+{% block admin_content %}
+{# Banner metodológico del reporte NPS/CSAT #}
+<div class="mb-6 rounded-2xl border border-emerald-100 bg-emerald-50/80 p-5 shadow-xs">
+  <div class="flex items-start gap-4">
+    <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md">
+      <i class="fa fa-face-smile text-lg"></i>
+    </div>
+    <div>
+      <h3 class="text-sm font-bold text-emerald-900 flex items-center gap-2">
+        🎯 Reporte de Benchmark Dedicado: NPS & CSAT por Rubro
+      </h3>
+      <p class="text-xs text-emerald-700/90 mt-1 leading-relaxed">
+        Este reporte consolidado analiza el pulso de la experiencia del cliente comparando sectores comerciales:
+        <b>NPS Net Score</b> (% Promotores [9-10] − % Detractores [0-6]) y la distribución detallada de satisfacción <b>CSAT</b> (Felices, Neutrales, Insatisfechos).
+      </p>
+    </div>
+  </div>
+</div>
+
+{# Tabla principal de Benchmark NPS & CSAT #}
+<div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 mb-6">
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div>
+      <h2 class="text-lg font-bold text-slate-900">Matriz de Benchmark NPS & CSAT por Sector</h2>
+      <p class="text-xs text-slate-500 mt-1">Metodología estandarizada para evaluación de competitividad y lealtad</p>
+    </div>
+
+    <a href="{% url 'adminpanel:reporteria_benchmark_nps_csat_export' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+       download="ClientBeat_Benchmark_NPS_CSAT.xlsx"
+       class="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold text-xs rounded-xl transition-all shadow-2xs">
+      <i class="fa-solid fa-file-excel text-emerald-600 text-sm"></i> Exportar a Excel
+    </a>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-xs text-slate-700">
+      <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200">
+        <tr>
+          <th class="py-3.5 px-4">Rubro Comercial</th>
+          <th class="py-3.5 px-4 text-center">Empresas</th>
+          <th class="py-3.5 px-4 text-center">Evaluaciones</th>
+          <th class="py-3.5 px-4 text-center">CSAT Felices %</th>
+          <th class="py-3.5 px-4 text-center">CSAT Neutral %</th>
+          <th class="py-3.5 px-4 text-center">CSAT Insatisfecho %</th>
+          <th class="py-3.5 px-4 text-center">NPS Score</th>
+          <th class="py-3.5 px-4 text-center">Promotores %</th>
+          <th class="py-3.5 px-4 text-center">Detractores %</th>
+          <th class="py-3.5 px-4 text-center">Nivel Excelencia</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100 font-medium">
+        {% for r in rubros_stats %}
+        <tr class="hover:bg-slate-50/80 transition-colors">
+          <td class="py-3.5 px-4 font-bold text-slate-900">
+            <div class="flex items-center gap-2">
+              <span class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs font-bold">
+                <i class="fa fa-chart-bar"></i>
+              </span>
+              {{ r.nombre }}
+            </div>
+          </td>
+          <td class="py-3.5 px-4 text-center font-bold text-slate-800">{{ r.total_negocios }}</td>
+          <td class="py-3.5 px-4 text-center font-bold text-slate-800">{{ r.total_evaluaciones }}</td>
+          <td class="py-3.5 px-4 text-center font-bold text-emerald-600 bg-emerald-50/40 rounded-lg">{{ r.csat_felices_pct }}%</td>
+          <td class="py-3.5 px-4 text-center font-bold text-amber-600">{{ r.csat_neutrales_pct }}%</td>
+          <td class="py-3.5 px-4 text-center font-bold text-rose-600">{{ r.csat_insatisfechos_pct }}%</td>
+          <td class="py-3.5 px-4 text-center font-black text-slate-900 text-sm">
+            {% if r.nps_score >= 50 %}
+              <span class="text-emerald-600">+{{ r.nps_score }}</span>
+            {% elif r.nps_score >= 0 %}
+              <span class="text-amber-600">+{{ r.nps_score }}</span>
+            {% else %}
+              <span class="text-rose-600">{{ r.nps_score }}</span>
+            {% endif %}
+          </td>
+          <td class="py-3.5 px-4 text-center font-semibold text-emerald-600">{{ r.promotores_pct }}%</td>
+          <td class="py-3.5 px-4 text-center font-semibold text-rose-600">{{ r.detractores_pct }}%</td>
+          <td class="py-3.5 px-4 text-center">
+            {% if r.nps_score >= 50 %}
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                <i class="fa fa-award"></i> Excelente
+              </span>
+            {% elif r.nps_score >= 0 %}
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs">
+                <i class="fa fa-check"></i> Bueno
+              </span>
+            {% else %}
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300 shadow-2xs">
+                <i class="fa fa-exclamation-triangle"></i> En Riesgo
+              </span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="10" class="py-8 text-center text-slate-400 italic">No hay evaluaciones registradas para generar el benchmark NPS/CSAT.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

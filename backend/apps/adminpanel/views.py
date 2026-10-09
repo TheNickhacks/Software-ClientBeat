@@ -80,10 +80,12 @@ def modulos_menu(request):
             'key': 'reporteria',
             'icono': 'fa-chart-pie',
             'submodulos': [
-                {'label': '1.1 Listado de clientes', 'url': reverse_lazy('adminpanel:reporteria_clientes'), 'icono': 'fa-users', 'key': 'reporteria_clientes'},
-                {'label': '1.2 Benchmark por rubro', 'url': reverse_lazy('adminpanel:reporteria_benchmark_rubro'), 'icono': 'fa-chart-line', 'key': 'reporteria_benchmark_rubro'},
-                {'label': '1.3 Tendencias en reseñas', 'url': reverse_lazy('adminpanel:reporteria_tendencias_resenas'), 'icono': 'fa-comments', 'key': 'reporteria_tendencias_resenas'},
-                {'label': '1.4 Reportes de Planes', 'url': reverse_lazy('adminpanel:reporteria_planes'), 'icono': 'fa-tags', 'key': 'reporteria_planes'},
+                {'label': '1.1 Clientes & Antigüedad', 'url': reverse_lazy('adminpanel:reporteria_clientes'), 'icono': 'fa-users', 'key': 'reporteria_clientes'},
+                {'label': '1.2 Benchmark Google', 'url': reverse_lazy('adminpanel:reporteria_benchmark_google'), 'icono': 'fa-brands fa-google', 'key': 'reporteria_benchmark_google'},
+                {'label': '1.3 Benchmark ClientBeat', 'url': reverse_lazy('adminpanel:reporteria_benchmark_clientbeat'), 'icono': 'fa-chart-line', 'key': 'reporteria_benchmark_clientbeat'},
+                {'label': '1.4 Benchmark NPS & CSAT', 'url': reverse_lazy('adminpanel:reporteria_benchmark_nps_csat'), 'icono': 'fa-smile', 'key': 'reporteria_benchmark_nps_csat'},
+                {'label': '1.5 Tendencias en Reseñas', 'url': reverse_lazy('adminpanel:reporteria_tendencias_resenas'), 'icono': 'fa-comments', 'key': 'reporteria_tendencias_resenas'},
+                {'label': '1.6 Reportes de Planes', 'url': reverse_lazy('adminpanel:reporteria_planes'), 'icono': 'fa-tags', 'key': 'reporteria_planes'},
             ]
         },
         {
@@ -1619,8 +1621,13 @@ class SuperSaludView(SuperUserRequiredMixin, TemplateView):
 # ==============================
 # 1. REPORTERÍA VIEWS
 # ==============================
+# ==============================
+# 1. REPORTERÍA VIEWS
+# ==============================
+from .exports import humanize_antiguedad
+
 class ReporteriaClientesView(AdminSoporteRequiredMixin, ListView):
-    """1.1 Listado de clientes (Negocios registrados en la plataforma)."""
+    """1.1 Listado de clientes (Negocios registrados en la plataforma y su antigüedad)."""
     template_name = 'admin_panel/reporteria/clientes.html'
     context_object_name = 'negocios'
     paginate_by = 25
@@ -1628,48 +1635,156 @@ class ReporteriaClientesView(AdminSoporteRequiredMixin, ListView):
     def get_queryset(self):
         qs = Negocio.objects.select_related('dueño', 'comuna', 'rubro').annotate(
             total_locales=Count('locales', distinct=True)
-        ).order_by('-fecha_creacion')
+        ).prefetch_related('suscripciones__plan').order_by('-fecha_creacion')
         q = self.request.GET.get('q')
         if q:
             qs = qs.filter(Q(nombre__icontains=q) | Q(rut__icontains=q) | Q(dueño__email__icontains=q))
-        return qs
+        
+        # Cargar lista e inyectar atributos procesados de antigüedad
+        negocios = list(qs)
+        for n in negocios:
+            n.antiguedad_negocio_str = humanize_antiguedad(n.fecha_creacion)
+            sus = n.suscripciones.filter(estado=EstadoSuscripcionChoices.ACTIVA).first()
+            if sus:
+                n.sus_activa = sus
+                n.antiguedad_plan_str = humanize_antiguedad(sus.fecha_inicio)
+            else:
+                n.sus_activa = None
+                n.antiguedad_plan_str = "Sin plan activo"
+        return negocios
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['menu'] = modulos_menu(self.request)
         ctx['menu_activo'] = 'reporteria_clientes'
-        ctx['seccion_titulo'] = '1.1 Listado de Clientes'
+        ctx['seccion_titulo'] = '1.1 Listado de Clientes & Antigüedad'
         ctx['total_clientes'] = Negocio.objects.count()
         ctx['clientes_activos'] = Negocio.objects.filter(estado='ACTIVO').count()
         return ctx
 
 
-class ReporteriaBenchmarkRubroView(AdminSoporteRequiredMixin, TemplateView):
-    """1.2 Benchmark por rubro."""
-    template_name = 'admin_panel/reporteria/benchmark_rubro.html'
+class ReporteriaBenchmarkGoogleView(AdminSoporteRequiredMixin, TemplateView):
+    """1.2 Benchmark Reseñas Google por Rubro."""
+    template_name = 'admin_panel/reporteria/benchmark_google.html'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['menu'] = modulos_menu(self.request)
-        ctx['menu_activo'] = 'reporteria_benchmark_rubro'
-        ctx['rubros_stats'] = Rubro.objects.filter(activo=True).annotate(
+        ctx['menu_activo'] = 'reporteria_benchmark_google'
+        ctx['seccion_titulo'] = '1.2 Benchmark Reseñas Google por Rubro'
+        
+        from apps.reputation.models import ResenaGoogle, SentimientoChoices
+        rubros = list(Rubro.objects.filter(activo=True).annotate(
             total_negocios=Count('negocios', distinct=True)
-        ).order_by('-total_negocios')
+        ).order_by('-total_negocios'))
+
+        for r in rubros:
+            resenas = ResenaGoogle.objects.filter(local__negocio__rubro=r)
+            r.total_resenas = resenas.count()
+            r.rating_promedio = round(resenas.aggregate(avg=Avg('calificacion'))['avg'] or 0.0, 2)
+            if r.total_resenas:
+                r.pct_positivas = round(100.0 * resenas.filter(sentimiento=SentimientoChoices.POSITIVO).count() / r.total_resenas, 1)
+                r.pct_neutras = round(100.0 * resenas.filter(sentimiento=SentimientoChoices.NEUTRO).count() / r.total_resenas, 1)
+                r.pct_negativas = round(100.0 * resenas.filter(sentimiento=SentimientoChoices.NEGATIVO).count() / r.total_resenas, 1)
+            else:
+                r.pct_positivas = r.pct_neutras = r.pct_negativas = 0.0
+
+        ctx['rubros_stats'] = rubros
         ctx['filtro_temporal'] = self.request.GET.get('filtro_temporal', 'MENSUAL')
         ctx['filtro_geografico'] = self.request.GET.get('filtro_geografico', 'COMUNAL')
         ctx['config_metricas'] = ConfiguracionMetricas.get_solo()
         return ctx
 
 
+class ReporteriaBenchmarkClientBeatView(AdminSoporteRequiredMixin, TemplateView):
+    """1.3 Benchmark ClientBeat (Encuestas QR) por Rubro."""
+    template_name = 'admin_panel/reporteria/benchmark_clientbeat.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['menu'] = modulos_menu(self.request)
+        ctx['menu_activo'] = 'reporteria_benchmark_clientbeat'
+        ctx['seccion_titulo'] = '1.3 Benchmark ClientBeat por Rubro'
+
+        from apps.encuestas.models import RespuestaEncuesta
+        rubros = list(Rubro.objects.filter(activo=True).annotate(
+            total_negocios=Count('negocios', distinct=True)
+        ).order_by('-total_negocios'))
+
+        for r in rubros:
+            respuestas = RespuestaEncuesta.objects.filter(local__negocio__rubro=r)
+            r.total_respuestas = respuestas.count()
+            felices = respuestas.filter(csat_emocion__in=['MUY_FELIZ', 'FELIZ', 'MUY_SATISFECHO']).count()
+            r.csat_felices_pct = round(100.0 * felices / max(1, r.total_respuestas), 1) if r.total_respuestas else 0.0
+
+            resp_nps = respuestas.filter(nps_puntaje__isnull=False)
+            total_nps = resp_nps.count()
+            if total_nps:
+                p = resp_nps.filter(nps_puntaje__gte=9).count()
+                d = resp_nps.filter(nps_puntaje__lte=6).count()
+                r.nps_score = round(100.0 * (p - d) / total_nps)
+            else:
+                r.nps_score = 0
+
+        ctx['rubros_stats'] = rubros
+        ctx['config_metricas'] = ConfiguracionMetricas.get_solo()
+        return ctx
+
+
+class ReporteriaBenchmarkNpsCsatView(AdminSoporteRequiredMixin, TemplateView):
+    """1.4 Benchmark NPS & CSAT Dedicado."""
+    template_name = 'admin_panel/reporteria/benchmark_nps_csat.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['menu'] = modulos_menu(self.request)
+        ctx['menu_activo'] = 'reporteria_benchmark_nps_csat'
+        ctx['seccion_titulo'] = '1.4 Benchmark Dedicado NPS & CSAT'
+
+        from apps.encuestas.models import RespuestaEncuesta
+        rubros = list(Rubro.objects.filter(activo=True).annotate(
+            total_negocios=Count('negocios', distinct=True)
+        ).order_by('-total_negocios'))
+
+        for r in rubros:
+            resp = RespuestaEncuesta.objects.filter(local__negocio__rubro=r)
+            r.total_evaluaciones = resp.count()
+            felices = resp.filter(csat_emocion__in=['MUY_FELIZ', 'FELIZ', 'MUY_SATISFECHO']).count()
+            neutrales = resp.filter(csat_emocion__in=['NEUTRAL']).count()
+            insatisfechos = resp.filter(csat_emocion__in=['INSATISFECHO', 'MUY_INSATISFECHO']).count()
+
+            r.csat_felices_pct = round(100.0 * felices / max(1, r.total_evaluaciones), 1) if r.total_evaluaciones else 0.0
+            r.csat_neutrales_pct = round(100.0 * neutrales / max(1, r.total_evaluaciones), 1) if r.total_evaluaciones else 0.0
+            r.csat_insatisfechos_pct = round(100.0 * insatisfechos / max(1, r.total_evaluaciones), 1) if r.total_evaluaciones else 0.0
+
+            resp_nps = resp.filter(nps_puntaje__isnull=False)
+            total_nps = resp_nps.count()
+            if total_nps:
+                p = resp_nps.filter(nps_puntaje__gte=9).count()
+                pas = resp_nps.filter(nps_puntaje__in=[7, 8]).count()
+                d = resp_nps.filter(nps_puntaje__lte=6).count()
+                r.nps_score = round(100.0 * (p - d) / total_nps)
+                r.promotores_pct = round(100.0 * p / total_nps, 1)
+                r.pasivos_pct = round(100.0 * pas / total_nps, 1)
+                r.detractores_pct = round(100.0 * d / total_nps, 1)
+            else:
+                r.nps_score = 0
+                r.promotores_pct = r.pasivos_pct = r.detractores_pct = 0.0
+
+        ctx['rubros_stats'] = rubros
+        ctx['config_metricas'] = ConfiguracionMetricas.get_solo()
+        return ctx
+
+
 class ReporteriaTendenciasResenasView(AdminSoporteRequiredMixin, TemplateView):
-    """1.3 Tendencias en reseñas."""
+    """1.5 Tendencias en reseñas."""
     template_name = 'admin_panel/reporteria/tendencias_resenas.html'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['menu'] = modulos_menu(self.request)
         ctx['menu_activo'] = 'reporteria_tendencias_resenas'
-        ctx['seccion_titulo'] = '1.3 Tendencias en Reseñas'
+        ctx['seccion_titulo'] = '1.5 Tendencias en Reseñas'
         from apps.reputation.models import ResenaGoogle, SentimientoChoices
         ctx['total_resenas'] = ResenaGoogle.objects.count()
         ctx['positivas'] = ResenaGoogle.objects.filter(sentimiento=SentimientoChoices.POSITIVO).count()
@@ -1680,14 +1795,14 @@ class ReporteriaTendenciasResenasView(AdminSoporteRequiredMixin, TemplateView):
 
 
 class ReporteriaPlanesView(AdminSoporteRequiredMixin, TemplateView):
-    """1.4 Planes (Por rubro, Por ubicación geográfica, Por cambios / bajas / altas)."""
+    """1.6 Planes y Suscripciones (Por rubro, ubicación, historial de cambios)."""
     template_name = 'admin_panel/reporteria/planes.html'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['menu'] = modulos_menu(self.request)
         ctx['menu_activo'] = 'reporteria_planes'
-        ctx['seccion_titulo'] = '1.4 Reportes de Planes'
+        ctx['seccion_titulo'] = '1.6 Reportes de Planes y Suscripciones'
         ctx['tab_activo'] = self.request.GET.get('tab', 'rubro')
         ctx['cambios_plan'] = CambioPlan.objects.select_related('suscripcion__negocio', 'plan_anterior', 'plan_nuevo', 'suscripcion').order_by('-fecha_cambio')[:50]
         ctx['suscripciones_activas'] = Suscripcion.objects.select_related('negocio', 'plan').filter(estado=EstadoSuscripcionChoices.ACTIVA)

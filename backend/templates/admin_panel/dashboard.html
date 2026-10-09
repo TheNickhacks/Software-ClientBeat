@@ -1,102 +1,188 @@
 {% extends 'admin_panel/base.html' %}
 {% load humanize %}
-{% block admin_subtitle %}Centro de Mando de Servicios ClientBeat · Acceso directo a módulos administrativos{% endblock %}
+
+{% block title %}Dashboard Administrativo · ClientBeat · El Pulso de tu Marca{% endblock %}
+
+{% block admin_subtitle %}Centro de Control de Servicios ClientBeat · Monitoreo y administración centralizada{% endblock %}
 
 {% block admin_header_actions %}
-  <span class="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 shadow-sm">
-    <i class="fa fa-server text-cbblue"></i> Estado Servicio: <span class="text-cbgreen-600 font-bold">100% Operativo</span>
+  <span class="inline-flex items-center gap-2 text-xs font-bold px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 shadow-xs">
+    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+    Servicio: <span class="text-cbgreen-600">100% Operativo</span>
   </span>
+  <a href="{% url 'adminpanel:suscripciones' %}" class="btn-primary text-xs shadow-md">
+    <i class="fa fa-credit-card"></i> Gestionar Suscripciones
+  </a>
 {% endblock %}
 
 {% block admin_content %}
-{# ====== RESUMEN EJECUTIVO KPI SERVICIOS ====== #}
-<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-  <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center gap-4">
-    <div class="w-12 h-12 rounded-xl bg-cbblue/10 text-cbblue flex items-center justify-center text-xl font-bold">
-      <i class="fa fa-users"></i>
-    </div>
-    <div>
-      <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Clientes Activos</div>
-      <div class="text-2xl font-extrabold text-slate-900">{{ kpis.0.1|default:0 }}</div>
+
+{# ================= HERO WELCOME BANNER (Visual Parity with User Dashboard) ================= #}
+<div class="mb-8 rounded-3xl overflow-hidden shadow-xl animate-fade-up">
+  <div class="bg-gradient-to-r from-cbblue via-cbblue-700 to-cbgreen p-8 md:p-10 text-white relative">
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+      <div class="max-w-2xl">
+        <div class="inline-flex items-center gap-2 bg-white/15 px-3 py-1 rounded-full text-xs font-bold backdrop-blur mb-4 border border-white/20">
+          <i class="fa-solid fa-user-shield"></i> Panel de Administración Soporte
+        </div>
+        <h2 class="text-2xl md:text-3xl font-black tracking-tight mb-3">
+          ¡Hola, {{ user.first_name|default:user.email }}! 👋
+        </h2>
+        <p class="text-cbblue-50/90 text-sm md:text-base leading-relaxed">
+          Bienvenido al centro de mando de <b>ClientBeat</b>. Desde aquí puedes supervisar el pulso de los negocios cliente, gestionar solicitudes de planes, configurar métricas benchmark y enviar notificaciones.
+        </p>
+      </div>
+
+      <div class="flex flex-wrap md:flex-col gap-3 shrink-0">
+        <a href="{% url 'adminpanel:reporteria_clientes' %}" class="inline-flex items-center justify-center gap-2 bg-white text-cbblue font-bold text-xs px-4 py-3 rounded-xl shadow-lg hover:shadow-2xl hover:-translate-y-0.5 transition-all">
+          <i class="fa fa-building"></i> Ver {{ kpis.0.1|default:0 }} Clientes
+        </a>
+        <a href="{% url 'adminpanel:notificaciones' %}" class="inline-flex items-center justify-center gap-2 bg-white/15 text-white hover:bg-white/25 border border-white/30 font-bold text-xs px-4 py-3 rounded-xl backdrop-blur transition-all">
+          <i class="fa fa-paper-plane"></i> Emitir Notificación
+        </a>
+      </div>
     </div>
   </div>
-
-  <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center gap-4">
-    <div class="w-12 h-12 rounded-xl bg-cbgreen/10 text-cbgreen-600 flex items-center justify-center text-xl font-bold">
-      <i class="fa fa-credit-card"></i>
-    </div>
-    <div>
-      <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Suscripciones</div>
-      <div class="text-2xl font-extrabold text-slate-900">{{ kpis.1.1|default:0 }}</div>
-    </div>
-  </div>
-
-  <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center gap-4">
-    <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl font-bold">
-      <i class="fa fa-layer-group"></i>
-    </div>
-    <div>
-      <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Rubros Habilitados</div>
-      <div class="text-2xl font-extrabold text-slate-900">{{ kpis.11.1|default:0 }}</div>
-    </div>
-  </div>
-
-  <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center gap-4">
-    <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl font-bold">
-      <i class="fa fa-star"></i>
-    </div>
-    <div>
-      <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Reseñas Analizadas</div>
-      <div class="text-2xl font-extrabold text-slate-900">{{ kpis.12.1|default:0 }}</div>
-    </div>
-  </div>
-</section>
-
-{# ====== HUB PRINCIPAL DE NAVEGACIÓN ====== #}
-<div class="mb-4">
-  <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-    <i class="fa fa-th-large text-cbblue"></i> Módulos de Administración de Servicios
-  </h2>
-  <p class="text-xs text-slate-500">Haz clic directamente en cualquiera de las secciones para acceder a su panel de gestión.</p>
 </div>
 
-<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
 
-  {# 1. REPORTERÍA #}
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-cbblue/40 transition-all">
-    <div class="p-5 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
-      <div class="w-10 h-10 rounded-lg bg-cbblue text-white flex items-center justify-center text-lg font-bold shadow-sm">
-        <i class="fa fa-chart-pie"></i>
+{# ================= ALERTAS DE SUSCRIPCIONES PENDIENTES ================= #}
+{% if sus_pendientes_list %}
+<div class="mb-8 rounded-2xl border border-amber-200 bg-amber-50/90 p-5 shadow-sm animate-fade-up">
+  <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div class="flex items-start gap-3.5">
+      <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md">
+        <i class="fa fa-hourglass-half text-lg"></i>
       </div>
       <div>
-        <h3 class="font-bold text-slate-800 text-sm">1. REPORTERÍA</h3>
-        <p class="text-[11px] text-slate-500">Informes de clientes, rubros y tendencias</p>
+        <h3 class="text-sm font-bold text-amber-900 flex items-center gap-2">
+          ⚠️ {{ sus_pendientes_list|length }} Suscripción{% if sus_pendientes_list|length > 1 %}es{% endif %} pendiente{% if sus_pendientes_list|length > 1 %}s{% endif %} de activación
+        </h3>
+        <p class="text-xs text-amber-700/90 mt-0.5">
+          Hay clientes esperando la confirmación de su suscripción para acceder a todas las métricas del panel.
+        </p>
+      </div>
+    </div>
+    <a href="{% url 'adminpanel:suscripciones' %}" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm shrink-0">
+      Revisar Suscripciones &rarr;
+    </a>
+  </div>
+</div>
+{% endif %}
+
+
+{# ================= GRID KPI RESUMEN EJECUTIVO ================= #}
+<div class="mb-8">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+      <i class="fa-solid fa-chart-simple text-cbblue"></i> Métricas Claves de Operación
+    </h3>
+    <span class="text-xs text-slate-400">Actualizado en tiempo real</span>
+  </div>
+
+  <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+    
+    {# 1. Clientes #}
+    <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex items-center gap-4">
+      <div class="w-12 h-12 rounded-2xl bg-cbblue-50 text-cbblue flex items-center justify-center text-xl shrink-0">
+        <i class="fa fa-building"></i>
+      </div>
+      <div class="min-w-0">
+        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wide truncate">Clientes Activos</div>
+        <div class="text-2xl font-black text-slate-900 tracking-tight">{{ kpis.0.1|default:0 }}</div>
+        {% if kpis.0.5 %}
+          <div class="text-[10px] font-bold text-cbgreen-600 mt-0.5">{{ kpis.0.5 }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# 2. Suscripciones #}
+    <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex items-center gap-4">
+      <div class="w-12 h-12 rounded-2xl bg-cbgreen-50 text-cbgreen-600 flex items-center justify-center text-xl shrink-0">
+        <i class="fa fa-credit-card"></i>
+      </div>
+      <div class="min-w-0">
+        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wide truncate">Suscripciones</div>
+        <div class="text-2xl font-black text-slate-900 tracking-tight">{{ kpis.1.1|default:0 }}</div>
+        {% if kpis.1.5 %}
+          <div class="text-[10px] font-bold text-amber-600 mt-0.5">{{ kpis.1.5 }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# 3. Rubros #}
+    <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex items-center gap-4">
+      <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl shrink-0">
+        <i class="fa fa-layer-group"></i>
+      </div>
+      <div class="min-w-0">
+        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wide truncate">Rubros Activos</div>
+        <div class="text-2xl font-black text-slate-900 tracking-tight">{{ kpis.11.1|default:0 }}</div>
+        <div class="text-[10px] font-semibold text-slate-500 mt-0.5">Categorías Google</div>
+      </div>
+    </div>
+
+    {# 4. Reseñas Google #}
+    <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex items-center gap-4">
+      <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl shrink-0">
+        <i class="fa fa-star"></i>
+      </div>
+      <div class="min-w-0">
+        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wide truncate">Reseñas Analizadas</div>
+        <div class="text-2xl font-black text-slate-900 tracking-tight">{{ kpis.12.1|default:0 }}</div>
+        <div class="text-[10px] font-semibold text-slate-500 mt-0.5">Base de reputación</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+{# ================= HUB REORDENADO DE MÓDULOS ADMINISTRATIVOS ================= #}
+<div class="mb-6">
+  <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+    <i class="fa fa-cubes text-cbblue"></i> Módulos de Administración y Gestión
+  </h2>
+  <p class="text-xs text-slate-500">Selecciona el módulo correspondiente para configurar o consultar información.</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+
+  {# 1. REPORTERÍA Y CLIENTES #}
+  <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden hover:shadow-md transition-all flex flex-col group">
+    <div class="p-5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-3.5">
+      <div class="w-11 h-11 rounded-xl bg-cbblue text-white flex items-center justify-center text-lg font-bold shadow-sm group-hover:scale-105 transition-transform">
+        <i class="fa fa-users"></i>
+      </div>
+      <div>
+        <h3 class="font-bold text-slate-900 text-sm">1. REPORTERÍA Y CLIENTES</h3>
+        <p class="text-[11px] text-slate-500">Listado de empresas, planes y tendencias</p>
       </div>
     </div>
     <div class="p-4 flex-1 space-y-2">
       <a href="{% url 'adminpanel:reporteria_clientes' %}"
-         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+         class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
         <span class="flex items-center gap-2.5">
-          <i class="fa fa-users text-cbblue"></i> 1.1 Listado de clientes
+          <i class="fa fa-building text-cbblue"></i> 1.1 Directos & Clientes
         </span>
         <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
       </a>
       <a href="{% url 'adminpanel:reporteria_benchmark_rubro' %}"
-         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+         class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
         <span class="flex items-center gap-2.5">
           <i class="fa fa-chart-line text-cbblue"></i> 1.2 Benchmark por rubro
         </span>
         <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
       </a>
       <a href="{% url 'adminpanel:reporteria_tendencias_resenas' %}"
-         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+         class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
         <span class="flex items-center gap-2.5">
           <i class="fa fa-comments text-cbblue"></i> 1.3 Tendencias en reseñas
         </span>
         <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
       </a>
       <a href="{% url 'adminpanel:reporteria_planes' %}"
-         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+         class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
         <span class="flex items-center gap-2.5">
           <i class="fa fa-tags text-cbblue"></i> 1.4 Reportes de Planes
         </span>
@@ -105,140 +191,206 @@
     </div>
   </div>
 
-  {# 2. DATA GOOGLE #}
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-cbblue/40 transition-all">
-    <div class="p-5 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
-      <div class="w-10 h-10 rounded-lg bg-cbblue text-white flex items-center justify-center text-lg font-bold shadow-sm">
+  {# 2. USUARIOS Y PRIVACIDAD #}
+  <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden hover:shadow-md transition-all flex flex-col group">
+    <div class="p-5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-3.5">
+      <div class="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-lg font-bold shadow-sm group-hover:scale-105 transition-transform">
+        <i class="fa fa-user-shield"></i>
+      </div>
+      <div>
+        <h3 class="font-bold text-slate-900 text-sm">2. USUARIOS Y PRIVACIDAD</h3>
+        <p class="text-[11px] text-slate-500">Cuentas, roles y solicitudes ARCO</p>
+      </div>
+    </div>
+    <div class="p-4 flex-1 space-y-2">
+      <a href="{% url 'adminpanel:usuarios' %}"
+         class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-indigo-500/30 hover:bg-indigo-50 text-xs font-semibold text-slate-700 transition-all">
+        <span class="flex items-center gap-2.5">
+          <i class="fa fa-users-gear text-indigo-600"></i> 2.1 Gestión de Usuarios
+        </span>
+        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
+      </a>
+      <a href="{% url 'adminpanel:solicitudes_arco' %}"
+         class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-indigo-500/30 hover:bg-indigo-50 text-xs font-semibold text-slate-700 transition-all">
+        <span class="flex items-center gap-2.5">
+          <i class="fa fa-shield-halved text-indigo-600"></i> 2.2 Solicitudes ARCO
+        </span>
+        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
+      </a>
+    </div>
+  </div>
+
+  {# 3. DATA GOOGLE #}
+  <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden hover:shadow-md transition-all flex flex-col group">
+    <div class="p-5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-3.5">
+      <div class="w-11 h-11 rounded-xl bg-purple-600 text-white flex items-center justify-center text-lg font-bold shadow-sm group-hover:scale-105 transition-transform">
         <i class="fa fa-database"></i>
       </div>
       <div>
-        <h3 class="font-bold text-slate-800 text-sm">2. DATA GOOGLE</h3>
-        <p class="text-[11px] text-slate-500">Gestión de rubros y preguntas por categoría</p>
+        <h3 class="font-bold text-slate-900 text-sm">3. DATA GOOGLE</h3>
+        <p class="text-[11px] text-slate-500">Rubros, subcategorías y preguntas</p>
       </div>
     </div>
     <div class="p-4 flex-1 space-y-2">
       <a href="{% url 'adminpanel:datagoogle_rubros' %}"
-         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+         class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-purple-500/30 hover:bg-purple-50 text-xs font-semibold text-slate-700 transition-all">
         <span class="flex items-center gap-2.5">
-          <i class="fa fa-layer-group text-cbblue"></i> 2.1 Rubros y Preguntas asociadas
+          <i class="fa fa-layer-group text-purple-600"></i> 3.1 Rubros y Preguntas
         </span>
         <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
       </a>
     </div>
   </div>
 
-  {# 3. MÉTRICAS #}
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-cbblue/40 transition-all">
-    <div class="p-5 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
-      <div class="w-10 h-10 rounded-lg bg-cbblue text-white flex items-center justify-center text-lg font-bold shadow-sm">
+  {# 4. MÉTRICAS Y ENCUESTAS #}
+  <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden hover:shadow-md transition-all flex flex-col group">
+    <div class="p-5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-3.5">
+      <div class="w-11 h-11 rounded-xl bg-sky-600 text-white flex items-center justify-center text-lg font-bold shadow-sm group-hover:scale-105 transition-transform">
         <i class="fa fa-sliders-h"></i>
       </div>
       <div>
-        <h3 class="font-bold text-slate-800 text-sm">3. MÉTRICAS</h3>
-        <p class="text-[11px] text-slate-500">Parámetros de Benchmark, CSAT/NPS y Reseñas</p>
+        <h3 class="font-bold text-slate-900 text-sm">4. MÉTRICAS Y ENCUESTAS</h3>
+        <p class="text-[11px] text-slate-500">Parámetros Benchmark, CSAT/NPS y plantillas</p>
       </div>
     </div>
     <div class="p-4 flex-1 space-y-2">
       <a href="{% url 'adminpanel:metricas_criterios_benchmark' %}"
-         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+         class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-sky-500/30 hover:bg-sky-50 text-xs font-semibold text-slate-700 transition-all">
         <span class="flex items-center gap-2.5">
-          <i class="fa fa-balance-scale text-cbblue"></i> 3.1 Criterios de Benchmark
+          <i class="fa fa-balance-scale text-sky-600"></i> 4.1 Criterios Benchmark
         </span>
         <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
       </a>
       <a href="{% url 'adminpanel:metricas_csat_nps' %}"
-         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+         class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-sky-500/30 hover:bg-sky-50 text-xs font-semibold text-slate-700 transition-all">
         <span class="flex items-center gap-2.5">
-          <i class="fa fa-smile text-cbblue"></i> 3.2 CSAT y NPS
+          <i class="fa fa-smile text-sky-600"></i> 4.2 Configuración CSAT y NPS
         </span>
         <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
       </a>
       <a href="{% url 'adminpanel:metricas_resenas_google' %}"
-         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+         class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-sky-500/30 hover:bg-sky-50 text-xs font-semibold text-slate-700 transition-all">
         <span class="flex items-center gap-2.5">
-          <i class="fa fa-star text-cbblue"></i> 3.3 Reseñas Google
+          <i class="fa fa-star text-sky-600"></i> 4.3 Reseñas Google
+        </span>
+        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
+      </a>
+      <a href="{% url 'adminpanel:plantillas' %}"
+         class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-sky-500/30 hover:bg-sky-50 text-xs font-semibold text-slate-700 transition-all">
+        <span class="flex items-center gap-2.5">
+          <i class="fa fa-poll text-sky-600"></i> 4.4 Plantillas Encuestas
         </span>
         <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
       </a>
     </div>
   </div>
 
-  {# 4. PLANES #}
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-cbblue/40 transition-all">
-    <div class="p-5 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
-      <div class="w-10 h-10 rounded-lg bg-cbblue text-white flex items-center justify-center text-lg font-bold shadow-sm">
-        <i class="fa fa-cubes"></i>
+  {# 5. PLANES Y PRECIOS #}
+  <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden hover:shadow-md transition-all flex flex-col group">
+    <div class="p-5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-3.5">
+      <div class="w-11 h-11 rounded-xl bg-cbgreen text-white flex items-center justify-center text-lg font-bold shadow-sm group-hover:scale-105 transition-transform">
+        <i class="fa fa-tags"></i>
       </div>
       <div>
-        <h3 class="font-bold text-slate-800 text-sm">4. PLANES</h3>
-        <p class="text-[11px] text-slate-500">Gestión de catálogo de planes y valores</p>
+        <h3 class="font-bold text-slate-900 text-sm">5. PLANES Y PRECIOS</h3>
+        <p class="text-[11px] text-slate-500">Catálogo de suscripciones y simulador</p>
       </div>
     </div>
     <div class="p-4 flex-1 space-y-2">
       <a href="{% url 'adminpanel:planes_editar' %}"
-         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+         class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-cbgreen/30 hover:bg-cbgreen/5 text-xs font-semibold text-slate-700 transition-all">
         <span class="flex items-center gap-2.5">
-          <i class="fa fa-edit text-cbblue"></i> 4.1 Editar Precios y Características
+          <i class="fa fa-edit text-cbgreen-600"></i> 5.1 Editar Precios y Características
+        </span>
+        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
+      </a>
+      <a href="{% url 'adminpanel:reporteria_planes' %}"
+         class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-cbgreen/30 hover:bg-cbgreen/5 text-xs font-semibold text-slate-700 transition-all">
+        <span class="flex items-center gap-2.5">
+          <i class="fa fa-chart-line text-cbgreen-600"></i> 5.2 Reporte de Suscripciones y Planes
         </span>
         <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
       </a>
     </div>
   </div>
 
-  {# 5. RECURSOS #}
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-cbblue/40 transition-all">
-    <div class="p-5 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
-      <div class="w-10 h-10 rounded-lg bg-cbblue text-white flex items-center justify-center text-lg font-bold shadow-sm">
-        <i class="fa fa-award"></i>
-      </div>
-      <div>
-        <h3 class="font-bold text-slate-800 text-sm">5. RECURSOS</h3>
-        <p class="text-[11px] text-slate-500">Programa de Reconocimiento y sellos de excelencia</p>
-      </div>
-    </div>
-    <div class="p-4 flex-1 space-y-2">
-      <a href="{% url 'adminpanel:recursos_reconocimiento' %}"
-         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
-        <span class="flex items-center gap-2.5">
-          <i class="fa fa-award text-cbblue"></i> 5.1 Programa de Reconocimiento
-        </span>
-        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
-      </a>
-    </div>
-  </div>
-
-  {# 6. NOTIFICACIONES #}
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-cbblue/40 transition-all">
-    <div class="p-5 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
-      <div class="w-10 h-10 rounded-lg bg-cbblue text-white flex items-center justify-center text-lg font-bold shadow-sm">
+  {# 6. NOTIFICACIONES Y RECURSOS #}
+  <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden hover:shadow-md transition-all flex flex-col group">
+    <div class="p-5 border-b border-slate-100 bg-slate-50/60 flex items-center gap-3.5">
+      <div class="w-11 h-11 rounded-xl bg-rose-600 text-white flex items-center justify-center text-lg font-bold shadow-sm group-hover:scale-105 transition-transform">
         <i class="fa fa-bell"></i>
       </div>
       <div>
-        <h3 class="font-bold text-slate-800 text-sm">6. NOTIFICACIONES</h3>
-        <p class="text-[11px] text-slate-500">Emisión masiva y plantillas de aviso</p>
+        <h3 class="font-bold text-slate-900 text-sm">6. NOTIFICACIONES Y RECURSOS</h3>
+        <p class="text-[11px] text-slate-500">Emisión masiva y reconocimientos</p>
       </div>
     </div>
     <div class="p-4 flex-1 space-y-2">
       <a href="{% url 'adminpanel:notificaciones' %}"
-         class="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-100 hover:border-cbblue/30 hover:bg-cbblue/5 text-xs font-semibold text-slate-700 transition-all">
+         class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-rose-500/30 hover:bg-rose-50 text-xs font-semibold text-slate-700 transition-all">
         <span class="flex items-center gap-2.5">
-          <i class="fa fa-paper-plane text-cbblue"></i> 6.1 Editar y Emitir Notificaciones
+          <i class="fa fa-paper-plane text-rose-600"></i> 6.1 Emitir Notificaciones Masivas
+        </span>
+        <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
+      </a>
+      <a href="{% url 'adminpanel:recursos_reconocimiento' %}"
+         class="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-rose-500/30 hover:bg-rose-50 text-xs font-semibold text-slate-700 transition-all">
+        <span class="flex items-center gap-2.5">
+          <i class="fa fa-award text-rose-600"></i> 6.2 Programa de Reconocimiento
         </span>
         <i class="fa fa-chevron-right text-slate-400 text-[10px]"></i>
       </a>
     </div>
   </div>
 
-</section>
-
-{# ====== AUDITORÍA RECIENTE ====== #}
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-  <div class="flex items-center justify-between mb-4">
-    <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
-      <i class="fa fa-shield-alt text-cbblue"></i> Registro Reciente de Auditoría
-    </h3>
-    <a href="{% url 'adminpanel:auditoria' %}" class="text-xs font-semibold text-cbblue hover:underline">Ver historial completo &rarr;</a>
-  </div>
-  <p class="text-xs text-slate-500 mb-4">Todas las acciones realizadas desde esta interfaz quedan registradas automáticamente para trazabilidad del servicio.</p>
 </div>
+
+
+{# ================= SECCIÓN DE REGISTRO RECIENTE DE AUDITORÍA ================= #}
+<div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <div>
+      <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+        <i class="fa fa-shield-alt text-cbblue"></i> Trazabilidad y Registro de Auditoría
+      </h3>
+      <p class="text-xs text-slate-500 mt-0.5">Acciones administrativas ejecutadas recientemente en la plataforma</p>
+    </div>
+    <a href="{% url 'adminpanel:auditoria' %}" class="btn-secondary text-xs">
+      Ver Historial Completo &rarr;
+    </a>
+  </div>
+
+  {% if auditorias_recientes %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-700">
+        <thead class="bg-slate-50 text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-100">
+          <tr>
+            <th class="py-2.5 px-3">Fecha / Hora</th>
+            <th class="py-2.5 px-3">Usuario Admin</th>
+            <th class="py-2.5 px-3">Módulo</th>
+            <th class="py-2.5 px-3">Acción</th>
+            <th class="py-2.5 px-3">Descripción</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 font-medium">
+          {% for log in auditorias_recientes %}
+          <tr class="hover:bg-slate-50/70 transition-colors">
+            <td class="py-2.5 px-3 whitespace-nowrap text-[11px] text-slate-500">{{ log.fecha_hora|date:"Y-m-d H:i" }}</td>
+            <td class="py-2.5 px-3 font-semibold text-slate-900">{{ log.usuario.first_name|default:log.usuario.email }}</td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">{{ log.get_modulo_display|default:log.modulo }}</span></td>
+            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded bg-cbblue-50 text-cbblue text-[10px] font-bold">{{ log.get_accion_display|default:log.accion }}</span></td>
+            <td class="py-2.5 px-3 text-slate-600 truncate max-w-xs">{{ log.descripcion|default:"-" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="py-6 text-center text-xs text-slate-400 italic bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+      No hay registros recientes de auditoría.
+    </div>
+  {% endif %}
+</div>
+
 {% endblock %}
+

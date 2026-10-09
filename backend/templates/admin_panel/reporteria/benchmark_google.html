@@ -1,0 +1,94 @@
+{% extends 'admin_panel/base.html' %}
+{% block admin_subtitle %}1.2 Benchmark de reputación en Reseñas Google Maps por rubro comercial{% endblock %}
+
+{% block admin_header_actions %}
+  <a href="{% url 'adminpanel:reporteria_benchmark_google_export' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+     download="ClientBeat_Benchmark_Google.xlsx"
+     class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all">
+    <i class="fa-solid fa-file-excel text-sm"></i> Exportar a Excel
+  </a>
+{% endblock %}
+
+{% block admin_content %}
+{# Header explicativo del flujo de cálculo Google #}
+<div class="mb-6 rounded-2xl border border-sky-100 bg-sky-50/80 p-5 shadow-xs">
+  <div class="flex items-start gap-4">
+    <div class="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0 shadow-md">
+      <i class="fa-brands fa-google text-lg"></i>
+    </div>
+    <div>
+      <h3 class="text-sm font-bold text-sky-900 flex items-center gap-2">
+        📊 Flujo de Cálculo: Benchmark Reseñas Google
+      </h3>
+      <p class="text-xs text-sky-700/90 mt-1 leading-relaxed">
+        Este reporte procesa exclusivamente las **valoraciones públicas de Google Maps / Places API** de los locales asociados a cada rubro. Calcula el rating promedio (1-5★) y la distribución del análisis de sentimiento (Positivo, Neutro, Negativo).
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 mb-6">
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div>
+      <h2 class="text-lg font-bold text-slate-900">Desglose de Benchmark Google por Rubro</h2>
+      <p class="text-xs text-slate-500 mt-1">Comparativa de calificación pública Google Maps entre sectores</p>
+    </div>
+
+    <a href="{% url 'adminpanel:reporteria_benchmark_google_export' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+       download="ClientBeat_Benchmark_Google.xlsx"
+       class="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold text-xs rounded-xl transition-all shadow-2xs">
+      <i class="fa-solid fa-file-excel text-emerald-600 text-sm"></i> Exportar a Excel
+    </a>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-xs text-slate-700">
+      <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200">
+        <tr>
+          <th class="py-3.5 px-4">Rubro Comercial</th>
+          <th class="py-3.5 px-4 text-center">Empresas</th>
+          <th class="py-3.5 px-4 text-center">Reseñas Google</th>
+          <th class="py-3.5 px-4 text-center">Rating Promedio</th>
+          <th class="py-3.5 px-4 text-center">Positivas %</th>
+          <th class="py-3.5 px-4 text-center">Neutras %</th>
+          <th class="py-3.5 px-4 text-center">Negativas %</th>
+          <th class="py-3.5 px-4 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100 font-medium">
+        {% for r in rubros_stats %}
+        <tr class="hover:bg-slate-50/80 transition-colors">
+          <td class="py-3.5 px-4 font-bold text-slate-900">
+            <div class="flex items-center gap-2">
+              <span class="w-7 h-7 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center text-xs">
+                <i class="fa fa-layer-group"></i>
+              </span>
+              {{ r.nombre }}
+            </div>
+          </td>
+          <td class="py-3.5 px-4 text-center font-bold text-slate-800">{{ r.total_negocios }}</td>
+          <td class="py-3.5 px-4 text-center font-bold text-slate-800">{{ r.total_resenas }}</td>
+          <td class="py-3.5 px-4 text-center">
+            <span class="inline-flex items-center gap-1 font-extrabold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 text-xs">
+              <i class="fa fa-star text-[10px]"></i> {{ r.rating_promedio }}
+            </span>
+          </td>
+          <td class="py-3.5 px-4 text-center font-bold text-emerald-600">{{ r.pct_positivas }}%</td>
+          <td class="py-3.5 px-4 text-center font-bold text-slate-500">{{ r.pct_neutras }}%</td>
+          <td class="py-3.5 px-4 text-center font-bold text-rose-600">{{ r.pct_negativas }}%</td>
+          <td class="py-3.5 px-4 text-right">
+            <a href="{% url 'adminpanel:datagoogle_rubros' %}?q={{ r.nombre }}" class="btn-secondary text-xs py-1 px-3">
+              Ver Rubro
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="py-8 text-center text-slate-400 italic">No hay datos de benchmark Google registrados.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
