@@ -1,6 +1,6 @@
 {% extends 'admin_panel/base.html' %}
 {% load humanize %}
-{% block admin_subtitle %}4.1 Editar catálogo de planes, modificar precios, características y estados{% endblock %}
+{% block admin_subtitle %}4.1 Catálogo de planes, modificación de precios, características y vista previa de selección{% endblock %}
 
 {% block admin_header_actions %}
   <a href="{% url 'adminpanel:plan_create' %}" class="px-4 py-2 bg-cbblue text-white rounded-lg text-xs font-bold hover:bg-cbblue/90 transition-all flex items-center gap-1.5 shadow-sm">
@@ -9,11 +9,33 @@
 {% endblock %}
 
 {% block admin_content %}
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
-  <div class="flex items-center justify-between mb-6">
+{# Switcher de Modos: Gestión vs Vista Previa Clientes #}
+<div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+  <div class="flex items-center gap-2 bg-white border border-slate-200 p-1 rounded-xl shadow-2xs">
+    <button type="button" id="tabModoAdmin"
+            class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 bg-gradient-to-r from-cbblue to-cbblue-600 text-white shadow-sm">
+      <i class="fa fa-sliders"></i> Modo Administración
+    </button>
+    <button type="button" id="tabModoPreview"
+            class="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 text-slate-600 hover:text-cbblue hover:bg-slate-50">
+      <i class="fa fa-eye text-cbblue"></i> Vista Previa Selección de Clientes
+    </button>
+  </div>
+  
+  <div class="text-xs text-slate-500 flex items-center gap-2">
+    <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+    <span>{{ planes.count }} planes configurados</span>
+  </div>
+</div>
+
+{# ========================================== #}
+{# SECCIÓN 1: MODO ADMINISTRACIÓN (Catálogo) #}
+{# ========================================== #}
+<div id="seccionModoAdmin" class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
+  <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
     <div>
       <h2 class="text-lg font-bold text-slate-900">Catálogo de Planes de Servicio ClientBeat</h2>
-      <p class="text-xs text-slate-500 mt-0.5">Gestión de tarifas, límites de locales por plan y disponibilidad comercial</p>
+      <p class="text-xs text-slate-500 mt-0.5">Gestión de tarifas, límites de locales por plan, feature flags y disponibilidad comercial</p>
     </div>
   </div>
 
@@ -26,8 +48,8 @@
             {{ plan.codigo|default:plan.nombre }}
           </span>
           <div class="flex items-center gap-1">
-            {% if plan.es_default %}
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800">Default</span>
+            {% if plan.es_plan_default %}
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800">🔥 Default</span>
             {% endif %}
             {% if plan.activo %}
               <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Activo</span>
@@ -37,22 +59,26 @@
           </div>
         </div>
 
-        <h3 class="text-xl font-extrabold text-slate-900 mb-1">{{ plan.nombre }}</h3>
+        <h3 class="text-xl font-extrabold text-slate-900 mb-1">{{ plan.nombre_mostrar|default:plan.nombre }}</h3>
         <p class="text-xs text-slate-500 mb-4 min-h-[36px] line-clamp-2">{{ plan.descripcion|default:"Sin descripción." }}</p>
 
         <div class="border-y border-slate-100 py-3 mb-4 space-y-1.5 text-xs text-slate-600">
           <div class="flex justify-between">
-            <span>Precio Mensual:</span>
-            <span class="font-extrabold text-slate-900">${{ plan.precio_mensual|intcomma }} {{ plan.moneda }}</span>
+            <span>Precio Base:</span>
+            <span class="font-extrabold text-slate-900">
+              {% if plan.precio_clp %}${{ plan.precio_clp|intcomma }} CLP{% elif plan.precio_uf %}{{ plan.precio_uf }} UF{% else %}Gratis{% endif %}
+            </span>
           </div>
           <div class="flex justify-between">
-            <span>Precio Anual:</span>
-            <span class="font-bold text-slate-700">${{ plan.precio_anual|intcomma }} {{ plan.moneda }}</span>
+            <span>Locales Incluidos:</span>
+            <span class="font-bold text-cbblue">{{ plan.locales_permitidos|default:"1" }} local{% if plan.locales_permitidos != 1 %}es{% endif %}</span>
           </div>
-          <div class="flex justify-between">
-            <span>Límite Locales:</span>
-            <span class="font-bold text-cbblue">{{ plan.limite_locales|default:"Ilimitados" }}</span>
+          {% if plan.costo_local_adicional_clp > 0 %}
+          <div class="flex justify-between text-[11px] text-slate-500">
+            <span>Local adicional:</span>
+            <span class="font-semibold text-slate-700">+${{ plan.costo_local_adicional_clp|intcomma }} CLP/mes</span>
           </div>
+          {% endif %}
         </div>
       </div>
 
@@ -60,7 +86,7 @@
         <div class="flex gap-2">
           <a href="{% url 'adminpanel:plan_update' plan.pk %}"
              class="flex-1 text-center py-2 bg-slate-100 hover:bg-cbblue hover:text-white text-slate-700 rounded-lg text-xs font-bold transition-colors">
-            <i class="fa fa-edit mr-1"></i> Editar
+            <i class="fa fa-edit mr-1"></i> Configurar Plan
           </a>
           <form method="POST" action="{% url 'adminpanel:plan_toggle_activo' plan.pk %}" class="inline flex-1">
             {% csrf_token %}
@@ -82,4 +108,150 @@
     {% endfor %}
   </div>
 </div>
+
+{# ============================================================== #}
+{# SECCIÓN 2: VISTA PREVIA VISUAL DE SELECCIÓN (Cómo lo ve el Cliente) #}
+{# ============================================================== #}
+<div id="seccionModoPreview" class="hidden mb-6">
+  <div class="bg-gradient-to-r from-slate-900 to-cbblue-900 rounded-2xl p-8 text-white mb-8 shadow-lg text-center">
+    <span class="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-white/10 text-cyan-300">
+      👁️ Simulación Visual para Clientes
+    </span>
+    <h2 class="text-2xl md:text-3xl font-extrabold mt-3 mb-2">Planes diseñados para escalar tu negocio</h2>
+    <p class="text-xs md:text-sm text-slate-300 max-w-xl mx-auto">
+      Así ven los usuarios y dueños de negocio la tarjeta de cada plan al momento de contratar o seleccionar en onboarding. Haz clic en cualquier tarjeta para simular la selección.
+    </p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
+    {% for plan in planes %}
+    <div class="preview-client-card rounded-3xl border transition-all duration-300 flex flex-col justify-between p-8 relative cursor-pointer
+                {% if plan.es_plan_default %}border-2 border-cbblue shadow-2xl bg-gradient-to-b from-white to-blue-50/40 scale-105 z-10{% else %}border-slate-200 shadow-lg hover:shadow-xl bg-white{% endif %}"
+         data-plan-id="{{ plan.id }}">
+      
+      {% if plan.es_plan_default %}
+        <div class="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-cbblue to-indigo-600 text-white text-xs font-bold uppercase tracking-wider shadow">
+          🔥 El Más Popular
+        </div>
+      {% endif %}
+
+      <div>
+        <div class="mb-6">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cbblue/10 text-cbblue">
+              {{ plan.nombre }}
+            </span>
+            {% if not plan.activo %}
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-600">Inactivo en catálogo</span>
+            {% endif %}
+          </div>
+          <h3 class="text-2xl font-bold text-slate-900 mb-2">{{ plan.nombre_mostrar|default:plan.nombre }}</h3>
+          <p class="text-xs text-slate-500 min-h-[36px] line-clamp-2">{{ plan.descripcion|default:"Ideal para potenciar la reputación y medir satisfacción de clientes." }}</p>
+        </div>
+
+        <div class="mb-6 pb-6 border-b border-slate-100">
+          <div class="flex items-baseline gap-1">
+            <span class="text-4xl font-extrabold text-slate-900">
+              {% if plan.precio_clp %}${{ plan.precio_clp|intcomma }}{% elif plan.precio_uf %}{{ plan.precio_uf }} UF{% else %}Gratis{% endif %}
+            </span>
+            <span class="text-slate-500 text-xs font-bold">/ mes + IVA</span>
+          </div>
+          {% if plan.costo_local_adicional_clp > 0 %}
+            <div class="text-[11px] font-semibold text-slate-500 mt-2">
+              <i class="fa fa-plus-circle text-cbblue"></i> Incluye {{ plan.locales_gratis_incluidos }} local{% if plan.locales_gratis_incluidos > 1 %}es{% endif %} (${{ plan.costo_local_adicional_clp|intcomma }}/mes por local extra + IVA)
+            </div>
+          {% else %}
+            <div class="text-[11px] font-semibold text-emerald-600 mt-2">
+              <i class="fa fa-check-circle"></i> Incluye {{ plan.locales_permitidos }} locales físicos
+            </div>
+          {% endif %}
+        </div>
+
+        {# Características del Plan #}
+        <div class="space-y-3 mb-8">
+          <div class="text-xs font-bold text-slate-700 uppercase tracking-wider">Incluye:</div>
+          {% if plan.caracteristicas %}
+            {% for feat in plan.caracteristicas %}
+              <div class="flex items-start gap-2.5 text-xs text-slate-700 font-medium">
+                <i class="fa fa-check text-emerald-500 mt-0.5 shrink-0"></i>
+                <span>{{ feat }}</span>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="flex items-start gap-2.5 text-xs text-slate-700 font-medium">
+              <i class="fa fa-check text-emerald-500 mt-0.5 shrink-0"></i>
+              <span>Panel de control con Métricas NPS & CSAT</span>
+            </div>
+            <div class="flex items-start gap-2.5 text-xs text-slate-700 font-medium">
+              <i class="fa fa-check text-emerald-500 mt-0.5 shrink-0"></i>
+              <span>Encuestas ilimitadas mediante código QR</span>
+            </div>
+            <div class="flex items-start gap-2.5 text-xs text-slate-700 font-medium">
+              <i class="fa fa-check text-emerald-500 mt-0.5 shrink-0"></i>
+              <span>Análisis de Reseñas de Google</span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Botón Simulado #}
+      <div>
+        <div class="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all
+                    {% if plan.es_plan_default %}bg-cbblue text-white shadow-lg shadow-cbblue/20{% else %}bg-slate-900 text-white{% endif %}">
+          <i class="fa fa-credit-card"></i>
+          <span>{% if plan.es_plan_default %}✓ Plan Seleccionado{% else %}Seleccionar Este Plan{% endif %}</span>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const tabAdmin = document.getElementById('tabModoAdmin');
+  const tabPreview = document.getElementById('tabModoPreview');
+  const secAdmin = document.getElementById('seccionModoAdmin');
+  const secPreview = document.getElementById('seccionModoPreview');
+
+  if (tabAdmin && tabPreview && secAdmin && secPreview) {
+    tabAdmin.addEventListener('click', function() {
+      secAdmin.classList.remove('hidden');
+      secPreview.classList.add('hidden');
+      tabAdmin.className = 'px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 bg-gradient-to-r from-cbblue to-cbblue-600 text-white shadow-sm';
+      tabPreview.className = 'px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 text-slate-600 hover:text-cbblue hover:bg-slate-50';
+    });
+
+    tabPreview.addEventListener('click', function() {
+      secAdmin.classList.add('hidden');
+      secPreview.classList.remove('hidden');
+      tabPreview.className = 'px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 bg-gradient-to-r from-cbblue to-cbblue-600 text-white shadow-sm';
+      tabAdmin.className = 'px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 text-slate-600 hover:text-cbblue hover:bg-slate-50';
+    });
+  }
+
+  // Interactive click simulation on preview cards
+  const previewCards = document.querySelectorAll('.preview-client-card');
+  previewCards.forEach(card => {
+    card.addEventListener('click', function() {
+      previewCards.forEach(c => {
+        c.classList.remove('border-2', 'border-cbblue', 'shadow-2xl', 'scale-105', 'z-10', 'bg-gradient-to-b', 'from-white', 'to-blue-50/40');
+        c.classList.add('border-slate-200', 'bg-white');
+        const btn = c.querySelector('div.inline-flex');
+        if (btn) {
+          btn.className = 'w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all bg-slate-900 text-white';
+          btn.querySelector('span').textContent = 'Seleccionar Este Plan';
+        }
+      });
+      card.classList.remove('border-slate-200');
+      card.classList.add('border-2', 'border-cbblue', 'shadow-2xl', 'scale-105', 'z-10', 'bg-gradient-to-b', 'from-white', 'to-blue-50/40');
+      const activeBtn = card.querySelector('div.inline-flex');
+      if (activeBtn) {
+        activeBtn.className = 'w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all bg-cbblue text-white shadow-lg shadow-cbblue/20';
+        activeBtn.querySelector('span').textContent = '✓ Plan Seleccionado';
+      }
+    });
+  });
+});
+</script>
 {% endblock %}

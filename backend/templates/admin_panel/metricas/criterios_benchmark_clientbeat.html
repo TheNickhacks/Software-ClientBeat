@@ -1,0 +1,124 @@
+{% extends 'admin_panel/base.html' %}
+{% block admin_subtitle %}3.2 Configuración de criterios metodológicos para Benchmark Interno ClientBeat{% endblock %}
+
+{% block admin_content %}
+{# Pestañas para alternar entre Benchmark Google y Benchmark ClientBeat #}
+<div class="flex items-center gap-2 mb-6">
+  <a href="{% url 'adminpanel:metricas_criterios_benchmark_google' %}"
+     class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-cbblue">
+    <i class="fa-brands fa-google text-xs text-amber-500"></i> 3.1 Criterios Benchmark Google
+  </a>
+  <a href="{% url 'adminpanel:metricas_criterios_benchmark_clientbeat' %}"
+     class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-gradient-to-r from-cbblue to-cbblue-600 text-white shadow-md shadow-cbblue/20">
+    <i class="fa fa-chart-line text-xs"></i> 3.2 Criterios Benchmark ClientBeat
+  </a>
+</div>
+
+{% include 'admin_panel/partials/filtros_metricas.html' with filtro_temporal=config.bm_clientbeat_filtro_temporal_default filtro_geografico=config.bm_clientbeat_filtro_geografico_default %}
+
+<form method="POST" action="">
+  {% csrf_token %}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
+    <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg font-bold">
+          <i class="fa fa-chart-line"></i>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Criterios de Benchmark ClientBeat</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Reglas cuantitativas aplicadas exclusivamente a encuestas y evaluaciones directas registradas en ClientBeat</p>
+        </div>
+      </div>
+      <button type="submit" class="px-5 py-2.5 bg-cbblue text-white rounded-xl text-xs font-bold hover:bg-cbblue/90 transition-all shadow-sm flex items-center gap-2">
+        <i class="fa fa-save"></i> Guardar Criterios ClientBeat
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      {# Mínimo de empresas #}
+      <div>
+        <label for="bm_clientbeat_min_empresas" class="block text-xs font-bold text-slate-700 mb-1">
+          Cantidad Mínima de Empresas en el Rubro (ClientBeat)
+        </label>
+        <input type="number" id="bm_clientbeat_min_empresas" name="bm_clientbeat_min_empresas" value="{{ config.bm_clientbeat_min_empresas }}" min="1"
+               class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" required />
+        <p class="text-[11px] text-slate-400 mt-1">Número mínimo de locales activos en ClientBeat dentro del mismo rubro y zona para habilitar comparación.</p>
+      </div>
+
+      {# Mínimo de respuestas #}
+      <div>
+        <label for="bm_clientbeat_min_respuestas" class="block text-xs font-bold text-slate-700 mb-1">
+          Cantidad Mínima de Respuestas de Encuesta ClientBeat
+        </label>
+        <input type="number" id="bm_clientbeat_min_respuestas" name="bm_clientbeat_min_respuestas" value="{{ config.bm_clientbeat_min_respuestas }}" min="1"
+               class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" required />
+        <p class="text-[11px] text-slate-400 mt-1">Muestra mínima de respuestas QR recopiladas para considerar válido el cálculo sectorial.</p>
+      </div>
+
+      {# Días sin respuestas para excluir #}
+      <div>
+        <label for="bm_clientbeat_dias_sin_respuestas_excluir" class="block text-xs font-bold text-slate-700 mb-1">
+          Días sin Respuestas Nuevas para Excluir Empresa (ClientBeat)
+        </label>
+        <input type="number" id="bm_clientbeat_dias_sin_respuestas_excluir" name="bm_clientbeat_dias_sin_respuestas_excluir" value="{{ config.bm_clientbeat_dias_sin_respuestas_excluir }}" min="1"
+               class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" required />
+        <p class="text-[11px] text-slate-400 mt-1">Si un establecimiento en ClientBeat no recibe encuestas en N días, se excluye del benchmark.</p>
+      </div>
+
+      {# Criterio de desempate #}
+      <div>
+        <label for="bm_clientbeat_criterio_desempate" class="block text-xs font-bold text-slate-700 mb-1">
+          Criterio de Desempate en Ranking ClientBeat
+        </label>
+        <select id="bm_clientbeat_criterio_desempate" name="bm_clientbeat_criterio_desempate"
+                class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">
+          <option value="DECIMAS" {% if config.bm_clientbeat_criterio_desempate == 'DECIMAS' %}selected{% endif %}>Décimas de puntuación exacta</option>
+          <option value="POSITIVAS_PERIODO" {% if config.bm_clientbeat_criterio_desempate == 'POSITIVAS_PERIODO' %}selected{% endif %}>Mayor cantidad de respuestas 5 estrellas en el período</option>
+        </select>
+        <p class="text-[11px] text-slate-400 mt-1">Regla aplicada ante empates entre dos negocios en el ranking de ClientBeat.</p>
+      </div>
+
+      {# Filtro Temporal Default #}
+      <div>
+        <label for="bm_clientbeat_filtro_temporal_default" class="block text-xs font-bold text-slate-700 mb-1">
+          Filtro Temporal Predeterminado
+        </label>
+        <select id="bm_clientbeat_filtro_temporal_default" name="bm_clientbeat_filtro_temporal_default"
+                class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">
+          <option value="SEMANAL" {% if config.bm_clientbeat_filtro_temporal_default == 'SEMANAL' %}selected{% endif %}>Semanal</option>
+          <option value="MENSUAL" {% if config.bm_clientbeat_filtro_temporal_default == 'MENSUAL' %}selected{% endif %}>Mensual</option>
+          <option value="SEMESTRAL" {% if config.bm_clientbeat_filtro_temporal_default == 'SEMESTRAL' %}selected{% endif %}>Semestral</option>
+          <option value="ANUAL" {% if config.bm_clientbeat_filtro_temporal_default == 'ANUAL' %}selected{% endif %}>Anual</option>
+        </select>
+      </div>
+
+      {# Filtro Geográfico Default #}
+      <div>
+        <label for="bm_clientbeat_filtro_geografico_default" class="block text-xs font-bold text-slate-700 mb-1">
+          Filtro Geográfico Predeterminado
+        </label>
+        <select id="bm_clientbeat_filtro_geografico_default" name="bm_clientbeat_filtro_geografico_default"
+                class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">
+          <option value="5KM" {% if config.bm_clientbeat_filtro_geografico_default == '5KM' %}selected{% endif %}>Radio de hasta 5 km</option>
+          <option value="COMUNAL" {% if config.bm_clientbeat_filtro_geografico_default == 'COMUNAL' %}selected{% endif %}>Comunal (misma comuna)</option>
+          <option value="REGIONAL" {% if config.bm_clientbeat_filtro_geografico_default == 'REGIONAL' %}selected{% endif %}>Regional (misma región)</option>
+          <option value="NACIONAL" {% if config.bm_clientbeat_filtro_geografico_default == 'NACIONAL' %}selected{% endif %}>Nacional (todo Chile)</option>
+        </select>
+      </div>
+    </div>
+
+    {# Explicación visible en Dashboard de Usuario #}
+    <div class="border-t border-slate-100 pt-6">
+      <div class="flex items-center gap-2 mb-2">
+        <i class="fa fa-info-circle text-cbblue text-sm"></i>
+        <label for="bm_clientbeat_nota_explicativa_usuario" class="text-xs font-bold text-slate-800">
+          Nota Explicativa Visible en el Dashboard del Cliente (Benchmark ClientBeat)
+        </label>
+      </div>
+      <p class="text-[11px] text-slate-500 mb-3">Este texto orienta al usuario acerca de cómo se construye la muestra comparativa con otros comercios registrados en ClientBeat.</p>
+      <textarea id="bm_clientbeat_nota_explicativa_usuario" name="bm_clientbeat_nota_explicativa_usuario" rows="3"
+                class="w-full p-3 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">{{ config.bm_clientbeat_nota_explicativa_usuario }}</textarea>
+    </div>
+  </div>
+</form>
+{% endblock %}

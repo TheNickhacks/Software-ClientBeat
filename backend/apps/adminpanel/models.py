@@ -164,79 +164,239 @@ class ConfiguracionMetricas(models.Model):
         ('POSITIVAS_PERIODO', 'Valoraciones positivas del último mes/semestre'),
     ]
 
-    # 3.1 Benchmark (Google & ClientBeat)
+    # ----------------------------------------------------
+    # CAMPOS LEGACY (compatibilidad retroactiva)
+    # ----------------------------------------------------
     bm_min_empresas = models.PositiveIntegerField(
         default=3,
-        verbose_name='Cantidad mínima de empresas en el benchmark'
+        verbose_name='Cantidad mínima de empresas en el benchmark (Legacy)'
     )
     bm_min_valoraciones = models.PositiveIntegerField(
         default=10,
-        verbose_name='Cantidad mínima de valoraciones requeridas'
+        verbose_name='Cantidad mínima de valoraciones requeridas (Legacy)'
     )
     bm_dias_sin_valoraciones_excluir = models.PositiveIntegerField(
         default=90,
-        verbose_name='Días sin valoraciones para excluir del benchmark'
+        verbose_name='Días sin valoraciones para excluir del benchmark (Legacy)'
     )
     bm_filtro_temporal_default = models.CharField(
         max_length=20,
         choices=TEMPORAL_CHOICES,
         default='MENSUAL',
-        verbose_name='Filtro temporal predeterminado'
+        verbose_name='Filtro temporal predeterminado (Legacy)'
     )
     bm_filtro_geografico_default = models.CharField(
         max_length=20,
         choices=GEOGRAFICO_CHOICES,
         default='COMUNAL',
-        verbose_name='Filtro geográfico predeterminado'
+        verbose_name='Filtro geográfico predeterminado (Legacy)'
     )
     bm_criterio_desempate = models.CharField(
         max_length=30,
         choices=DESEMPATE_CHOICES,
         default='DECIMAS',
-        verbose_name='Criterio de desempate'
+        verbose_name='Criterio de desempate (Legacy)'
     )
     bm_nota_explicativa_usuario = models.TextField(
         default='Los criterios de benchmark determinan la muestra mínima de empresas y opiniones requeridas para comparar el rendimiento de tu negocio en tu rubro y zona geográfica.',
-        verbose_name='Explicación de criterios visible en Dashboard de Usuario'
+        verbose_name='Explicación de criterios visible en Dashboard de Usuario (Legacy)'
     )
-
-    # 3.2 CSAT y NPS
     csat_nps_criterio_metodologico = models.TextField(
         default='CSAT (% respuestas de 4 y 5 estrellas / caritas felices) y NPS (% Promotores [9-10] menos % Detractores [0-6]).',
-        verbose_name='Criterio metodológico de cálculo'
+        verbose_name='Criterio metodológico de cálculo (Legacy)'
     )
     csat_nps_min_empresas_benchmark = models.PositiveIntegerField(
         default=3,
-        verbose_name='Cantidad mínima de empresas para benchmark por rubro'
+        verbose_name='Cantidad mínima de empresas para benchmark por rubro (Legacy)'
     )
     csat_nps_min_valoraciones = models.PositiveIntegerField(
         default=5,
-        verbose_name='Cantidad mínima de valoraciones para aparecer en benchmark'
+        verbose_name='Cantidad mínima de valoraciones para aparecer en benchmark (Legacy)'
     )
     csat_nps_dias_sin_valoraciones_excluir = models.PositiveIntegerField(
         default=60,
-        verbose_name='Días sin valoraciones para excluir del benchmark'
+        verbose_name='Días sin valoraciones para excluir del benchmark (Legacy)'
     )
     csat_nps_filtro_temporal_default = models.CharField(
         max_length=20,
         choices=TEMPORAL_CHOICES,
         default='MENSUAL',
-        verbose_name='Filtro temporal default CSAT/NPS'
+        verbose_name='Filtro temporal default CSAT/NPS (Legacy)'
     )
     csat_nps_filtro_geografico_default = models.CharField(
         max_length=20,
         choices=GEOGRAFICO_CHOICES,
         default='COMUNAL',
-        verbose_name='Filtro geográfico default CSAT/NPS'
+        verbose_name='Filtro geográfico default CSAT/NPS (Legacy)'
     )
     csat_nps_criterio_desempate = models.CharField(
         max_length=30,
         choices=DESEMPATE_CHOICES,
         default='DECIMAS',
-        verbose_name='Criterio de desempate CSAT/NPS'
+        verbose_name='Criterio de desempate CSAT/NPS (Legacy)'
     )
 
-    # 3.3 Reseñas Google
+    # ====================================================
+    # 1. CRITERIOS BENCHMARK GOOGLE (Independiente)
+    # ====================================================
+    bm_google_min_empresas = models.PositiveIntegerField(
+        default=3,
+        verbose_name='Cantidad mínima de empresas en Benchmark Google'
+    )
+    bm_google_min_valoraciones = models.PositiveIntegerField(
+        default=10,
+        verbose_name='Cantidad mínima de opiniones Google requeridas'
+    )
+    bm_google_dias_sin_valoraciones_excluir = models.PositiveIntegerField(
+        default=90,
+        verbose_name='Días sin opiniones para excluir en Benchmark Google'
+    )
+    bm_google_filtro_temporal_default = models.CharField(
+        max_length=20,
+        choices=TEMPORAL_CHOICES,
+        default='MENSUAL',
+        verbose_name='Filtro temporal predeterminado Benchmark Google'
+    )
+    bm_google_filtro_geografico_default = models.CharField(
+        max_length=20,
+        choices=GEOGRAFICO_CHOICES,
+        default='COMUNAL',
+        verbose_name='Filtro geográfico predeterminado Benchmark Google'
+    )
+    bm_google_criterio_desempate = models.CharField(
+        max_length=30,
+        choices=DESEMPATE_CHOICES,
+        default='DECIMAS',
+        verbose_name='Criterio de desempate Benchmark Google'
+    )
+    bm_google_nota_explicativa_usuario = models.TextField(
+        default='Los criterios de Benchmark Google determinan la muestra mínima de competidores y opiniones públicas en Google Maps para calcular los promedios de tu rubro y zona geográfica.',
+        verbose_name='Nota explicativa Benchmark Google en Dashboard'
+    )
+
+    # ====================================================
+    # 2. CRITERIOS BENCHMARK CLIENTBEAT (Independiente)
+    # ====================================================
+    bm_clientbeat_min_empresas = models.PositiveIntegerField(
+        default=3,
+        verbose_name='Cantidad mínima de empresas en Benchmark ClientBeat'
+    )
+    bm_clientbeat_min_respuestas = models.PositiveIntegerField(
+        default=15,
+        verbose_name='Cantidad mínima de respuestas de encuesta ClientBeat requeridas'
+    )
+    bm_clientbeat_dias_sin_respuestas_excluir = models.PositiveIntegerField(
+        default=60,
+        verbose_name='Días sin respuestas para excluir en Benchmark ClientBeat'
+    )
+    bm_clientbeat_filtro_temporal_default = models.CharField(
+        max_length=20,
+        choices=TEMPORAL_CHOICES,
+        default='MENSUAL',
+        verbose_name='Filtro temporal predeterminado Benchmark ClientBeat'
+    )
+    bm_clientbeat_filtro_geografico_default = models.CharField(
+        max_length=20,
+        choices=GEOGRAFICO_CHOICES,
+        default='COMUNAL',
+        verbose_name='Filtro geográfico predeterminado Benchmark ClientBeat'
+    )
+    bm_clientbeat_criterio_desempate = models.CharField(
+        max_length=30,
+        choices=DESEMPATE_CHOICES,
+        default='DECIMAS',
+        verbose_name='Criterio de desempate Benchmark ClientBeat'
+    )
+    bm_clientbeat_nota_explicativa_usuario = models.TextField(
+        default='Los criterios de Benchmark ClientBeat se basan exclusivamente en evaluaciones directas de clientes obtenidas mediante encuestas QR en establecimientos registrados en la plataforma.',
+        verbose_name='Nota explicativa Benchmark ClientBeat en Dashboard'
+    )
+
+    # ====================================================
+    # 3. CRITERIOS INDICADOR CSAT (Independiente)
+    # ====================================================
+    csat_criterio_metodologico = models.TextField(
+        default='CSAT (Customer Satisfaction Score): Porcentaje de evaluaciones con valoración positiva (4 y 5 estrellas o Muy Satisfecho / Feliz) sobre el total de respuestas recibidas en el período.',
+        verbose_name='Criterio metodológico de cálculo CSAT'
+    )
+    csat_min_empresas_benchmark = models.PositiveIntegerField(
+        default=3,
+        verbose_name='Cantidad mínima de empresas para benchmark CSAT'
+    )
+    csat_min_respuestas = models.PositiveIntegerField(
+        default=5,
+        verbose_name='Cantidad mínima de respuestas requeridas para calcular CSAT'
+    )
+    csat_dias_sin_respuestas_excluir = models.PositiveIntegerField(
+        default=60,
+        verbose_name='Días sin respuestas para excluir del benchmark CSAT'
+    )
+    csat_filtro_temporal_default = models.CharField(
+        max_length=20,
+        choices=TEMPORAL_CHOICES,
+        default='MENSUAL',
+        verbose_name='Filtro temporal predeterminado CSAT'
+    )
+    csat_filtro_geografico_default = models.CharField(
+        max_length=20,
+        choices=GEOGRAFICO_CHOICES,
+        default='COMUNAL',
+        verbose_name='Filtro geográfico predeterminado CSAT'
+    )
+    csat_criterio_desempate = models.CharField(
+        max_length=30,
+        choices=DESEMPATE_CHOICES,
+        default='DECIMAS',
+        verbose_name='Criterio de desempate CSAT'
+    )
+    csat_nota_explicativa_usuario = models.TextField(
+        default='El índice CSAT mide la satisfacción puntual del cliente con la experiencia recibida en el local o servicio.',
+        verbose_name='Nota explicativa CSAT en Dashboard'
+    )
+
+    # ====================================================
+    # 4. CRITERIOS INDICADOR NPS (Independiente)
+    # ====================================================
+    nps_criterio_metodologico = models.TextField(
+        default='NPS (Net Promoter Score): % Promotores (calificación 9 y 10) menos % Detractores (calificación 0 a 6). Los clientes Pasivos (7 y 8) se consideran en el total pero no en la resta neta.',
+        verbose_name='Criterio metodológico de cálculo NPS'
+    )
+    nps_min_empresas_benchmark = models.PositiveIntegerField(
+        default=3,
+        verbose_name='Cantidad mínima de empresas para benchmark NPS'
+    )
+    nps_min_respuestas = models.PositiveIntegerField(
+        default=5,
+        verbose_name='Cantidad mínima de respuestas requeridas para calcular NPS'
+    )
+    nps_dias_sin_respuestas_excluir = models.PositiveIntegerField(
+        default=60,
+        verbose_name='Días sin respuestas para excluir del benchmark NPS'
+    )
+    nps_filtro_temporal_default = models.CharField(
+        max_length=20,
+        choices=TEMPORAL_CHOICES,
+        default='MENSUAL',
+        verbose_name='Filtro temporal predeterminado NPS'
+    )
+    nps_filtro_geografico_default = models.CharField(
+        max_length=20,
+        choices=GEOGRAFICO_CHOICES,
+        default='COMUNAL',
+        verbose_name='Filtro geográfico predeterminado NPS'
+    )
+    nps_criterio_desempate = models.CharField(
+        max_length=30,
+        choices=DESEMPATE_CHOICES,
+        default='DECIMAS',
+        verbose_name='Criterio de desempate NPS'
+    )
+    nps_nota_explicativa_usuario = models.TextField(
+        default='El Net Promoter Score refleja la fidelidad y la probabilidad de que los clientes recomienden tu negocio activamente a amigos o colegas.',
+        verbose_name='Nota explicativa NPS en Dashboard'
+    )
+
+    # 3.5 Reseñas Google
     resenas_minimo_para_analisis = models.PositiveIntegerField(
         default=5,
         verbose_name='Mínimo de reseñas para realizar análisis'
@@ -259,6 +419,25 @@ class ConfiguracionMetricas(models.Model):
 
     def __str__(self):
         return f'Configuración de Métricas (Actualizada {self.fecha_actualizacion:%d/%m/%Y %H:%M})'
+
+    def save(self, *args, **kwargs):
+        # Sincronización automática de campos legacy para retrocompatibilidad
+        self.bm_min_empresas = self.bm_google_min_empresas
+        self.bm_min_valoraciones = self.bm_google_min_valoraciones
+        self.bm_dias_sin_valoraciones_excluir = self.bm_google_dias_sin_valoraciones_excluir
+        self.bm_filtro_temporal_default = self.bm_google_filtro_temporal_default
+        self.bm_filtro_geografico_default = self.bm_google_filtro_geografico_default
+        self.bm_criterio_desempate = self.bm_google_criterio_desempate
+        self.bm_nota_explicativa_usuario = self.bm_google_nota_explicativa_usuario
+
+        self.csat_nps_criterio_metodologico = f"{self.csat_criterio_metodologico} | {self.nps_criterio_metodologico}"
+        self.csat_nps_min_empresas_benchmark = self.csat_min_empresas_benchmark
+        self.csat_nps_min_valoraciones = self.csat_min_respuestas
+        self.csat_nps_dias_sin_valoraciones_excluir = self.csat_dias_sin_respuestas_excluir
+        self.csat_nps_filtro_temporal_default = self.csat_filtro_temporal_default
+        self.csat_nps_filtro_geografico_default = self.csat_filtro_geografico_default
+        self.csat_nps_criterio_desempate = self.csat_criterio_desempate
+        super().save(*args, **kwargs)
 
     @classmethod
     def get_solo(cls):

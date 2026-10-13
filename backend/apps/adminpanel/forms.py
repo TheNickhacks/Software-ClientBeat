@@ -289,3 +289,70 @@ class NegocioReasignarDuenoForm(forms.Form):
         self.cleaned_data['usuario_nuevo_dueno'] = usuario
         return email
 
+
+class PlantillaNotificacionForm(forms.ModelForm):
+    """Formulario para editar plantillas de notificación del sistema."""
+    variables_str = forms.CharField(
+        label='Variables disponibles / esperadas (separadas por coma)',
+        required=False,
+        help_text='Ej: negocio, usuario, local, kpi_csat, nps_score, fecha',
+        widget=forms.TextInput(attrs={
+            'class': 'input w-full !py-2 text-xs font-mono',
+            'placeholder': 'negocio, usuario, local, plan, url_login'
+        })
+    )
+
+    class Meta:
+        from apps.notifications.models import PlantillaNotificacion
+        model = PlantillaNotificacion
+        fields = [
+            'nombre',
+            'categoria',
+            'asunto_email',
+            'cuerpo_texto_plano',
+            'cuerpo_html',
+            'activo',
+            'orden',
+        ]
+        labels = {
+            'nombre': 'Nombre de la Plantilla',
+            'categoria': 'Temática / Categoría',
+            'asunto_email': 'Asunto del Email',
+            'cuerpo_texto_plano': 'Cuerpo Texto Plano (Fallback)',
+            'cuerpo_html': 'Cuerpo HTML (Plantilla)',
+            'activo': 'Plantilla Activa (Habilita el envío automático de esta notificación)',
+            'orden': 'Orden de visualización',
+        }
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'input w-full !py-2 text-sm'}),
+            'categoria': forms.Select(attrs={'class': 'input w-full !py-2 text-sm'}),
+            'asunto_email': forms.TextInput(attrs={'class': 'input w-full !py-2 text-sm'}),
+            'cuerpo_texto_plano': forms.Textarea(attrs={'rows': 4, 'class': 'input w-full text-xs font-mono'}),
+            'cuerpo_html': forms.Textarea(attrs={'rows': 12, 'class': 'input w-full text-xs font-mono'}),
+            'orden': forms.NumberInput(attrs={'class': 'input w-32 !py-2 text-sm'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk and self.instance.variables_esperadas:
+            if isinstance(self.instance.variables_esperadas, list):
+                self.initial['variables_str'] = ', '.join(self.instance.variables_esperadas)
+            elif isinstance(self.instance.variables_esperadas, str):
+                self.initial['variables_str'] = self.instance.variables_esperadas
+
+    def clean(self):
+        cleaned_data = super().clean()
+        v_str = cleaned_data.get('variables_str', '')
+        if v_str:
+            cleaned_data['variables_esperadas'] = [v.strip() for v in v_str.split(',') if v.strip()]
+        else:
+            cleaned_data['variables_esperadas'] = []
+        return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.variables_esperadas = self.cleaned_data.get('variables_esperadas', [])
+        if commit:
+            instance.save()
+        return instance
+

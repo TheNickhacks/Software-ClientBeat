@@ -85,8 +85,10 @@
     }
     .btn-secondary:hover { border-color: #00B879; color: #00633F; box-shadow: 0 6px 16px -6px rgba(0,184,121,0.25); }
     .dropdown:hover .dropdown-menu { display: block; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     .glass-nav {
-      background: rgba(255, 255, 255, 0.82);
+      background: rgba(255, 255, 255, 0.88);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
     }
@@ -116,115 +118,278 @@
   </div>
   {% endif %}
 
-  {# ========= TOP NAVIGATION BAR (Matching User Panel Style) ========= #}
+  {# ========= HEADER PRINCIPAL (Identidad + Acciones de Usuario) ========= #}
   <header class="fixed top-0 left-0 right-0 z-50 glass-nav border-b border-slate-200/70 shadow-xs">
     <div class="container mx-auto px-4 md:px-6">
       <div class="flex items-center justify-between h-16">
 
-        {# Brand & Title #}
-        <div class="flex items-center gap-3">
+        {# Identidad Corporativa (Sin solapamiento, con shrink-0) #}
+        <div class="flex items-center gap-3 shrink-0">
           <a href="{% url 'adminpanel:dashboard' %}" class="flex items-center gap-3 hover:opacity-90 transition-opacity">
-            <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" class="h-10 w-auto object-contain" />
+            <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" class="h-9 w-auto object-contain shrink-0" />
             <div class="flex items-center gap-2">
               <span class="text-base font-extrabold tracking-tight text-slate-900">ClientBeat</span>
-              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-gradient-to-r from-cbblue/15 to-cbgreen/15 text-cbblue border border-cbblue/20 shadow-2xs">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cbblue/10 text-cbblue border border-cbblue/20 shadow-2xs shrink-0">
                 <i class="fa-solid fa-user-shield text-cbblue text-[10px]"></i> Administrador
               </span>
             </div>
           </a>
         </div>
 
-        {# Dropdown Tabs Navigation (Desktop) #}
-        <nav class="hidden lg:flex items-center gap-1.5">
-          <a href="{% url 'adminpanel:dashboard' %}"
-             class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 {% if menu_activo == 'Dashboard' %}bg-gradient-to-r from-cbblue to-cbgreen text-white shadow-md shadow-cbblue/20{% else %}text-slate-600 hover:bg-slate-100 hover:text-cbblue{% endif %}">
-            <i class="fa fa-th-large"></i> Dashboard
-          </a>
-
-          {% for mod in menu %}
-          <div class="relative dropdown">
-            <button type="button" class="px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-cbblue transition-all flex items-center gap-1.5">
-              <i class="fa {{ mod.icono }} text-cbgreen-600 text-xs"></i>
-              <span>{{ mod.section }}</span>
-              <i class="fa fa-chevron-down text-[9px] text-slate-400 ml-0.5"></i>
-            </button>
-            
-            <div class="dropdown-menu hidden absolute left-0 top-full pt-2 w-64 z-50 animate-fade-down">
-              <div class="bg-white rounded-2xl shadow-xl border border-slate-200/90 py-2 px-1.5 overflow-hidden">
-                {% for sub in mod.submodulos %}
-                <a href="{{ sub.url }}"
-                   class="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
-                  <span class="flex items-center gap-2.5 truncate">
-                    <span class="w-6 h-6 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] group-hover:bg-cbblue-50 group-hover:text-cbblue">
-                      <i class="fa {{ sub.icono }}"></i>
-                    </span>
-                    <span class="truncate">{{ sub.label }}</span>
-                  </span>
-                  <i class="fa fa-chevron-right text-[9px] text-slate-300"></i>
-                </a>
-                {% endfor %}
-              </div>
-            </div>
-          </div>
-          {% endfor %}
-        </nav>
-
-        {# User Actions Dropdown / Profile #}
-        <div class="flex items-center gap-2.5">
-          <a href="{% url 'adminpanel:preview_cliente' %}" class="btn-secondary text-xs shadow-2xs py-1.5 px-3">
+        {# Acciones Rápidas y Perfil de Usuario #}
+        <div class="flex items-center gap-2.5 shrink-0">
+          <a href="{% url 'adminpanel:preview_cliente' %}" class="btn-secondary text-xs shadow-2xs py-1.5 px-3 shrink-0">
             <i class="fa-solid fa-eye text-cbgreen"></i>
             <span class="hidden sm:inline">Vista Cliente</span>
           </a>
 
-          <a href="{% url 'adminpanel:perfil' %}" class="btn-secondary text-xs shadow-2xs py-1.5 px-3">
-            <i class="fa-solid fa-circle-user text-cbblue"></i>
-            <span class="hidden md:inline max-w-[110px] truncate">{{ user.first_name|default:user.email }}</span>
-          </a>
-
-          <form method="POST" action="/accounts/logout/" class="inline">
-            {% csrf_token %}
-            <button type="submit" title="Cerrar sesión" class="p-2 rounded-xl text-rose-500 hover:bg-rose-50 hover:text-rose-600 text-xs font-semibold transition-colors">
-              <i class="fa-solid fa-right-from-bracket text-sm"></i>
+          {# Menú desplegable de usuario #}
+          <div class="relative dropdown shrink-0">
+            <button type="button" class="btn-secondary text-xs shadow-2xs py-1.5 px-3 flex items-center gap-2">
+              <i class="fa-solid fa-circle-user text-cbblue text-sm"></i>
+              <span class="hidden md:inline max-w-[120px] truncate font-medium text-slate-700">{{ user.first_name|default:user.email }}</span>
+              <i class="fa fa-chevron-down text-[9px] text-slate-400"></i>
             </button>
-          </form>
+            <div class="dropdown-menu hidden absolute right-0 top-full pt-1.5 w-60 z-50 animate-fade-down">
+              <div class="bg-white rounded-2xl shadow-xl border border-slate-200/90 py-2 px-1.5 overflow-hidden text-xs">
+                <div class="px-3 py-2 border-b border-slate-100">
+                  <div class="font-bold text-slate-900 truncate">{{ user.get_full_name|default:user.email }}</div>
+                  <div class="text-[10px] text-slate-400 truncate">{{ user.email }}</div>
+                  <span class="mt-1 inline-block text-[10px] font-semibold text-cbblue bg-cbblue/10 px-2 py-0.5 rounded-md">
+                    {% if user.is_superuser %}SuperUsuario Django{% elif user.is_admin_soporte %}Admin Soporte{% else %}{{ user.get_rol_display }}{% endif %}
+                  </span>
+                </div>
+                <a href="{% url 'adminpanel:perfil' %}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-cbblue/5 hover:text-cbblue font-medium transition-colors">
+                  <i class="fa fa-user-gear text-slate-400"></i> Mi Perfil Admin
+                </a>
+                {% if user.is_superuser %}
+                <a href="/admin/" target="_blank" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-amber-700 hover:bg-amber-50 font-medium transition-colors">
+                  <i class="fa fa-lock text-amber-500"></i> Django Admin (Técnico)
+                </a>
+                {% endif %}
+                <div class="border-t border-slate-100 my-1"></div>
+                <form method="POST" action="/accounts/logout/" class="w-full">
+                  {% csrf_token %}
+                  <button type="submit" class="w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 font-medium transition-colors">
+                    <i class="fa-solid fa-right-from-bracket text-xs"></i> Cerrar Sesión
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
         </div>
 
       </div>
     </div>
 
-    {# ========= SECONDARY QUICK-ACCESS NAVIGATION TABS (Visual Parity with User Dashboard) ========= #}
+    {# ========= BARRA DE NAVEGACIÓN PRINCIPAL UNIFICADA (Pestañas Funcionales con Submenús) ========= #}
     <div class="border-t border-slate-200/60 bg-white/70 backdrop-blur-sm">
       <div class="container mx-auto px-4 md:px-6 py-1.5 flex items-center overflow-x-auto gap-1 text-xs font-semibold text-slate-600 no-scrollbar">
-        <a href="{% url 'adminpanel:dashboard' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 {% if menu_activo == 'Dashboard' %}bg-cbblue/10 text-cbblue font-bold border border-cbblue/20{% else %}hover:bg-slate-100 hover:text-slate-900{% endif %}">
+
+        {# 1. Inicio / Dashboard #}
+        <a href="{% url 'adminpanel:dashboard' %}"
+           class="shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 border {% if menu_activo == 'Dashboard' %}bg-cbblue/10 text-cbblue font-bold border-cbblue/20 shadow-2xs{% else %}text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-transparent{% endif %}">
           <i class="fa fa-chart-line text-xs"></i> Inicio
         </a>
-        <a href="{% url 'adminpanel:reporteria_clientes' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 {% if menu_activo == 'reporteria_clientes' %}bg-cbblue/10 text-cbblue font-bold border border-cbblue/20{% else %}hover:bg-slate-100 hover:text-slate-900{% endif %}">
-          <i class="fa fa-building text-xs text-cbblue"></i> Clientes
-        </a>
-        <a href="{% url 'adminpanel:suscripciones' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 hover:bg-slate-100 hover:text-slate-900">
-          <i class="fa fa-credit-card text-xs text-cbgreen"></i> Suscripciones
-        </a>
-        <a href="{% url 'adminpanel:usuarios' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 hover:bg-slate-100 hover:text-slate-900">
-          <i class="fa fa-users-gear text-xs text-indigo-500"></i> Usuarios
-        </a>
-        <a href="{% url 'adminpanel:reporteria_benchmark_rubro' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 hover:bg-slate-100 hover:text-slate-900">
-          <i class="fa fa-chart-pie text-xs text-amber-500"></i> Benchmark
-        </a>
-        <a href="{% url 'adminpanel:reporteria_tendencias_resenas' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 hover:bg-slate-100 hover:text-slate-900">
-          <i class="fa fa-comments text-xs text-sky-500"></i> Reseñas
-        </a>
-        <a href="{% url 'adminpanel:planes_editar' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 hover:bg-slate-100 hover:text-slate-900">
-          <i class="fa fa-tags text-xs text-emerald-600"></i> Planes
-        </a>
-        <a href="{% url 'adminpanel:notificaciones' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 hover:bg-slate-100 hover:text-slate-900">
-          <i class="fa fa-bell text-xs text-rose-500"></i> Notificaciones
-        </a>
-        <a href="{% url 'adminpanel:datagoogle_rubros' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 hover:bg-slate-100 hover:text-slate-900">
+
+        {# 2. Clientes #}
+        <div class="relative dropdown shrink-0">
+          <a href="{% url 'adminpanel:reporteria_clientes' %}"
+             class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 border {% if menu_activo == 'reporteria_clientes' or menu_activo == 'Negocios' %}bg-cbblue/10 text-cbblue font-bold border-cbblue/20 shadow-2xs{% else %}text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-transparent{% endif %}">
+            <i class="fa fa-building text-xs text-cbblue"></i> Clientes
+            <i class="fa fa-chevron-down text-[8px] text-slate-400"></i>
+          </a>
+          <div class="dropdown-menu hidden absolute left-0 top-full pt-1 w-56 z-50 animate-fade-down">
+            <div class="bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 px-1 overflow-hidden">
+              <a href="{% url 'adminpanel:reporteria_clientes' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-users text-slate-400 text-xs w-4"></i> Clientes & Antigüedad
+              </a>
+              <a href="{% url 'adminpanel:negocios' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-store text-slate-400 text-xs w-4"></i> Directorio Negocios
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {# 3. Suscripciones #}
+        <div class="relative dropdown shrink-0">
+          <a href="{% url 'adminpanel:suscripciones' %}"
+             class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 border {% if menu_activo == 'Suscripciones' or menu_activo == 'suscripciones' or menu_activo == 'Pagos' %}bg-cbblue/10 text-cbblue font-bold border-cbblue/20 shadow-2xs{% else %}text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-transparent{% endif %}">
+            <i class="fa fa-credit-card text-xs text-emerald-600"></i> Suscripciones
+            <i class="fa fa-chevron-down text-[8px] text-slate-400"></i>
+          </a>
+          <div class="dropdown-menu hidden absolute left-0 top-full pt-1 w-56 z-50 animate-fade-down">
+            <div class="bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 px-1 overflow-hidden">
+              <a href="{% url 'adminpanel:suscripciones' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-list-check text-slate-400 text-xs w-4"></i> Lista de Suscripciones
+              </a>
+              <a href="{% url 'adminpanel:suscripcion_nueva' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-plus-circle text-slate-400 text-xs w-4"></i> Nueva Suscripción
+              </a>
+              <a href="{% url 'adminpanel:pagos' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-receipt text-slate-400 text-xs w-4"></i> Historial de Pagos
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {# 4. Usuarios #}
+        <div class="relative dropdown shrink-0">
+          <a href="{% url 'adminpanel:usuarios' %}"
+             class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 border {% if menu_activo == 'Usuarios' or menu_activo == 'usuarios' %}bg-cbblue/10 text-cbblue font-bold border-cbblue/20 shadow-2xs{% else %}text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-transparent{% endif %}">
+            <i class="fa fa-users-gear text-xs text-indigo-500"></i> Usuarios
+            <i class="fa fa-chevron-down text-[8px] text-slate-400"></i>
+          </a>
+          <div class="dropdown-menu hidden absolute left-0 top-full pt-1 w-56 z-50 animate-fade-down">
+            <div class="bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 px-1 overflow-hidden">
+              <a href="{% url 'adminpanel:usuarios' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-user-shield text-slate-400 text-xs w-4"></i> Gestión de Usuarios
+              </a>
+              <a href="{% url 'adminpanel:solicitudes_arco' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-shield-halved text-slate-400 text-xs w-4"></i> Solicitudes ARCOPB
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {# 5. Benchmark #}
+        <div class="relative dropdown shrink-0">
+          <a href="{% url 'adminpanel:reporteria_benchmark_google' %}"
+             class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 border {% if 'benchmark' in menu_activo|lower %}bg-cbblue/10 text-cbblue font-bold border-cbblue/20 shadow-2xs{% else %}text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-transparent{% endif %}">
+            <i class="fa fa-chart-pie text-xs text-amber-500"></i> Benchmark
+            <i class="fa fa-chevron-down text-[8px] text-slate-400"></i>
+          </a>
+          <div class="dropdown-menu hidden absolute left-0 top-full pt-1 w-60 z-50 animate-fade-down">
+            <div class="bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 px-1 overflow-hidden">
+              <a href="{% url 'adminpanel:reporteria_benchmark_google' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa-brands fa-google text-slate-400 text-xs w-4"></i> Benchmark Google
+              </a>
+              <a href="{% url 'adminpanel:reporteria_benchmark_clientbeat' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-chart-line text-slate-400 text-xs w-4"></i> Benchmark ClientBeat
+              </a>
+              <a href="{% url 'adminpanel:reporteria_benchmark_nps_csat' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-smile text-slate-400 text-xs w-4"></i> Benchmark NPS & CSAT
+              </a>
+              <div class="border-t border-slate-100 my-1"></div>
+              <a href="{% url 'adminpanel:metricas_criterios_benchmark_google' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa-brands fa-google text-slate-400 text-xs w-4"></i> Criterios Benchmark Google
+              </a>
+              <a href="{% url 'adminpanel:metricas_criterios_benchmark_clientbeat' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-chart-line text-slate-400 text-xs w-4"></i> Criterios Benchmark ClientBeat
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {# 6. Reseñas #}
+        <div class="relative dropdown shrink-0">
+          <a href="{% url 'adminpanel:reporteria_tendencias_resenas' %}"
+             class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 border {% if 'resenas' in menu_activo|lower or 'reseñas' in menu_activo|lower %}bg-cbblue/10 text-cbblue font-bold border-cbblue/20 shadow-2xs{% else %}text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-transparent{% endif %}">
+            <i class="fa fa-comments text-xs text-sky-500"></i> Reseñas
+            <i class="fa fa-chevron-down text-[8px] text-slate-400"></i>
+          </a>
+          <div class="dropdown-menu hidden absolute left-0 top-full pt-1 w-56 z-50 animate-fade-down">
+            <div class="bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 px-1 overflow-hidden">
+              <a href="{% url 'adminpanel:reporteria_tendencias_resenas' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-chart-simple text-slate-400 text-xs w-4"></i> Tendencias en Reseñas
+              </a>
+              <a href="{% url 'adminpanel:metricas_resenas_google' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-gear text-slate-400 text-xs w-4"></i> Parámetros Reseñas Google
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {# 7. Planes #}
+        <div class="relative dropdown shrink-0">
+          <a href="{% url 'adminpanel:planes_editar' %}"
+             class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 border {% if 'planes' in menu_activo|lower or menu_activo == 'Simulador' %}bg-cbblue/10 text-cbblue font-bold border-cbblue/20 shadow-2xs{% else %}text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-transparent{% endif %}">
+            <i class="fa fa-tags text-xs text-teal-600"></i> Planes
+            <i class="fa fa-chevron-down text-[8px] text-slate-400"></i>
+          </a>
+          <div class="dropdown-menu hidden absolute left-0 top-full pt-1 w-56 z-50 animate-fade-down">
+            <div class="bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 px-1 overflow-hidden">
+              <a href="{% url 'adminpanel:planes_editar' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-pen-to-square text-slate-400 text-xs w-4"></i> Catálogo de Planes
+              </a>
+              <a href="{% url 'adminpanel:reporteria_planes' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-file-invoice-dollar text-slate-400 text-xs w-4"></i> Reportes de Planes
+              </a>
+              <a href="{% url 'adminpanel:simulador_planes' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-calculator text-slate-400 text-xs w-4"></i> Simulador de Planes
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {# 8. Notificaciones #}
+        <div class="relative dropdown shrink-0">
+          <a href="{% url 'adminpanel:notificaciones' %}"
+             class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 border {% if 'notif' in menu_activo|lower %}bg-cbblue/10 text-cbblue font-bold border-cbblue/20 shadow-2xs{% else %}text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-transparent{% endif %}">
+            <i class="fa fa-bell text-xs text-rose-500"></i> Notificaciones
+            <i class="fa fa-chevron-down text-[8px] text-slate-400"></i>
+          </a>
+          <div class="dropdown-menu hidden absolute left-0 top-full pt-1 w-56 z-50 animate-fade-down">
+            <div class="bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 px-1 overflow-hidden">
+              <a href="{% url 'adminpanel:notificaciones_emitir' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-paper-plane text-slate-400 text-xs w-4"></i> 6.1 Emitir Notificaciones
+              </a>
+              <a href="{% url 'adminpanel:plantillas_notificaciones' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-toggle-on text-slate-400 text-xs w-4"></i> 6.2 Plantillas y Activación
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {# 9. Data Google #}
+        <a href="{% url 'adminpanel:datagoogle_rubros' %}"
+           class="shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 border {% if 'datagoogle' in menu_activo|lower or menu_activo == 'Rubros' %}bg-cbblue/10 text-cbblue font-bold border-cbblue/20 shadow-2xs{% else %}text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-transparent{% endif %}">
           <i class="fa fa-layer-group text-xs text-purple-500"></i> Data Google
         </a>
-        <a href="{% url 'adminpanel:solicitudes_arco' %}" class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 hover:bg-slate-100 hover:text-slate-900">
+
+        {# 10. ARCO #}
+        <a href="{% url 'adminpanel:solicitudes_arco' %}"
+           class="shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 border {% if menu_activo == 'solicitudes_arco' %}bg-cbblue/10 text-cbblue font-bold border-cbblue/20 shadow-2xs{% else %}text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-transparent{% endif %}">
           <i class="fa fa-shield-halved text-xs text-slate-500"></i> ARCO
         </a>
+
+        {# 11. Más Módulos ▾ #}
+        <div class="relative dropdown shrink-0">
+          <button type="button"
+             class="whitespace-nowrap px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 border text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-transparent">
+            <i class="fa fa-ellipsis text-xs text-slate-500"></i> Más
+            <i class="fa fa-chevron-down text-[8px] text-slate-400"></i>
+          </button>
+          <div class="dropdown-menu hidden absolute right-0 top-full pt-1 w-64 z-50 animate-fade-down">
+            <div class="bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 px-1 overflow-hidden text-xs">
+              <a href="{% url 'adminpanel:plantillas' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-poll text-slate-400 text-xs w-4"></i> Plantillas de Encuestas
+              </a>
+              <a href="{% url 'adminpanel:metricas_csat' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-face-smile text-slate-400 text-xs w-4"></i> Indicador CSAT
+              </a>
+              <a href="{% url 'adminpanel:metricas_nps' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-heart text-slate-400 text-xs w-4"></i> Indicador NPS
+              </a>
+              <a href="{% url 'adminpanel:recursos_reconocimiento' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-award text-slate-400 text-xs w-4"></i> Programa Reconocimiento
+              </a>
+              <a href="{% url 'adminpanel:metodologia' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-book-open text-slate-400 text-xs w-4"></i> Metodología ClientBeat
+              </a>
+              <a href="{% url 'adminpanel:auditoria' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg font-medium text-slate-700 hover:bg-cbblue/5 hover:text-cbblue transition-colors">
+                <i class="fa fa-clipboard-list text-slate-400 text-xs w-4"></i> Registro de Auditoría
+              </a>
+              {% if user.is_superuser %}
+              <div class="border-t border-slate-100 my-1"></div>
+              <a href="{% url 'adminpanel:super_salud' %}" class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg font-medium text-emerald-700 hover:bg-emerald-50 transition-colors">
+                <i class="fa fa-heart-pulse text-emerald-500 text-xs w-4"></i> Salud Técnica DB (Super)
+              </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </header>

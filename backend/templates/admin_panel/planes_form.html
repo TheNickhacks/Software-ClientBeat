@@ -7,7 +7,7 @@
   {% if modo == 'crear' %}
     Configura un nuevo plan de suscripción con precios, límites, cobros escalonados y feature flags.
   {% else %}
-    Actualiza la información del plan {{ object.nombre }}. Los cambios se reflejan inmediatamente en el onboarding.
+    Actualiza la información del plan {{ object.nombre }}. Los cambios se reflejan inmediatamente en el onboarding y la vista de planes.
   {% endif %}
 {% endblock %}
 
@@ -20,7 +20,7 @@
 
 {% block admin_content %}
 
-<form method="POST" id="planForm" class="max-w-6xl mx-auto space-y-5">
+<form method="POST" id="planForm" class="space-y-5">
   {% csrf_token %}
 
   {% if form.errors %}
@@ -46,214 +46,312 @@
   </div>
   {% endif %}
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+  <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
 
-    <div class="glass-effect rounded-2xl p-6 card-hover lg:col-span-2">
-      <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
-        <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 inline-flex items-center justify-center text-sm">
-          <i class="fa fa-info-circle"></i>
-        </span>
-        1 · Datos básicos del plan
-      </h2>
-      <p class="text-xs text-slate-500 mb-5 ml-10">Nombre público, código interno y descripción que verán los dueños en el onboarding (paso 3).</p>
+    {# ========================================== #}
+    {# COLUMNA IZQUIERDA: FORMULARIO DE EDICIÓN   #}
+    {# ========================================== #}
+    <div class="xl:col-span-7 2xl:col-span-8 space-y-5">
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.nombre.label }} *</label>
-          {% render_field form.nombre class="input-base" placeholder="Ej: PLAN_PROFESIONAL_2026" %}
-          <p class="text-[11px] text-slate-500 mt-1">Nombre slug / interno. Sin espacios ni caracteres especiales.</p>
+      {# 1 · Datos Básicos #}
+      <div class="glass-effect rounded-2xl p-6 card-hover">
+        <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
+          <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 inline-flex items-center justify-center text-sm">
+            <i class="fa fa-info-circle"></i>
+          </span>
+          1 · Datos básicos del plan
+        </h2>
+        <p class="text-xs text-slate-500 mb-5 ml-10">Nombre público, código interno y descripción que verán los clientes en la selección de planes.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.nombre.label }} *</label>
+            {% render_field form.nombre class="input-base" placeholder="Ej: PLAN_PROFESIONAL_2026" %}
+            <p class="text-[11px] text-slate-500 mt-1">Nombre slug / interno del plan.</p>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.nombre_mostrar.label }}</label>
+            {% render_field form.nombre_mostrar class="input-base" placeholder="Ej: Plan Profesional ClienBeat" %}
+            <p class="text-[11px] text-slate-500 mt-1">Nombre comercial visible para clientes.</p>
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.descripcion.label }}</label>
+            {% render_field form.descripcion class="input-base" placeholder="Breve descripción del plan (1-2 líneas)." %}
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 flex items-center justify-between">
+              <span>{{ form.caracteristicas.label }}</span>
+              <span class="text-[10px] text-slate-400 font-normal">Lista · 1 línea por característica (se actualiza en vivo a la derecha)</span>
+            </label>
+            {% render_field form.caracteristicas class="input-base font-mono text-xs" rows="5" placeholder="Métricas NPS y CSAT en tiempo real&#10;Encuestas ilimitadas vía código QR&#10;Análisis de reseñas públicas en Google&#10;Alertas instantáneas por WhatsApp y Email" %}
+          </div>
         </div>
-        <div>
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.nombre_mostrar.label }}</label>
-          {% render_field form.nombre_mostrar class="input-base" placeholder="Ej: Plan Profesional ClienBeat" %}
-          <p class="text-[11px] text-slate-500 mt-1">Si queda vacío se usa el nombre interno.</p>
+      </div>
+
+      {# 2 · Precio y Duración #}
+      <div class="glass-effect rounded-2xl p-6 card-hover">
+        <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
+          <span class="w-8 h-8 rounded-lg bg-green-100 text-green-600 inline-flex items-center justify-center text-sm">
+            <i class="fa fa-coins"></i>
+          </span>
+          2 · Precio y duración
+        </h2>
+        <p class="text-xs text-slate-500 mb-5 ml-10">Precios (CLP y/o UF) y días de prueba gratis del ciclo.</p>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.precio_clp.label }}</label>
+            {% render_field form.precio_clp class="input-base text-lg font-bold" type="number" min="0" %}
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.precio_uf.label }}</label>
+            {% render_field form.precio_uf class="input-base text-lg font-bold" type="number" min="0" step="0.01" %}
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.moneda.label }}</label>
+            {% render_field form.moneda class="input-base" %}
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.dias_prueba_gratis.label }} (días) *</label>
+            {% render_field form.dias_prueba_gratis class="input-base" type="number" min="1" %}
+            <p class="text-[11px] text-slate-500 mt-1">Planes pagos = 30 días; Lanzamiento MVP = 365 días.</p>
+          </div>
         </div>
-        <div class="md:col-span-2">
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.descripcion.label }}</label>
-          {% render_field form.descripcion class="input-base" placeholder="Breve descripción del plan (1-2 líneas)." %}
+      </div>
+
+      {# 3 · Límites de Locales y Usuarios #}
+      <div class="glass-effect rounded-2xl p-6 card-hover">
+        <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
+          <span class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 inline-flex items-center justify-center text-sm">
+            <i class="fa fa-store"></i>
+          </span>
+          3 · Límites de locales y usuarios
+        </h2>
+        <p class="text-xs text-slate-500 mb-5 ml-10">Cantidades incluidas en el precio base y costo por local extra.</p>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.usuarios_permitidos.label }}</label>
+            {% render_field form.usuarios_permitidos class="input-base" type="number" min="0" %}
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.locales_permitidos.label }}</label>
+            {% render_field form.locales_permitidos class="input-base" type="number" min="0" %}
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.locales_gratis_incluidos.label }}</label>
+            {% render_field form.locales_gratis_incluidos class="input-base" type="number" min="0" %}
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.costo_local_adicional_clp.label }} (CLP)</label>
+            {% render_field form.costo_local_adicional_clp class="input-base" type="number" min="0" %}
+          </div>
         </div>
-        <div class="md:col-span-2">
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 flex items-center justify-between">
-            <span>{{ form.caracteristicas.label }}</span>
-            <span class="text-[10px] text-slate-400 font-normal">Lista · 1 línea por característica · aparecerá como bullet points</span>
+      </div>
+
+      {# 4 · Rubros Online / E-commerce #}
+      <div class="glass-effect rounded-2xl p-6 card-hover">
+        <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
+          <span class="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 inline-flex items-center justify-center text-sm">
+            <i class="fa fa-layer-group"></i>
+          </span>
+          4 · Rubros online / e-commerce
+        </h2>
+        <p class="text-xs text-slate-500 mb-5 ml-10">Cálculo escalonado para comercios digitales o múltiples rubros.</p>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.rubros_permitidos.label }}</label>
+            {% render_field form.rubros_permitidos class="input-base" type="number" min="0" %}
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.rubros_gratis_incluidos.label }}</label>
+            {% render_field form.rubros_gratis_incluidos class="input-base" type="number" min="0" %}
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.costo_rubro_adicional_clp.label }} (CLP)</label>
+            {% render_field form.costo_rubro_adicional_clp class="input-base" type="number" min="0" %}
+          </div>
+          <div class="col-span-2">
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.rubros.label }}</label>
+            {% render_field form.rubros class="input-base h-28 !p-2 text-xs" %}
+          </div>
+        </div>
+      </div>
+
+      {# 5 · Feature flags #}
+      <div class="glass-effect rounded-2xl p-6 card-hover">
+        <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
+          <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 inline-flex items-center justify-center text-sm">
+            <i class="fa fa-rocket"></i>
+          </span>
+          5 · Funcionalidades del plan (Feature Flags)
+        </h2>
+        <p class="text-xs text-slate-500 mb-5 ml-10">Habilita módulos avanzados como Benchmarking o Encuestas personalizadas.</p>
+
+        <div class="space-y-3">
+          <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition cursor-pointer">
+            <span class="mt-1">{% render_field form.tiene_benchmarking_rubro class="w-4 h-4 accent-indigo-600" %}</span>
+            <span>
+              <span class="font-semibold text-sm text-slate-800 block">{{ form.tiene_benchmarking_rubro.label }}</span>
+              <span class="text-[11px] text-slate-500 block">Comparativas anónimas con negocios del mismo rubro.</span>
+            </span>
           </label>
-          {% render_field form.caracteristicas class="input-base font-mono text-xs" %}
+          <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition cursor-pointer">
+            <span class="mt-1">{% render_field form.tiene_encuestas_custom class="w-4 h-4 accent-indigo-600" %}</span>
+            <span>
+              <span class="font-semibold text-sm text-slate-800 block">{{ form.tiene_encuestas_custom.label }}</span>
+              <span class="text-[11px] text-slate-500 block">Permite al dueño agregar preguntas propias a la encuesta QR.</span>
+            </span>
+          </label>
+          <div class="p-3 rounded-xl border border-slate-200 bg-slate-50/40">
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.max_preguntas_encuesta_custom.label }}</label>
+            {% render_field form.max_preguntas_encuesta_custom class="input-base" type="number" min="0" max="50" %}
+          </div>
+          <label class="flex items-start gap-3 p-3 rounded-xl border border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 transition cursor-pointer">
+            <span class="mt-1">{% render_field form.es_lanzamiento_gratis class="w-4 h-4 accent-emerald-600" %}</span>
+            <span>
+              <span class="font-semibold text-sm text-emerald-800 block">{{ form.es_lanzamiento_gratis.label }}</span>
+              <span class="text-[11px] text-emerald-700 block">Plan de lanzamiento gratis MVP.</span>
+            </span>
+          </label>
         </div>
       </div>
-    </div>
 
-    <div class="glass-effect rounded-2xl p-6 card-hover">
-      <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
-        <span class="w-8 h-8 rounded-lg bg-green-100 text-green-600 inline-flex items-center justify-center text-sm">
-          <i class="fa fa-coins"></i>
-        </span>
-        2 · Precio y duración
-      </h2>
-      <p class="text-xs text-slate-500 mb-5">Precios (CLP y/o UF) y días de prueba gratis del ciclo (30 = mensual; 365 = lanzamiento).</p>
+      {# 6 · Estado y Comportamiento #}
+      <div class="glass-effect rounded-2xl p-6 card-hover">
+        <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
+          <span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 inline-flex items-center justify-center text-sm">
+            <i class="fa fa-sliders"></i>
+          </span>
+          6 · Estado y configuración general
+        </h2>
+        <p class="text-xs text-slate-500 mb-5 ml-10">Reglas de visualización en la plataforma y onboarding.</p>
 
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.precio_clp.label }}</label>
-          {% render_field form.precio_clp class="input-base text-lg font-bold" type="number" min="0" %}
-        </div>
-        <div>
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.precio_uf.label }}</label>
-          {% render_field form.precio_uf class="input-base text-lg font-bold" type="number" min="0" step="0.01" %}
-        </div>
-        <div>
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.moneda.label }}</label>
-          {% render_field form.moneda class="input-base" %}
-        </div>
-        <div>
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.dias_prueba_gratis.label }} (días) *</label>
-          {% render_field form.dias_prueba_gratis class="input-base" type="number" min="1" %}
-          <p class="text-[11px] text-slate-500 mt-1"><i class="fa fa-lightbulb text-amber-500 mr-1"></i>Plan MVP = 365 días (gratis lanzamiento); planes pagos = 30 días (mensual).</p>
+        <div class="space-y-3">
+          <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition cursor-pointer">
+            <span class="mt-1">{% render_field form.activo class="w-4 h-4 accent-green-600" %}</span>
+            <span>
+              <span class="font-semibold text-sm text-slate-800 block">{{ form.activo.label }}</span>
+              <span class="text-[11px] text-slate-500 block">Activo = aparece disponible en la selección de planes.</span>
+            </span>
+          </label>
+          <label class="flex items-start gap-3 p-3 rounded-xl border border-purple-200 bg-purple-50/40 hover:bg-purple-50 transition cursor-pointer">
+            <span class="mt-1">{% render_field form.es_plan_default class="w-4 h-4 accent-purple-600" %}</span>
+            <span>
+              <span class="font-semibold text-sm text-purple-800 block">{{ form.es_plan_default.label }}</span>
+              <span class="text-[11px] text-purple-700 block">Plan sugerido por defecto (Destacado como "🔥 El Más Popular").</span>
+            </span>
+          </label>
+          <div class="p-3 rounded-xl border border-slate-200">
+            <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.orden.label }}</label>
+            {% render_field form.orden class="input-base" type="number" min="0" step="10" %}
+          </div>
         </div>
       </div>
+
     </div>
 
-    <div class="glass-effect rounded-2xl p-6 card-hover">
-      <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
-        <span class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 inline-flex items-center justify-center text-sm">
-          <i class="fa fa-user-friends"></i>
-        </span>
-        3 · Límites de usuarios y locales
-      </h2>
-      <p class="text-xs text-slate-500 mb-5">Cantidades incluidas en el precio base (0 = ilimitado).</p>
+    {# ========================================== #}
+    {# COLUMNA DERECHA: VISTA PREVIA EN TIEMPO REAL #}
+    {# ========================================== #}
+    <div class="xl:col-span-5 2xl:col-span-4 sticky top-6 space-y-4">
+      <div class="glass-effect rounded-2xl p-5 border border-slate-200 shadow-sm">
+        
+        {# Header de la Vista Previa #}
+        <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-lg bg-cbblue/10 text-cbblue flex items-center justify-center font-bold text-sm">
+              <i class="fa fa-eye"></i>
+            </span>
+            <div>
+              <h3 class="text-xs font-bold text-slate-800">Vista Previa en Vivo</h3>
+              <p class="text-[10px] text-slate-400">Cómo lo verá el cliente al seleccionar</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg text-[10px] font-bold">
+            <button type="button" id="previewBtnNormal" class="px-2 py-1 rounded bg-white shadow-2xs text-slate-800 transition-all">Normal</button>
+            <button type="button" id="previewBtnSelected" class="px-2 py-1 rounded text-slate-500 hover:text-slate-800 transition-all">Seleccionado</button>
+          </div>
+        </div>
 
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.usuarios_permitidos.label }}</label>
-          {% render_field form.usuarios_permitidos class="input-base" type="number" min="0" %}
-          <p class="text-[11px] text-slate-500 mt-1">Básico=2 · Emp=5 · Prof=10</p>
-        </div>
-        <div>
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.locales_permitidos.label }}</label>
-          {% render_field form.locales_permitidos class="input-base" type="number" min="0" %}
-          <p class="text-[11px] text-slate-500 mt-1">MVP = 1 local</p>
-        </div>
-        <div>
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.locales_gratis_incluidos.label }}</label>
-          {% render_field form.locales_gratis_incluidos class="input-base" type="number" min="0" %}
-        </div>
-        <div>
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.costo_local_adicional_clp.label }} (CLP)</label>
-          {% render_field form.costo_local_adicional_clp class="input-base" type="number" min="0" %}
-          <p class="text-[11px] text-slate-500 mt-1">B30k · E25k · P20k</p>
-        </div>
-      </div>
-    </div>
+        {# Tarjeta de Simulación Visual de Selección #}
+        <div id="previewCard"
+             class="rounded-3xl border transition-all duration-300 flex flex-col justify-between p-6 relative bg-white border-slate-200 shadow-md">
+          
+          {# Badge El Más Popular #}
+          <div id="previewBadgePopular"
+               class="hidden absolute -top-3.5 left-1/2 -translate-x-1/2 px-3.5 py-0.5 rounded-full bg-gradient-to-r from-cbblue to-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider shadow">
+            🔥 El Más Popular
+          </div>
 
-    <div class="glass-effect rounded-2xl p-6 card-hover">
-      <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
-        <span class="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 inline-flex items-center justify-center text-sm">
-          <i class="fa fa-list-ul"></i>
-        </span>
-        4 · Rubros online / e-commerce
-      </h2>
-      <p class="text-xs text-slate-500 mb-5">Mismo cálculo escalonado que locales, pero para rubros digitales (ventas web, SaaS, etc.).</p>
+          <div>
+            {# Encabezado y Badges #}
+            <div class="flex items-center justify-between mb-3">
+              <span id="previewTagSlug" class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-cbblue/10 text-cbblue">
+                PLAN
+              </span>
+              <span id="previewTagActivo" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                Activo
+              </span>
+            </div>
 
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.rubros_permitidos.label }}</label>
-          {% render_field form.rubros_permitidos class="input-base" type="number" min="0" %}
-        </div>
-        <div>
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.rubros_gratis_incluidos.label }}</label>
-          {% render_field form.rubros_gratis_incluidos class="input-base" type="number" min="0" %}
-        </div>
-        <div>
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.costo_rubro_adicional_clp.label }} (CLP)</label>
-          {% render_field form.costo_rubro_adicional_clp class="input-base" type="number" min="0" %}
-        </div>
-        <div class="col-span-2">
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.rubros.label }}</label>
-          {% render_field form.rubros class="input-base h-32 !p-2 text-xs" %}
-          <p class="text-[11px] text-slate-500 mt-1">Opcional. Selecciona qué rubros aplican para este plan (ninguno = todos permitidos). Mantén Ctrl/Cmd para multiselección.</p>
-        </div>
-      </div>
-    </div>
+            <h3 id="previewTitle" class="text-xl font-bold text-slate-900 mb-1">Nombre del Plan</h3>
+            <p id="previewDesc" class="text-xs text-slate-500 mb-4 min-h-[32px] line-clamp-2">Ideal para potenciar la reputación y medir satisfacción de clientes.</p>
 
-    <div class="glass-effect rounded-2xl p-6 card-hover">
-      <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
-        <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 inline-flex items-center justify-center text-sm">
-          <i class="fa fa-rocket"></i>
-        </span>
-        5 · Feature flags del plan
-      </h2>
-      <p class="text-xs text-slate-500 mb-5">
-        Niveles funcionales según Descripción App:
-        <strong>Básico (solo datos propios) · Empresarial (+ Benchmarking) · Profesional (+ Encuestas custom).</strong>
-      </p>
+            {# Precio #}
+            <div class="mb-5 pb-5 border-b border-slate-100">
+              <div class="flex items-baseline gap-1">
+                <span id="previewPrice" class="text-3xl font-extrabold text-slate-900">$0</span>
+                <span class="text-slate-500 text-xs font-bold">/ mes + IVA</span>
+              </div>
+              <div id="previewLocalesText" class="text-[11px] font-semibold text-slate-500 mt-1.5 flex items-center gap-1.5">
+                <i class="fa fa-check-circle text-emerald-500"></i> Incluye 1 local físico
+              </div>
+            </div>
 
-      <div class="space-y-3">
-        <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition cursor-pointer">
-          <span class="mt-1">{% render_field form.tiene_benchmarking_rubro class="w-4 h-4 accent-indigo-600" %}</span>
-          <span>
-            <span class="font-semibold text-sm text-slate-800 block">{{ form.tiene_benchmarking_rubro.label }}</span>
-            <span class="text-[11px] text-slate-500 block">Comparativas anónimas con negocios del mismo rubro. Planes Básico = NO, Emp/Prof = SI.</span>
-          </span>
-        </label>
-        <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition cursor-pointer">
-          <span class="mt-1">{% render_field form.tiene_encuestas_custom class="w-4 h-4 accent-indigo-600" %}</span>
-          <span>
-            <span class="font-semibold text-sm text-slate-800 block">{{ form.tiene_encuestas_custom.label }}</span>
-            <span class="text-[11px] text-slate-500 block">Permite al dueño agregar preguntas propias a la encuesta QR. Solo Plan Profesional = SI (máx 5).</span>
-          </span>
-        </label>
-        <div class="p-3 rounded-xl border border-slate-200 bg-slate-50/40">
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.max_preguntas_encuesta_custom.label }}</label>
-          {% render_field form.max_preguntas_encuesta_custom class="input-base" type="number" min="0" max="50" %}
-          <p class="text-[11px] text-slate-500 mt-1">Recomendado: Plan Profesional = 5 preguntas extra como máximo.</p>
+            {# Características (Bullets) #}
+            <div class="space-y-2 mb-6">
+              <div class="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Incluye:</div>
+              <div id="previewFeaturesList" class="space-y-2 text-xs text-slate-600">
+                {# Dinámico #}
+              </div>
+
+              {# Badges de Feature Flags activadas #}
+              <div id="previewFeatureFlags" class="flex flex-wrap gap-1.5 pt-3">
+                {# Chips dinámicos #}
+              </div>
+            </div>
+          </div>
+
+          {# Botón de Selección #}
+          <div class="pt-3">
+            <button type="button" id="previewActionBtn"
+                    class="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-xs transition-all bg-slate-900 hover:bg-slate-800 text-white shadow-md">
+              <i class="fa fa-credit-card"></i>
+              <span id="previewActionText">Contratar Plan Ahora</span>
+            </button>
+          </div>
         </div>
-        <label class="flex items-start gap-3 p-3 rounded-xl border border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 transition cursor-pointer">
-          <span class="mt-1">{% render_field form.es_lanzamiento_gratis class="w-4 h-4 accent-emerald-600" %}</span>
-          <span>
-            <span class="font-semibold text-sm text-emerald-800 block">{{ form.es_lanzamiento_gratis.label }}</span>
-            <span class="text-[11px] text-emerald-700 block">Plan MVP exclusivo. No aparece públicamente en la página de precios. 365 días gratis.</span>
-          </span>
-        </label>
-      </div>
-    </div>
 
-    <div class="glass-effect rounded-2xl p-6 card-hover">
-      <h2 class="text-lg font-extrabold gradient-text mb-1 flex items-center gap-2">
-        <span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 inline-flex items-center justify-center text-sm">
-          <i class="fa fa-cog"></i>
-        </span>
-        6 · Estado y configuración general
-      </h2>
-      <p class="text-xs text-slate-500 mb-5">Reglas de visualización del plan en el sistema (onboarding, renovaciones).</p>
-
-      <div class="space-y-3">
-        <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition cursor-pointer">
-          <span class="mt-1">{% render_field form.activo class="w-4 h-4 accent-green-600" %}</span>
-          <span>
-            <span class="font-semibold text-sm text-slate-800 block">{{ form.activo.label }}</span>
-            <span class="text-[11px] text-slate-500 block">Inactivo = no se puede asignar ni aparece. Úsalo para descontinuar planes (NO BORRES).</span>
-          </span>
-        </label>
-        <label class="flex items-start gap-3 p-3 rounded-xl border border-purple-200 bg-purple-50/40 hover:bg-purple-50 transition cursor-pointer">
-          <span class="mt-1">{% render_field form.es_plan_default class="w-4 h-4 accent-purple-600" %}</span>
-          <span>
-            <span class="font-semibold text-sm text-purple-800 block">{{ form.es_plan_default.label }}</span>
-            <span class="text-[11px] text-purple-700 block">Se asigna automáticamente al terminar onboarding. Marca SOLO 1 (se desmarcan los demás).</span>
-          </span>
-        </label>
-        <div class="p-3 rounded-xl border border-slate-200">
-          <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.orden.label }} (visualización)</label>
-          {% render_field form.orden class="input-base" type="number" min="0" step="10" %}
-          <p class="text-[11px] text-slate-500 mt-1">Recomendado: 10 · 20 · 30 (Básico, Empresarial, Profesional). MVP = 1.</p>
+        {# Nota explicativa #}
+        <div class="mt-4 p-3 rounded-xl bg-blue-50/60 border border-blue-100 text-[11px] text-slate-600 flex items-start gap-2">
+          <i class="fa fa-magic text-cbblue mt-0.5 shrink-0"></i>
+          <div>
+            <strong>Vista previa reactiva:</strong> A medida que modifiques precios, características, flags o marques el plan como default, verás los cambios reflejados de inmediato aquí arriba.
+          </div>
         </div>
+
       </div>
     </div>
 
   </div>
 
+  {# Barra fija inferior con botón guardar #}
   <div class="sticky bottom-4 z-30 glass-effect rounded-2xl p-4 border border-slate-200 shadow-xl flex items-center justify-between gap-3 flex-wrap">
     <div class="text-xs text-slate-500">
       <i class="fa fa-shield-alt text-indigo-600 mr-1"></i>
-      <strong class="text-slate-700">Regla:</strong> Si marcas default, el plan anterior deja de serlo automáticamente. No puedes desactivar un plan default.
+      <strong class="text-slate-700">Regla:</strong> Si marcas default, el plan anterior deja de serlo automáticamente.
     </div>
     <div class="flex items-center gap-2">
       <a href="{% url 'adminpanel:planes' %}"
@@ -267,5 +365,180 @@
     </div>
   </div>
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const inputNombre = document.getElementById('id_nombre');
+  const inputNombreMostrar = document.getElementById('id_nombre_mostrar');
+  const inputDesc = document.getElementById('id_descripcion');
+  const inputCaracteristicas = document.getElementById('id_caracteristicas');
+  const inputPrecioClp = document.getElementById('id_precio_clp');
+  const inputPrecioUf = document.getElementById('id_precio_uf');
+  const inputLocalesGratis = document.getElementById('id_locales_gratis_incluidos');
+  const inputLocalesPermitidos = document.getElementById('id_locales_permitidos');
+  const inputCostoLocalExtra = document.getElementById('id_costo_local_adicional_clp');
+  const checkDefault = document.getElementById('id_es_plan_default');
+  const checkActivo = document.getElementById('id_activo');
+  const checkBm = document.getElementById('id_tiene_benchmarking_rubro');
+  const checkCustom = document.getElementById('id_tiene_encuestas_custom');
+
+  // Preview elements
+  const previewCard = document.getElementById('previewCard');
+  const previewBadgePopular = document.getElementById('previewBadgePopular');
+  const previewTagSlug = document.getElementById('previewTagSlug');
+  const previewTagActivo = document.getElementById('previewTagActivo');
+  const previewTitle = document.getElementById('previewTitle');
+  const previewDesc = document.getElementById('previewDesc');
+  const previewPrice = document.getElementById('previewPrice');
+  const previewLocalesText = document.getElementById('previewLocalesText');
+  const previewFeaturesList = document.getElementById('previewFeaturesList');
+  const previewFeatureFlags = document.getElementById('previewFeatureFlags');
+  const previewActionBtn = document.getElementById('previewActionBtn');
+  const previewActionText = document.getElementById('previewActionText');
+
+  let simulatedSelected = false;
+
+  function formatCLP(val) {
+    if (!val || isNaN(val)) return '$0';
+    return '$' + Number(val).toLocaleString('es-CL');
+  }
+
+  function updatePreview() {
+    const slug = inputNombre ? inputNombre.value.trim() : '';
+    const mostrar = inputNombreMostrar ? inputNombreMostrar.value.trim() : '';
+    const title = mostrar || slug || 'Nuevo Plan';
+    previewTitle.textContent = title;
+    previewTagSlug.textContent = slug || 'PLAN';
+
+    const desc = inputDesc ? inputDesc.value.trim() : '';
+    previewDesc.textContent = desc || 'Ideal para potenciar la reputación y medir satisfacción de clientes.';
+
+    // Precios
+    const clp = inputPrecioClp ? parseFloat(inputPrecioClp.value) : 0;
+    const uf = inputPrecioUf ? parseFloat(inputPrecioUf.value) : 0;
+    if (clp > 0) {
+      previewPrice.textContent = formatCLP(clp);
+    } else if (uf > 0) {
+      previewPrice.textContent = uf + ' UF';
+    } else {
+      previewPrice.textContent = 'Gratis';
+    }
+
+    // Locales
+    const costoExtra = inputCostoLocalExtra ? parseInt(inputCostoLocalExtra.value || 0) : 0;
+    const gratis = inputLocalesGratis ? parseInt(inputLocalesGratis.value || 1) : 1;
+    const permitidos = inputLocalesPermitidos ? parseInt(inputLocalesPermitidos.value || 1) : 1;
+
+    if (costoExtra > 0) {
+      previewLocalesText.innerHTML = `<i class="fa fa-plus-circle text-cbblue"></i> Incluye ${gratis} local${gratis > 1 ? 'es' : ''} (${formatCLP(costoExtra)}/mes por local extra + IVA)`;
+    } else {
+      previewLocalesText.innerHTML = `<i class="fa fa-check-circle text-emerald-500"></i> Incluye ${permitidos} local${permitidos > 1 ? 'es' : ''} físico${permitidos > 1 ? 's' : ''}`;
+    }
+
+    // Estado Activo
+    const isActivo = checkActivo ? checkActivo.checked : true;
+    if (isActivo) {
+      previewTagActivo.textContent = 'Activo';
+      previewTagActivo.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800';
+    } else {
+      previewTagActivo.textContent = 'Inactivo';
+      previewTagActivo.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-600';
+    }
+
+    // Estado Default / Más Popular
+    const isDefault = checkDefault ? checkDefault.checked : false;
+    if (isDefault) {
+      previewBadgePopular.classList.remove('hidden');
+    } else {
+      previewBadgePopular.classList.add('hidden');
+    }
+
+    // Estilo tarjeta (Default o Seleccionado)
+    if (simulatedSelected || isDefault) {
+      previewCard.className = 'rounded-3xl border transition-all duration-300 flex flex-col justify-between p-6 relative bg-gradient-to-b from-white to-blue-50/40 border-2 border-cbblue shadow-2xl scale-[1.02] z-10';
+      previewActionBtn.className = 'w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-xs transition-all bg-cbblue hover:bg-blue-700 text-white shadow-lg shadow-cbblue/20';
+      previewActionText.textContent = simulatedSelected ? '✓ Plan Seleccionado' : 'Contratar Plan Ahora';
+    } else {
+      previewCard.className = 'rounded-3xl border transition-all duration-300 flex flex-col justify-between p-6 relative bg-white border-slate-200 shadow-md hover:shadow-lg';
+      previewActionBtn.className = 'w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-xs transition-all bg-slate-900 hover:bg-slate-800 text-white shadow-md';
+      previewActionText.textContent = 'Contratar Plan Ahora';
+    }
+
+    // Features list (Bullets)
+    const rawFeatures = inputCaracteristicas ? inputCaracteristicas.value.trim() : '';
+    previewFeaturesList.innerHTML = '';
+    if (rawFeatures) {
+      const lines = rawFeatures.split('\n');
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed) {
+          const row = document.createElement('div');
+          row.className = 'flex items-start gap-2.5';
+          row.innerHTML = `<i class="fa fa-check text-emerald-500 mt-0.5 shrink-0 text-xs"></i><span>${trimmed}</span>`;
+          previewFeaturesList.appendChild(row);
+        }
+      });
+    } else {
+      previewFeaturesList.innerHTML = `
+        <div class="flex items-start gap-2.5"><i class="fa fa-check text-emerald-500 mt-0.5 shrink-0 text-xs"></i><span>Métricas NPS y CSAT en tiempo real</span></div>
+        <div class="flex items-start gap-2.5"><i class="fa fa-check text-emerald-500 mt-0.5 shrink-0 text-xs"></i><span>Encuestas ilimitadas vía código QR</span></div>
+        <div class="flex items-start gap-2.5"><i class="fa fa-check text-emerald-500 mt-0.5 shrink-0 text-xs"></i><span>Análisis de reseñas de Google Maps</span></div>
+      `;
+    }
+
+    // Feature Flags Chips
+    previewFeatureFlags.innerHTML = '';
+    if (checkBm && checkBm.checked) {
+      const chip = document.createElement('span');
+      chip.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200';
+      chip.innerHTML = '<i class="fa fa-chart-line text-[9px]"></i> Benchmarking Activo';
+      previewFeatureFlags.appendChild(chip);
+    }
+    if (checkCustom && checkCustom.checked) {
+      const chip = document.createElement('span');
+      chip.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200';
+      chip.innerHTML = '<i class="fa fa-sliders text-[9px]"></i> Encuestas Custom';
+      previewFeatureFlags.appendChild(chip);
+    }
+  }
+
+  // Bind input listeners
+  const inputsToListen = [
+    inputNombre, inputNombreMostrar, inputDesc, inputCaracteristicas,
+    inputPrecioClp, inputPrecioUf, inputLocalesGratis, inputLocalesPermitidos,
+    inputCostoLocalExtra, checkDefault, checkActivo, checkBm, checkCustom
+  ];
+
+  inputsToListen.forEach(input => {
+    if (input) {
+      input.addEventListener('input', updatePreview);
+      input.addEventListener('change', updatePreview);
+    }
+  });
+
+  // Mode Switchers
+  const btnNormal = document.getElementById('previewBtnNormal');
+  const btnSelected = document.getElementById('previewBtnSelected');
+
+  if (btnNormal && btnSelected) {
+    btnNormal.addEventListener('click', function() {
+      simulatedSelected = false;
+      btnNormal.className = 'px-2 py-1 rounded bg-white shadow-2xs text-slate-800 transition-all';
+      btnSelected.className = 'px-2 py-1 rounded text-slate-500 hover:text-slate-800 transition-all';
+      updatePreview();
+    });
+
+    btnSelected.addEventListener('click', function() {
+      simulatedSelected = true;
+      btnSelected.className = 'px-2 py-1 rounded bg-white shadow-2xs text-slate-800 transition-all';
+      btnNormal.className = 'px-2 py-1 rounded text-slate-500 hover:text-slate-800 transition-all';
+      updatePreview();
+    });
+  }
+
+  // Initial update
+  updatePreview();
+});
+</script>
 
 {% endblock %}

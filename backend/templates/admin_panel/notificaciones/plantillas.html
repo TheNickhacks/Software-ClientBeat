@@ -1,0 +1,275 @@
+{% extends 'admin_panel/base.html' %}
+{% load humanize %}
+{% block admin_subtitle %}6.2 Plantillas de notificaciones automáticas agrupadas por temáticas, activación/desactivación y edición{% endblock %}
+
+{% block admin_content %}
+{# Pestañas superiores para conmutar entre Emitir y Plantillas #}
+<div class="flex items-center gap-2 mb-6">
+  <a href="{% url 'adminpanel:notificaciones_emitir' %}"
+     class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-cbblue">
+    <i class="fa fa-paper-plane text-xs text-cbblue"></i> 6.1 Emitir Notificaciones
+  </a>
+  <a href="{% url 'adminpanel:plantillas_notificaciones' %}"
+     class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-gradient-to-r from-cbblue to-cbblue-600 text-white shadow-md shadow-cbblue/20">
+    <i class="fa fa-toggle-on text-xs"></i> 6.2 Plantillas y Activación (Por Temáticas)
+  </a>
+</div>
+
+{# RESUMEN GLOBAL DE ACTIVACIÓN #}
+<div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+    <div>
+      <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+        <i class="fa fa-envelope-circle-check text-emerald-600"></i>
+        Gestión de Plantillas y Envíos Automáticos
+      </h2>
+      <p class="text-xs text-slate-500 mt-0.5">
+        Configura los contenidos, edita los mensajes y activa o desactiva las notificaciones automáticas por evento del sistema.
+      </p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="text-right">
+        <div class="text-xs font-bold text-slate-700">Estado Global</div>
+        <div class="text-[11px] text-slate-500">{{ activas_global }} de {{ total_global }} plantillas activas</div>
+      </div>
+      <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center font-extrabold text-sm shadow-2xs">
+        {% widthratio activas_global total_global 100 %}%
+      </div>
+    </div>
+  </div>
+
+  {# PESTAÑAS TEMÁTICAS (Agrupación por Categorías) #}
+  <div class="pt-5">
+    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3">
+      Selecciona una temática para filtrar:
+    </div>
+    
+    <div class="flex flex-wrap gap-2">
+      <button type="button" class="tab-tematica px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border {% if not cat_activa %}bg-slate-900 text-white border-slate-900 shadow-sm{% else %}bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100{% endif %}"
+              data-target="todas">
+        <i class="fa fa-layer-group text-xs"></i>
+        <span>Todas las Temáticas</span>
+        <span class="text-[10px] px-1.5 py-0.2 rounded-full {% if not cat_activa %}bg-white/20 text-white{% else %}bg-slate-200 text-slate-700{% endif %}">
+          {{ total_global }}
+        </span>
+      </button>
+
+      {% for t in tematicas %}
+      <button type="button" class="tab-tematica px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border {% if cat_activa == t.key %}bg-cbblue text-white border-cbblue shadow-sm{% else %}bg-white text-slate-600 border-slate-200 hover:bg-slate-50{% endif %}"
+              data-target="{{ t.key }}">
+        <i class="{{ t.icono }} text-xs"></i>
+        <span>{{ t.label }}</span>
+        <span class="text-[10px] px-1.5 py-0.2 rounded-full {% if cat_activa == t.key %}bg-white/20 text-white{% else %}bg-slate-100 text-slate-700{% endif %}">
+          {{ t.activas }}/{{ t.total }}
+        </span>
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{# SECCIONES POR TEMÁTICA #}
+<div id="contenedorTematicas" class="space-y-8">
+  {% for t in tematicas %}
+  <div class="seccion-tematica bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" data-categoria="{{ t.key }}">
+    
+    {# Cabecera de la Temática con Acciones en Lote #}
+    <div class="p-6 bg-slate-50/70 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-cbblue flex items-center justify-center text-lg font-bold shadow-2xs">
+          <i class="{{ t.icono }}"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="text-base font-extrabold text-slate-900">{{ t.label }}</h3>
+            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full border {{ t.badge }}">
+              {{ t.activas }} de {{ t.total }} Activas
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">Notificaciones y alertas automatizadas vinculadas a esta temática</p>
+        </div>
+      </div>
+
+      {# Botones de Activación/Desactivación en Lote para esta temática #}
+      <div class="flex items-center gap-2">
+        <form method="POST" action="{% url 'adminpanel:plantilla_notif_bulk_toggle' t.key %}" class="inline">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="activar">
+          <button type="submit" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5"
+                  title="Habilita todos los envíos de esta temática">
+            <i class="fa fa-play text-[10px]"></i> Activar Todas
+          </button>
+        </form>
+
+        <form method="POST" action="{% url 'adminpanel:plantilla_notif_bulk_toggle' t.key %}" class="inline"
+              onsubmit="return confirm('¿Seguro que deseas desactivar todos los envíos automáticos de {{ t.label }}?');">
+          {% csrf_token %}
+          <input type="hidden" name="accion" value="desactivar">
+          <button type="submit" class="px-3 py-1.5 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 border border-slate-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5"
+                  title="Pausa todos los envíos de esta temática">
+            <i class="fa fa-pause text-[10px]"></i> Desactivar Todas
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {# Grilla de Plantillas de la Temática #}
+    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+      {% for p in t.plantillas %}
+      <div class="border rounded-2xl p-5 flex flex-col justify-between transition-all bg-white {% if p.activo %}border-slate-200 hover:border-cbblue/40 hover:shadow-md{% else %}border-dashed border-slate-300 bg-slate-50/60 opacity-80{% endif %}">
+        
+        <div>
+          {# Barra Superior de la Plantilla: Estado y Código #}
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+              {{ p.codigo_unico }}
+            </span>
+
+            {# Switch Rápido Activar / Desactivar #}
+            <form method="POST" action="{% url 'adminpanel:plantilla_notif_toggle_activa' p.pk %}" class="inline">
+              {% csrf_token %}
+              <input type="hidden" name="cat" value="{{ t.key }}">
+              <button type="submit"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition
+                             {% if p.activo %}bg-emerald-100 text-emerald-800 hover:bg-emerald-200{% else %}bg-slate-200 text-slate-600 hover:bg-slate-300{% endif %}"
+                      title="Haz clic para {% if p.activo %}desactivar{% else %}activar{% endif %} el envío automático">
+                <span class="w-2 h-2 rounded-full {% if p.activo %}bg-emerald-500 animate-pulse{% else %}bg-slate-400{% endif %}"></span>
+                <span>{% if p.activo %}Envío Activo{% else %}Envío Desactivado{% endif %}</span>
+              </button>
+            </form>
+          </div>
+
+          {# Nombre y Asunto #}
+          <h4 class="text-sm font-bold text-slate-900 mb-1 flex items-center gap-1.5">
+            {{ p.nombre }}
+          </h4>
+          
+          <div class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 mb-3 font-medium">
+            <span class="text-slate-400 font-normal mr-1">Asunto:</span>
+            <span>📧 {{ p.asunto_email|default:"Sin asunto configurado" }}</span>
+          </div>
+
+          {# Variables esperadas #}
+          <div class="mb-4">
+            <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">Variables soportadas:</div>
+            <div class="flex flex-wrap gap-1">
+              {% for var in p.variables_esperadas %}
+                <code class="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] text-slate-600 font-mono">
+                  {% verbatim %}{{{% endverbatim %}{{ var }}{% verbatim %}}}{% endverbatim %}
+                </code>
+              {% empty %}
+                <span class="text-[11px] text-slate-400 italic">Sin variables requeridas</span>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        {# Acciones: Editar y Previsualizar #}
+        <div class="pt-3 border-t border-slate-100 flex items-center gap-2">
+          <a href="{% url 'adminpanel:plantilla_notif_editar' p.pk %}"
+             class="flex-1 text-center py-2 bg-cbblue text-white hover:bg-cbblue/90 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5">
+            <i class="fa fa-pen-to-square"></i> Editar Plantilla
+          </a>
+
+          <button type="button"
+                  class="btn-preview-modal px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1"
+                  data-titulo="{{ p.nombre }}"
+                  data-asunto="{{ p.asunto_email }}"
+                  data-cuerpo="{{ p.cuerpo_html|escape }}">
+            <i class="fa fa-eye"></i> Vista Previa
+          </button>
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+  {% endfor %}
+</div>
+
+{# MODAL DE VISTA PREVIA HTML #}
+<div id="modalPreview" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-down">
+    
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+      <div>
+        <h3 id="modalTitulo" class="text-sm font-bold text-slate-900">Vista Previa Plantilla</h3>
+        <p id="modalAsunto" class="text-xs text-slate-500 font-mono mt-0.5"></p>
+      </div>
+      <button type="button" id="btnCerrarModal" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition flex items-center justify-center">
+        <i class="fa fa-times text-sm"></i>
+      </button>
+    </div>
+
+    <div class="p-6 overflow-y-auto flex-1 bg-slate-50/40">
+      <div class="border border-slate-200 rounded-xl bg-white shadow-xs p-6" id="modalCuerpo">
+        {# Inyectado por JS #}
+      </div>
+    </div>
+
+    <div class="p-4 border-t border-slate-100 flex justify-end bg-white">
+      <button type="button" id="btnCerrarModalFooter" class="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+        Cerrar
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Pestañas temáticas filtro
+  const tabs = document.querySelectorAll('.tab-tematica');
+  const secciones = document.querySelectorAll('.seccion-tematica');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', function() {
+      const target = tab.dataset.target;
+      
+      tabs.forEach(t => {
+        t.className = 'tab-tematica px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border bg-white text-slate-600 border-slate-200 hover:bg-slate-50';
+      });
+      tab.className = 'tab-tematica px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border bg-cbblue text-white border-cbblue shadow-sm';
+
+      secciones.forEach(sec => {
+        if (target === 'todas' || sec.dataset.categoria === target) {
+          sec.classList.remove('hidden');
+        } else {
+          sec.classList.add('hidden');
+        }
+      });
+    });
+  });
+
+  // Modal Vista Previa
+  const modal = document.getElementById('modalPreview');
+  const modalTitulo = document.getElementById('modalTitulo');
+  const modalAsunto = document.getElementById('modalAsunto');
+  const modalCuerpo = document.getElementById('modalCuerpo');
+  const btnCerrar = document.getElementById('btnCerrarModal');
+  const btnCerrarFooter = document.getElementById('btnCerrarModalFooter');
+
+  document.querySelectorAll('.btn-preview-modal').forEach(btn => {
+    btn.addEventListener('click', function() {
+      modalTitulo.textContent = btn.dataset.titulo;
+      modalAsunto.textContent = '📧 ' + btn.dataset.asunto;
+      modalCuerpo.innerHTML = btn.dataset.cuerpo || '<p class="text-slate-400 italic">Sin contenido HTML</p>';
+      modal.classList.remove('hidden');
+    });
+  });
+
+  function cerrarModal() {
+    modal.classList.add('hidden');
+  }
+
+  if (btnCerrar) btnCerrar.addEventListener('click', cerrarModal);
+  if (btnCerrarFooter) btnCerrarFooter.addEventListener('click', cerrarModal);
+  if (modal) {
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) cerrarModal();
+    });
+  }
+});
+</script>
+{% endblock %}

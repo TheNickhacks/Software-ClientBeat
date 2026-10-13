@@ -1,0 +1,134 @@
+{% extends 'admin_panel/base.html' %}
+{% block admin_subtitle %}3.4 Configuración de parámetros y criterios metodológicos del Indicador NPS{% endblock %}
+
+{% block admin_content %}
+{# Pestañas para alternar entre Indicador CSAT e Indicador NPS #}
+<div class="flex items-center gap-2 mb-6">
+  <a href="{% url 'adminpanel:metricas_csat' %}"
+     class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-cbblue">
+    <i class="fa fa-face-smile text-xs text-sky-500"></i> 3.3 Indicador CSAT
+  </a>
+  <a href="{% url 'adminpanel:metricas_nps' %}"
+     class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-gradient-to-r from-cbblue to-cbblue-600 text-white shadow-md shadow-cbblue/20">
+    <i class="fa fa-heart text-xs"></i> 3.4 Indicador NPS
+  </a>
+</div>
+
+{% include 'admin_panel/partials/filtros_metricas.html' with filtro_temporal=config.nps_filtro_temporal_default filtro_geografico=config.nps_filtro_geografico_default %}
+
+<form method="POST" action="">
+  {% csrf_token %}
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
+    <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-lg font-bold">
+          <i class="fa fa-heart"></i>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Criterios Metodológicos del Indicador NPS</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Net Promoter Score: Reglas de cálculo del balance neto de promotores contra detractores y muestra mínima requerida</p>
+        </div>
+      </div>
+      <button type="submit" class="px-5 py-2.5 bg-cbblue text-white rounded-xl text-xs font-bold hover:bg-cbblue/90 transition-all shadow-sm flex items-center gap-2">
+        <i class="fa fa-save"></i> Guardar Criterios NPS
+      </button>
+    </div>
+
+    {# Criterio Metodológico Textual #}
+    <div class="mb-6">
+      <label for="nps_criterio_metodologico" class="block text-xs font-bold text-slate-700 mb-1">
+        Criterio Metodológico y Fórmula de Cálculo (NPS)
+      </label>
+      <textarea id="nps_criterio_metodologico" name="nps_criterio_metodologico" rows="3"
+                class="w-full p-3 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" required>{{ config.nps_criterio_metodologico }}</textarea>
+      <p class="text-[11px] text-slate-400 mt-1">Fórmula estándar: % Promotores (9-10) menos % Detractores (0-6). Pasivos (7-8) cuentan en la base total.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      {# Mínimo empresas benchmark #}
+      <div>
+        <label for="nps_min_empresas_benchmark" class="block text-xs font-bold text-slate-700 mb-1">
+          Cantidad Mínima de Empresas para Benchmark NPS por Rubro
+        </label>
+        <input type="number" id="nps_min_empresas_benchmark" name="nps_min_empresas_benchmark" value="{{ config.nps_min_empresas_benchmark }}" min="1"
+               class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" required />
+        <p class="text-[11px] text-slate-400 mt-1">Número mínimo de competidores en la zona requeridos para construir la referencia sectorial de NPS.</p>
+      </div>
+
+      {# Mínimo respuestas para calcular #}
+      <div>
+        <label for="nps_min_respuestas" class="block text-xs font-bold text-slate-700 mb-1">
+          Cantidad Mínima de Respuestas Requeridas para Calcular NPS
+        </label>
+        <input type="number" id="nps_min_respuestas" name="nps_min_respuestas" value="{{ config.nps_min_respuestas }}" min="1"
+               class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" required />
+        <p class="text-[11px] text-slate-400 mt-1">Muestra mínima de respuestas recibidas para publicar el índice NPS representativo de un negocio.</p>
+      </div>
+
+      {# Días sin respuestas para excluir #}
+      <div>
+        <label for="nps_dias_sin_respuestas_excluir" class="block text-xs font-bold text-slate-700 mb-1">
+          Rango de Días sin Respuestas para Excluir Empresa del Benchmark NPS
+        </label>
+        <input type="number" id="nps_dias_sin_respuestas_excluir" name="nps_dias_sin_respuestas_excluir" value="{{ config.nps_dias_sin_respuestas_excluir }}" min="1"
+               class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" required />
+        <p class="text-[11px] text-slate-400 mt-1">Si una empresa no suma respuestas de recomendación en N días, se excluye del benchmark NPS.</p>
+      </div>
+
+      {# Criterio desempate #}
+      <div>
+        <label for="nps_criterio_desempate" class="block text-xs font-bold text-slate-700 mb-1">
+          Criterio de Desempate en Ranking NPS
+        </label>
+        <select id="nps_criterio_desempate" name="nps_criterio_desempate"
+                class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">
+          <option value="DECIMAS" {% if config.nps_criterio_desempate == 'DECIMAS' %}selected{% endif %}>Puntuación exacta con decimales</option>
+          <option value="POSITIVAS_PERIODO" {% if config.nps_criterio_desempate == 'POSITIVAS_PERIODO' %}selected{% endif %}>Mayor cantidad de Promotores (calificación 10) en el período</option>
+        </select>
+        <p class="text-[11px] text-slate-400 mt-1">Regla aplicada al ordenar negocios que obtienen un mismo valor de NPS.</p>
+      </div>
+
+      {# Filtro temporal default #}
+      <div>
+        <label for="nps_filtro_temporal_default" class="block text-xs font-bold text-slate-700 mb-1">
+          Filtro Temporal Predeterminado
+        </label>
+        <select id="nps_filtro_temporal_default" name="nps_filtro_temporal_default"
+                class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">
+          <option value="SEMANAL" {% if config.nps_filtro_temporal_default == 'SEMANAL' %}selected{% endif %}>Semanal</option>
+          <option value="MENSUAL" {% if config.nps_filtro_temporal_default == 'MENSUAL' %}selected{% endif %}>Mensual</option>
+          <option value="SEMESTRAL" {% if config.nps_filtro_temporal_default == 'SEMESTRAL' %}selected{% endif %}>Semestral</option>
+          <option value="ANUAL" {% if config.nps_filtro_temporal_default == 'ANUAL' %}selected{% endif %}>Anual</option>
+        </select>
+      </div>
+
+      {# Filtro geográfico default #}
+      <div>
+        <label for="nps_filtro_geografico_default" class="block text-xs font-bold text-slate-700 mb-1">
+          Filtro Geográfico Predeterminado
+        </label>
+        <select id="nps_filtro_geografico_default" name="nps_filtro_geografico_default"
+                class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">
+          <option value="5KM" {% if config.nps_filtro_geografico_default == '5KM' %}selected{% endif %}>Hasta 5 km</option>
+          <option value="COMUNAL" {% if config.nps_filtro_geografico_default == 'COMUNAL' %}selected{% endif %}>Comunal (misma comuna)</option>
+          <option value="REGIONAL" {% if config.nps_filtro_geografico_default == 'REGIONAL' %}selected{% endif %}>Regional (misma región)</option>
+          <option value="NACIONAL" {% if config.nps_filtro_geografico_default == 'NACIONAL' %}selected{% endif %}>Nacional (todo Chile)</option>
+        </select>
+      </div>
+    </div>
+
+    {# Explicación visible en Dashboard de Usuario #}
+    <div class="border-t border-slate-100 pt-6">
+      <div class="flex items-center gap-2 mb-2">
+        <i class="fa fa-info-circle text-cbblue text-sm"></i>
+        <label for="nps_nota_explicativa_usuario" class="text-xs font-bold text-slate-800">
+          Nota Explicativa Visible en el Dashboard del Cliente (Indicador NPS)
+        </label>
+      </div>
+      <p class="text-[11px] text-slate-500 mb-3">Texto aclaratorio para el cliente sobre cómo se interpreta la escala del -100 al +100 del indicador Net Promoter Score.</p>
+      <textarea id="nps_nota_explicativa_usuario" name="nps_nota_explicativa_usuario" rows="3"
+                class="w-full p-3 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue">{{ config.nps_nota_explicativa_usuario }}</textarea>
+    </div>
+  </div>
+</form>
+{% endblock %}

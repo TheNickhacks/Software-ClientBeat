@@ -58,7 +58,11 @@ GOOGLE_CATEGORIES_DEF = [
      ['Food & Drink quality', 'Service'],
      ['Spend per person'], 32),
     ('general_contractor', 'Constructora / Remodelaciones', False, [], [], 33),
+    ('lodging', 'Hotel / Hospedaje / Alojamiento', True,
+     ['Rooms', 'Service', 'Location', 'Cleanliness'],
+     ['Spend per night ranges'], 34),
 ]
+
 
 
 RUBROS_MERGED_DEF = [
@@ -171,7 +175,7 @@ RUBROS_MERGED_DEF = [
     (27, 'Hotel, Hostal y Alojamiento', 'LOCAL_FISICO', '🏨',
      'SERVICIO', 'PRODUCTO',
      'Hoteles, apart-hoteles, hostales, bed & breakfast, moteles, cabañas, hospedaje.',
-     None, [], False),
+     'lodging', [], False),
     (28, 'Constructora, Inmobiliaria y Servicios Técnicos', 'AMBOS', '🏗️',
      'SERVICIO', None,
      'Constructoras, remodelaciones, inmobiliarias, corredores propiedades, arriendo/venta, ingeniería.',
@@ -632,7 +636,7 @@ class Command(BaseCommand):
                 gc_actualizados += 1
 
         self.stdout.write(self.style.SUCCESS(
-            f'   → GoogleCategory: {gc_creados} creados, {gc_actualizados} actualizados, total {GoogleCategory.objects.count()}'
+            f'   -> GoogleCategory: {gc_creados} creados, {gc_actualizados} actualizados, total {GoogleCategory.objects.count()}'
         ))
 
         # ================================================
@@ -678,7 +682,7 @@ class Command(BaseCommand):
             self._update_rubro_m2m(rubro, gcat_ens_m2m, google_en_to_obj)
 
         self.stdout.write(self.style.SUCCESS(
-            f'   → Rubros: {rubros_creados} creados, {rubros_actualizados} actualizados, total {Rubro.objects.count()}'
+            f'   -> Rubros: {rubros_creados} creados, {rubros_actualizados} actualizados, total {Rubro.objects.count()}'
         ))
 
         # ================================================
@@ -689,7 +693,7 @@ class Command(BaseCommand):
         rubro_dim_to_obj = {}
         for rubro_nombre, dims_map in DIMENSIONES_TOP_RUBROS.items():
             if rubro_nombre not in rubro_nombre_to_obj:
-                self.stdout.write(self.style.WARNING(f'   → Omite dimensiones de {rubro_nombre}, rubro no existe en merged list'))
+                self.stdout.write(self.style.WARNING(f'   -> Omite dimensiones de {rubro_nombre}, rubro no existe en merged list'))
                 continue
             rubro = rubro_nombre_to_obj[rubro_nombre]
             for idx, (tipo_key, dim_def) in enumerate(dims_map.items(), start=1):
@@ -720,7 +724,7 @@ class Command(BaseCommand):
                     dim_actualizados += 1
 
         self.stdout.write(self.style.SUCCESS(
-            f'   → Dimensiones: {dim_creados} creadas, {dim_actualizados} actualizadas, total {RubroDimension.objects.count()}'
+            f'   -> Dimensiones: {dim_creados} creadas, {dim_actualizados} actualizadas, total {RubroDimension.objects.count()}'
         ))
 
         # ================================================
@@ -757,7 +761,7 @@ class Command(BaseCommand):
                         attr_actualizados += 1
 
         self.stdout.write(self.style.SUCCESS(
-            f'   → Atributos: {attr_creados} creados, {attr_actualizados} actualizados, total {RubroDimensionAtributo.objects.count()}'
+            f'   -> Atributos: {attr_creados} creados, {attr_actualizados} actualizados, total {RubroDimensionAtributo.objects.count()}'
         ))
 
         # ================================================

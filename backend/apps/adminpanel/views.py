@@ -10,7 +10,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse, HttpResponseBadRequest
 from .mixins import AdminSoporteRequiredMixin, SuperUserRequiredMixin
-from .forms import PlanForm
+from .forms import PlanForm, PlantillaNotificacionForm
 from .models import (
     AuditoriaAdmin,
     AccionAuditoriaChoices,
@@ -110,10 +110,12 @@ def modulos_menu(request):
             'key': 'metricas',
             'icono': 'fa-sliders-h',
             'submodulos': [
-                {'label': '3.1 Criterios de Benchmark', 'url': reverse_lazy('adminpanel:metricas_criterios_benchmark'), 'icono': 'fa-balance-scale', 'key': 'metricas_criterios_benchmark'},
-                {'label': '3.2 CSAT y NPS', 'url': reverse_lazy('adminpanel:metricas_csat_nps'), 'icono': 'fa-smile', 'key': 'metricas_csat_nps'},
-                {'label': '3.3 Reseñas Google', 'url': reverse_lazy('adminpanel:metricas_resenas_google'), 'icono': 'fa-star', 'key': 'metricas_resenas_google'},
-                {'label': '3.4 Plantillas Encuestas', 'url': reverse_lazy('adminpanel:plantillas'), 'icono': 'fa-poll', 'key': 'plantillas'},
+                {'label': '3.1 Benchmark Google', 'url': reverse_lazy('adminpanel:metricas_criterios_benchmark_google'), 'icono': 'fa-brands fa-google', 'key': 'metricas_criterios_benchmark_google'},
+                {'label': '3.2 Benchmark ClientBeat', 'url': reverse_lazy('adminpanel:metricas_criterios_benchmark_clientbeat'), 'icono': 'fa-chart-line', 'key': 'metricas_criterios_benchmark_clientbeat'},
+                {'label': '3.3 Indicador CSAT', 'url': reverse_lazy('adminpanel:metricas_csat'), 'icono': 'fa-face-smile', 'key': 'metricas_csat'},
+                {'label': '3.4 Indicador NPS', 'url': reverse_lazy('adminpanel:metricas_nps'), 'icono': 'fa-heart', 'key': 'metricas_nps'},
+                {'label': '3.5 Reseñas Google', 'url': reverse_lazy('adminpanel:metricas_resenas_google'), 'icono': 'fa-star', 'key': 'metricas_resenas_google'},
+                {'label': '3.6 Plantillas Encuestas', 'url': reverse_lazy('adminpanel:plantillas'), 'icono': 'fa-poll', 'key': 'plantillas'},
             ]
         },
         {
@@ -137,7 +139,8 @@ def modulos_menu(request):
             'key': 'notificaciones',
             'icono': 'fa-bell',
             'submodulos': [
-                {'label': '6.1 Editar y Emitir', 'url': reverse_lazy('adminpanel:notificaciones'), 'icono': 'fa-paper-plane', 'key': 'notificaciones'},
+                {'label': '6.1 Emitir Notificaciones', 'url': reverse_lazy('adminpanel:notificaciones_emitir'), 'icono': 'fa-paper-plane', 'key': 'notificaciones_emitir'},
+                {'label': '6.2 Plantillas y Activación', 'url': reverse_lazy('adminpanel:plantillas_notificaciones'), 'icono': 'fa-toggle-on', 'key': 'plantillas_notificaciones'},
             ]
         },
     ]
@@ -1219,43 +1222,101 @@ class AdminPanelPlantillaDuplicarView(AdminSoporteRequiredMixin, View):
 
 
 # ==============================
-# Plantillas Notificaciones
+# Plantillas Notificaciones (Agrupadas por Temáticas)
 # ==============================
-class AdminPanelPlantillasNotifListView(AdminSoporteRequiredMixin, ListView):
-    template_name = 'admin_panel/plantillas_notif_list.html'
-    context_object_name = 'plantillas'
-
-    def get_queryset(self):
-        from apps.notifications.models import PlantillaNotificacion, CategoriaNotificacionChoices
-        qs = PlantillaNotificacion.objects.all()
-        cat = self.request.GET.get('cat', '').strip()
-        if cat:
-            qs = qs.filter(categoria=cat)
-        self.filtros = {'cat': cat}
-        return qs.order_by('categoria', 'orden', 'nombre')
+class AdminPanelPlantillasNotifListView(AdminSoporteRequiredMixin, TemplateView):
+    """6.2 Plantillas de Notificaciones y Activación/Desactivación agrupadas por temáticas."""
+    template_name = 'admin_panel/notificaciones/plantillas.html'
 
     def get_context_data(self, **kwargs):
-        from apps.notifications.models import CategoriaNotificacionChoices
+        ctx = super().get_context_data(**kwargs)
+        from apps.notifications.models import PlantillaNotificacion, CategoriaNotificacionChoices
+
+        cat_filtro = self.request.GET.get('cat', '').strip()
+        search_query = self.request.GET.get('q', '').strip()
+
+        meta_categorias = {
+            'ONBOARDING': {'icono': 'fa-rocket', 'color': 'indigo', 'badge': 'bg-indigo-50 text-indigo-700 border-indigo-200'},
+            'PLANES': {'icono': 'fa-tags', 'color': 'emerald', 'badge': 'bg-emerald-50 text-emerald-700 border-emerald-200'},
+            'PAGOS': {'icono': 'fa-credit-card', 'color': 'amber', 'badge': 'bg-amber-50 text-amber-700 border-amber-200'},
+            'BENCHMARK': {'icono': 'fa-scale-balanced', 'color': 'blue', 'badge': 'bg-blue-50 text-blue-700 border-blue-200'},
+            'CSAT_NPS': {'icono': 'fa-face-smile', 'color': 'rose', 'badge': 'bg-rose-50 text-rose-700 border-rose-200'},
+            'RESEÑAS_GOOGLE': {'icono': 'fa-brands fa-google', 'color': 'purple', 'badge': 'bg-purple-50 text-purple-700 border-purple-200'},
+        }
+
+        todas_plantillas = PlantillaNotificacion.objects.all().order_by('categoria', 'orden', 'nombre')
+        if search_query:
+            todas_plantillas = todas_plantillas.filter(
+                Q(nombre__icontains=search_query) |
+                Q(asunto_email__icontains=search_query) |
+                Q(codigo_unico__icontains=search_query)
+            )
+
+        total_global = todas_plantillas.count()
+        activas_global = todas_plantillas.filter(activo=True).count()
+
+        tematicas_data = []
+        for cat_key, cat_label in CategoriaNotificacionChoices.choices:
+            plantillas_cat = [p for p in todas_plantillas if p.categoria == cat_key]
+            total_cat = len(plantillas_cat)
+            activas_cat = sum(1 for p in plantillas_cat if p.activo)
+            meta = meta_categorias.get(cat_key, {'icono': 'fa-bell', 'color': 'slate', 'badge': 'bg-slate-50 text-slate-700 border-slate-200'})
+
+            tematicas_data.append({
+                'key': cat_key,
+                'label': cat_label,
+                'icono': meta['icono'],
+                'color': meta['color'],
+                'badge': meta['badge'],
+                'total': total_cat,
+                'activas': activas_cat,
+                'inactivas': total_cat - activas_cat,
+                'plantillas': plantillas_cat,
+            })
+
+        ctx['menu'] = modulos_menu(self.request)
+        ctx['menu_activo'] = 'plantillas_notificaciones'
+        ctx['seccion_titulo'] = '6.2 Plantillas y Activación de Notificaciones'
+        ctx['tematicas'] = tematicas_data
+        ctx['cat_activa'] = cat_filtro
+        ctx['search_query'] = search_query
+        ctx['total_global'] = total_global
+        ctx['activas_global'] = activas_global
+        return ctx
+
+
+class AdminPanelPlantillaNotifUpdateView(AdminSoporteRequiredMixin, UpdateView):
+    """Editar plantilla de notificación con previsualización en vivo."""
+    from apps.notifications.models import PlantillaNotificacion
+    model = PlantillaNotificacion
+    form_class = PlantillaNotificacionForm
+    template_name = 'admin_panel/notificaciones/plantilla_form.html'
+    success_url = reverse_lazy('adminpanel:plantillas_notificaciones')
+
+    def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['menu'] = modulos_menu(self.request)
-        ctx['menu_activo'] = 'Plantillas Notif'
-        ctx['filtros'] = self.filtros
-        ctx['categorias'] = list(CategoriaNotificacionChoices.choices)
-        # Totales por categoría
-        from apps.notifications.models import PlantillaNotificacion
-        tots = {}
-        for ck, cl in CategoriaNotificacionChoices.choices:
-            tots[ck] = {
-                'label': cl,
-                'total': PlantillaNotificacion.objects.filter(categoria=ck).count(),
-                'activas': PlantillaNotificacion.objects.filter(categoria=ck, activo=True).count(),
-            }
-        ctx['categorias_totales'] = tots
+        ctx['menu_activo'] = 'plantillas_notificaciones'
+        ctx['seccion_titulo'] = f'Editar Plantilla: {self.object.nombre}'
         return ctx
+
+    def form_valid(self, form):
+        plant = form.save()
+        _auditar(
+            self.request,
+            AccionAuditoriaChoices.EDITAR,
+            ModuloAuditoriaChoices.PLANTILLAS_NOTIFICACIONES,
+            plant,
+            descripcion=f'Editó plantilla de notificación {plant.nombre} ({plant.codigo_unico})',
+            datos_despues={'nombre': plant.nombre, 'asunto_email': plant.asunto_email, 'activo': plant.activo},
+        )
+        messages.success(self.request, f'Plantilla "{plant.nombre}" actualizada exitosamente.')
+        return redirect(f"{reverse('adminpanel:plantillas_notificaciones')}?cat={plant.categoria}")
 
 
 @method_decorator(require_POST, name='dispatch')
 class AdminPanelPlantillaNotifToggleActivaView(AdminSoporteRequiredMixin, View):
+    """Activar o desactivar individualmente una plantilla de notificación."""
     def post(self, request, pk):
         from apps.notifications.models import PlantillaNotificacion
         plant = get_object_or_404(PlantillaNotificacion, pk=pk)
@@ -1270,7 +1331,30 @@ class AdminPanelPlantillaNotifToggleActivaView(AdminSoporteRequiredMixin, View):
         )
         estado = 'activada' if plant.activo else 'desactivada'
         messages.success(request, f'Plantilla notificación "{plant.nombre}" {estado}.')
-        return redirect('adminpanel:plantillas_notificaciones')
+        cat = request.POST.get('cat', plant.categoria)
+        return redirect(f"{reverse('adminpanel:plantillas_notificaciones')}?cat={cat}")
+
+
+@method_decorator(require_POST, name='dispatch')
+class AdminPanelPlantillaNotifBulkToggleView(AdminSoporteRequiredMixin, View):
+    """Activar o desactivar en lote todas las plantillas de una temática."""
+    def post(self, request, categoria=None, *args, **kwargs):
+        from apps.notifications.models import PlantillaNotificacion
+        cat = categoria or kwargs.get('categoria')
+        accion = request.POST.get('accion', 'activar')
+        nuevo_estado = (accion == 'activar')
+
+        count = PlantillaNotificacion.objects.filter(categoria=cat).update(activo=nuevo_estado)
+        _auditar(
+            request,
+            AccionAuditoriaChoices.ACTIVAR if nuevo_estado else AccionAuditoriaChoices.DESACTIVAR,
+            ModuloAuditoriaChoices.PLANTILLAS_NOTIFICACIONES,
+            None,
+            descripcion=f'{"Activó" if nuevo_estado else "Desactivó"} en lote {count} plantillas de {cat}',
+        )
+        estado_txt = 'activadas' if nuevo_estado else 'desactivadas'
+        messages.success(request, f'Se han {estado_txt} todas las plantillas de la temática.')
+        return redirect(f"{reverse('adminpanel:plantillas_notificaciones')}?cat={cat}")
 
 
 class AdminPanelRubrosListView(AdminSoporteRequiredMixin, ListView):
@@ -1859,66 +1943,135 @@ class DataGoogleInfoNegocioView(AdminSoporteRequiredMixin, TemplateView):
 # ==============================
 # 3. MÉTRICAS VIEWS
 # ==============================
-class MetricasCriteriosBenchmarkView(AdminSoporteRequiredMixin, View):
-    """3.1 Modificar criterios de Benchmark (Google y ClientBeat)."""
-    template_name = 'admin_panel/metricas/criterios_benchmark.html'
+class MetricasCriteriosBenchmarkGoogleView(AdminSoporteRequiredMixin, View):
+    """3.1 Criterios metodológicos para Benchmark de Google Places."""
+    template_name = 'admin_panel/metricas/criterios_benchmark_google.html'
 
     def get(self, request):
         config = ConfiguracionMetricas.get_solo()
         context = {
             'menu': modulos_menu(request),
-            'menu_activo': 'metricas_criterios_benchmark',
-            'seccion_titulo': '3.1 Criterios de Benchmark (Google y ClientBeat)',
+            'menu_activo': 'metricas_criterios_benchmark_google',
+            'seccion_titulo': '3.1 Criterios de Benchmark Google Places',
             'config': config,
-            'filtro_temporal': config.bm_filtro_temporal_default,
-            'filtro_geografico': config.bm_filtro_geografico_default,
+            'filtro_temporal': config.bm_google_filtro_temporal_default,
+            'filtro_geografico': config.bm_google_filtro_geografico_default,
         }
         return render(request, self.template_name, context)
 
     def post(self, request):
         config = ConfiguracionMetricas.get_solo()
-        config.bm_min_empresas = int(request.POST.get('bm_min_empresas', 3))
-        config.bm_min_valoraciones = int(request.POST.get('bm_min_valoraciones', 10))
-        config.bm_dias_sin_valoraciones_excluir = int(request.POST.get('bm_dias_sin_valoraciones_excluir', 90))
-        config.bm_filtro_temporal_default = request.POST.get('bm_filtro_temporal_default', 'MENSUAL')
-        config.bm_filtro_geografico_default = request.POST.get('bm_filtro_geografico_default', 'COMUNAL')
-        config.bm_criterio_desempate = request.POST.get('bm_criterio_desempate', 'DECIMAS')
-        config.bm_nota_explicativa_usuario = request.POST.get('bm_nota_explicativa_usuario', '')
+        config.bm_google_min_empresas = int(request.POST.get('bm_google_min_empresas', 3))
+        config.bm_google_min_valoraciones = int(request.POST.get('bm_google_min_valoraciones', 10))
+        config.bm_google_dias_sin_valoraciones_excluir = int(request.POST.get('bm_google_dias_sin_valoraciones_excluir', 90))
+        config.bm_google_filtro_temporal_default = request.POST.get('bm_google_filtro_temporal_default', 'MENSUAL')
+        config.bm_google_filtro_geografico_default = request.POST.get('bm_google_filtro_geografico_default', 'COMUNAL')
+        config.bm_google_criterio_desempate = request.POST.get('bm_google_criterio_desempate', 'DECIMAS')
+        config.bm_google_nota_explicativa_usuario = request.POST.get('bm_google_nota_explicativa_usuario', '')
         config.save()
-        _auditar(request, AccionAuditoriaChoices.EDITAR, ModuloAuditoriaChoices.BENCHMARK, config, descripcion='Actualizó criterios de Benchmark')
-        messages.success(request, 'Criterios de Benchmark actualizados correctamente.')
-        return redirect('adminpanel:metricas_criterios_benchmark')
+        _auditar(request, AccionAuditoriaChoices.EDITAR, ModuloAuditoriaChoices.BENCHMARK, config, descripcion='Actualizó criterios de Benchmark Google')
+        messages.success(request, 'Criterios de Benchmark Google actualizados correctamente.')
+        return redirect('adminpanel:metricas_criterios_benchmark_google')
 
 
-class MetricasCsatNpsView(AdminSoporteRequiredMixin, View):
-    """3.2 CSAT y NPS: Criterios metodológicos y cálculo."""
-    template_name = 'admin_panel/metricas/csat_nps.html'
+class MetricasCriteriosBenchmarkClientBeatView(AdminSoporteRequiredMixin, View):
+    """3.2 Criterios metodológicos para Benchmark de ClientBeat."""
+    template_name = 'admin_panel/metricas/criterios_benchmark_clientbeat.html'
 
     def get(self, request):
         config = ConfiguracionMetricas.get_solo()
         context = {
             'menu': modulos_menu(request),
-            'menu_activo': 'metricas_csat_nps',
-            'seccion_titulo': '3.2 Criterios de Métricas CSAT y NPS',
+            'menu_activo': 'metricas_criterios_benchmark_clientbeat',
+            'seccion_titulo': '3.2 Criterios de Benchmark ClientBeat',
             'config': config,
-            'filtro_temporal': config.csat_nps_filtro_temporal_default,
-            'filtro_geografico': config.csat_nps_filtro_geografico_default,
+            'filtro_temporal': config.bm_clientbeat_filtro_temporal_default,
+            'filtro_geografico': config.bm_clientbeat_filtro_geografico_default,
         }
         return render(request, self.template_name, context)
 
     def post(self, request):
         config = ConfiguracionMetricas.get_solo()
-        config.csat_nps_criterio_metodologico = request.POST.get('csat_nps_criterio_metodologico', '')
-        config.csat_nps_min_empresas_benchmark = int(request.POST.get('csat_nps_min_empresas_benchmark', 3))
-        config.csat_nps_min_valoraciones = int(request.POST.get('csat_nps_min_valoraciones', 5))
-        config.csat_nps_dias_sin_valoraciones_excluir = int(request.POST.get('csat_nps_dias_sin_valoraciones_excluir', 60))
-        config.csat_nps_filtro_temporal_default = request.POST.get('csat_nps_filtro_temporal_default', 'MENSUAL')
-        config.csat_nps_filtro_geografico_default = request.POST.get('csat_nps_filtro_geografico_default', 'COMUNAL')
-        config.csat_nps_criterio_desempate = request.POST.get('csat_nps_criterio_desempate', 'DECIMAS')
+        config.bm_clientbeat_min_empresas = int(request.POST.get('bm_clientbeat_min_empresas', 3))
+        config.bm_clientbeat_min_respuestas = int(request.POST.get('bm_clientbeat_min_respuestas', 15))
+        config.bm_clientbeat_dias_sin_respuestas_excluir = int(request.POST.get('bm_clientbeat_dias_sin_respuestas_excluir', 60))
+        config.bm_clientbeat_filtro_temporal_default = request.POST.get('bm_clientbeat_filtro_temporal_default', 'MENSUAL')
+        config.bm_clientbeat_filtro_geografico_default = request.POST.get('bm_clientbeat_filtro_geografico_default', 'COMUNAL')
+        config.bm_clientbeat_criterio_desempate = request.POST.get('bm_clientbeat_criterio_desempate', 'DECIMAS')
+        config.bm_clientbeat_nota_explicativa_usuario = request.POST.get('bm_clientbeat_nota_explicativa_usuario', '')
         config.save()
-        _auditar(request, AccionAuditoriaChoices.EDITAR, ModuloAuditoriaChoices.OTRO, config, descripcion='Actualizó criterios CSAT/NPS')
-        messages.success(request, 'Criterios de CSAT y NPS actualizados correctamente.')
-        return redirect('adminpanel:metricas_csat_nps')
+        _auditar(request, AccionAuditoriaChoices.EDITAR, ModuloAuditoriaChoices.BENCHMARK, config, descripcion='Actualizó criterios de Benchmark ClientBeat')
+        messages.success(request, 'Criterios de Benchmark ClientBeat actualizados correctamente.')
+        return redirect('adminpanel:metricas_criterios_benchmark_clientbeat')
+
+
+class MetricasCsatView(AdminSoporteRequiredMixin, View):
+    """3.3 Criterios metodológicos y cálculo de Indicador CSAT."""
+    template_name = 'admin_panel/metricas/csat.html'
+
+    def get(self, request):
+        config = ConfiguracionMetricas.get_solo()
+        context = {
+            'menu': modulos_menu(request),
+            'menu_activo': 'metricas_csat',
+            'seccion_titulo': '3.3 Criterios de Indicador CSAT',
+            'config': config,
+            'filtro_temporal': config.csat_filtro_temporal_default,
+            'filtro_geografico': config.csat_filtro_geografico_default,
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        config = ConfiguracionMetricas.get_solo()
+        config.csat_criterio_metodologico = request.POST.get('csat_criterio_metodologico', '')
+        config.csat_min_empresas_benchmark = int(request.POST.get('csat_min_empresas_benchmark', 3))
+        config.csat_min_respuestas = int(request.POST.get('csat_min_respuestas', 5))
+        config.csat_dias_sin_respuestas_excluir = int(request.POST.get('csat_dias_sin_respuestas_excluir', 60))
+        config.csat_filtro_temporal_default = request.POST.get('csat_filtro_temporal_default', 'MENSUAL')
+        config.csat_filtro_geografico_default = request.POST.get('csat_filtro_geografico_default', 'COMUNAL')
+        config.csat_criterio_desempate = request.POST.get('csat_criterio_desempate', 'DECIMAS')
+        config.csat_nota_explicativa_usuario = request.POST.get('csat_nota_explicativa_usuario', '')
+        config.save()
+        _auditar(request, AccionAuditoriaChoices.EDITAR, ModuloAuditoriaChoices.OTRO, config, descripcion='Actualizó criterios de Indicador CSAT')
+        messages.success(request, 'Criterios del Indicador CSAT actualizados correctamente.')
+        return redirect('adminpanel:metricas_csat')
+
+
+class MetricasNpsView(AdminSoporteRequiredMixin, View):
+    """3.4 Criterios metodológicos y cálculo de Indicador NPS."""
+    template_name = 'admin_panel/metricas/nps.html'
+
+    def get(self, request):
+        config = ConfiguracionMetricas.get_solo()
+        context = {
+            'menu': modulos_menu(request),
+            'menu_activo': 'metricas_nps',
+            'seccion_titulo': '3.4 Criterios de Indicador NPS',
+            'config': config,
+            'filtro_temporal': config.nps_filtro_temporal_default,
+            'filtro_geografico': config.nps_filtro_geografico_default,
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        config = ConfiguracionMetricas.get_solo()
+        config.nps_criterio_metodologico = request.POST.get('nps_criterio_metodologico', '')
+        config.nps_min_empresas_benchmark = int(request.POST.get('nps_min_empresas_benchmark', 3))
+        config.nps_min_respuestas = int(request.POST.get('nps_min_respuestas', 5))
+        config.nps_dias_sin_respuestas_excluir = int(request.POST.get('nps_dias_sin_respuestas_excluir', 60))
+        config.nps_filtro_temporal_default = request.POST.get('nps_filtro_temporal_default', 'MENSUAL')
+        config.nps_filtro_geografico_default = request.POST.get('nps_filtro_geografico_default', 'COMUNAL')
+        config.nps_criterio_desempate = request.POST.get('nps_criterio_desempate', 'DECIMAS')
+        config.nps_nota_explicativa_usuario = request.POST.get('nps_nota_explicativa_usuario', '')
+        config.save()
+        _auditar(request, AccionAuditoriaChoices.EDITAR, ModuloAuditoriaChoices.OTRO, config, descripcion='Actualizó criterios de Indicador NPS')
+        messages.success(request, 'Criterios del Indicador NPS actualizados correctamente.')
+        return redirect('adminpanel:metricas_nps')
+
+
+# Aliases para compatibilidad retroactiva
+MetricasCriteriosBenchmarkView = MetricasCriteriosBenchmarkGoogleView
+MetricasCsatNpsView = MetricasCsatView
 
 
 class MetricasResenasGoogleView(AdminSoporteRequiredMixin, View):
@@ -2021,18 +2174,17 @@ class RecursosReconocimientoView(AdminSoporteRequiredMixin, TemplateView):
 # ==============================
 # 6. NOTIFICACIONES VIEWS
 # ==============================
-class NotificacionesEditarEmitirView(AdminSoporteRequiredMixin, View):
-    """6.1 Editar y emitir notificaciones a clientes/usuarios."""
-    template_name = 'admin_panel/notificaciones/index.html'
+class NotificacionesEmitirView(AdminSoporteRequiredMixin, View):
+    """6.1 Emitir Notificaciones directas a clientes/usuarios."""
+    template_name = 'admin_panel/notificaciones/emitir.html'
 
     def get(self, request):
-        from apps.notifications.models import PlantillaNotificacion, Notificacion
+        from apps.notifications.models import Notificacion
         context = {
             'menu': modulos_menu(request),
-            'menu_activo': 'notificaciones',
-            'seccion_titulo': '6.1 Editar y Emitir Notificaciones',
-            'plantillas': PlantillaNotificacion.objects.all(),
-            'notificaciones_recientes': Notificacion.objects.select_related('usuario', 'negocio').order_by('-fecha_creacion')[:30],
+            'menu_activo': 'notificaciones_emitir',
+            'seccion_titulo': '6.1 Emitir Notificaciones Manuales',
+            'notificaciones_recientes': Notificacion.objects.select_related('usuario', 'negocio').order_by('-fecha_creacion')[:40],
             'planes': Plan.objects.filter(activo=True),
         }
         return render(request, self.template_name, context)
@@ -2062,9 +2214,13 @@ class NotificacionesEditarEmitirView(AdminSoporteRequiredMixin, View):
                 )
                 count += 1
 
-        _auditar(request, AccionAuditoriaChoices.CREAR, ModuloAuditoriaChoices.PLANTILLAS_NOTIFICACIONES, None, descripcion=f'Emitió notificación masiva a {count} usuarios')
+        _auditar(request, AccionAuditoriaChoices.CREAR, ModuloAuditoriaChoices.PLANTILLAS_NOTIFICACIONES, None, descripcion=f'Emitió notificación manual a {count} usuarios')
         messages.success(request, f'Notificación emitida con éxito a {count} usuarios de la plataforma.')
-        return redirect('adminpanel:notificaciones')
+        return redirect('adminpanel:notificaciones_emitir')
+
+
+# Aliases para compatibilidad
+NotificacionesEditarEmitirView = NotificacionesEmitirView
 
 
 # ==============================

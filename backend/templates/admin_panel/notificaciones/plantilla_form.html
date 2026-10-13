@@ -1,0 +1,250 @@
+{% extends 'admin_panel/base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Editar Plantilla de Notificación: {{ object.nombre }} · Panel Admin{% endblock %}
+
+{% block admin_subtitle %}
+  Modifica los textos, el formato HTML, las variables dinámicas y activa o desactiva el envío automático de esta plantilla.
+{% endblock %}
+
+{% block admin_header_actions %}
+<a href="{% url 'adminpanel:plantillas_notificaciones' %}?cat={{ object.categoria }}"
+   class="btn-secondary !px-4 !py-2.5 text-sm inline-flex items-center gap-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50">
+  <i class="fa fa-arrow-left"></i> Volver a Plantillas
+</a>
+{% endblock %}
+
+{% block admin_content %}
+<form method="POST" id="formPlantilla" class="space-y-6">
+  {% csrf_token %}
+
+  {% if form.errors %}
+  <div class="glass-effect rounded-2xl p-5 border-2 border-red-100 bg-red-50/40">
+    <div class="flex items-start gap-3">
+      <div class="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+        <i class="fa fa-exclamation-circle"></i>
+      </div>
+      <div class="flex-1">
+        <div class="font-bold text-red-700 mb-1">Por favor corrige los siguientes errores:</div>
+        <ul class="text-xs text-red-700 list-disc ml-5 space-y-1">
+          {% for field in form %}
+            {% for error in field.errors %}
+              <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+            {% endfor %}
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+    
+    {# COLUMNA IZQUIERDA: FORMULARIO #}
+    <div class="xl:col-span-7 space-y-6">
+      
+      {# 1. Parámetros Principales #}
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <h2 class="text-sm font-bold text-slate-900 mb-4 pb-3 border-b border-slate-100 flex items-center gap-2">
+          <i class="fa fa-sliders text-cbblue"></i> Parámetros de la Notificación
+        </h2>
+
+        <div class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="text-xs font-bold text-slate-700 mb-1 block">{{ form.nombre.label }} *</label>
+              {% render_field form.nombre class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" %}
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-700 mb-1 block">{{ form.categoria.label }} *</label>
+              {% render_field form.categoria class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" %}
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-slate-700 mb-1 block">{{ form.asunto_email.label }} *</label>
+            {% render_field form.asunto_email class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-medium focus:ring-cbblue focus:border-cbblue" id="inputAsunto" %}
+            <p class="text-[11px] text-slate-400 mt-1">Asunto visible en el cliente de correo. Admite variables como {% verbatim %}{{negocio}}{% endverbatim %}.</p>
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-slate-700 mb-1 block">{{ form.variables_str.label }}</label>
+            {% render_field form.variables_str class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-mono focus:ring-cbblue focus:border-cbblue" %}
+            <p class="text-[11px] text-slate-400 mt-1">{{ form.variables_str.help_text }}</p>
+          </div>
+
+          {# Switch de Activación #}
+          <div class="pt-2">
+            <label class="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 cursor-pointer transition">
+              {% render_field form.activo class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" %}
+              <div>
+                <span class="text-xs font-bold text-slate-800 block">{{ form.activo.label }}</span>
+                <span class="text-[11px] text-slate-500 block">Si está desactivada, el sistema pausará el envío de esta notificación automática.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {# 2. Contenido del Correo #}
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <h2 class="text-sm font-bold text-slate-900 mb-4 pb-3 border-b border-slate-100 flex items-center justify-between">
+          <span class="flex items-center gap-2">
+            <i class="fa fa-code text-cbblue"></i> Cuerpo HTML y Texto
+          </span>
+          <span class="text-[10px] text-slate-400 font-normal">Sintaxis Django Template</span>
+        </h2>
+
+        <div class="space-y-4">
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-xs font-bold text-slate-700 block">{{ form.cuerpo_html.label }} *</label>
+              <span class="text-[10px] text-slate-400">Se previsualiza en vivo a la derecha</span>
+            </div>
+            {% render_field form.cuerpo_html class="w-full p-3 border border-slate-300 rounded-lg text-xs font-mono bg-slate-900 text-cyan-300 focus:ring-cbblue focus:border-cbblue leading-relaxed" id="inputHtml" rows="14" %}
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-slate-700 mb-1 block">{{ form.cuerpo_texto_plano.label }}</label>
+            {% render_field form.cuerpo_texto_plano class="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-mono text-slate-700 focus:ring-cbblue focus:border-cbblue" rows="3" %}
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    {# COLUMNA DERECHA: VISTA PREVIA EN VIVO DEL CORREO #}
+    <div class="xl:col-span-5 sticky top-6 space-y-4">
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        
+        <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs">
+              <i class="fa fa-envelope-open-text"></i>
+            </span>
+            <div>
+              <h3 class="text-xs font-bold text-slate-800">Vista Previa del Email</h3>
+              <p class="text-[10px] text-slate-400">Renderizado aproximado para el cliente</p>
+            </div>
+          </div>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700">Simulación</span>
+        </div>
+
+        {# Cliente de Correo Simulado #}
+        <div class="border border-slate-200 rounded-xl overflow-hidden shadow-xs bg-slate-50">
+          {# Encabezado Email #}
+          <div class="p-3 bg-slate-100/80 border-b border-slate-200 text-xs space-y-1">
+            <div class="flex items-baseline gap-2">
+              <span class="text-[10px] uppercase font-bold text-slate-400 w-12">De:</span>
+              <span class="text-slate-700 font-semibold text-[11px]">ClientBeat Notificaciones &lt;notificaciones@clientbeat.cl&gt;</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span class="text-[10px] uppercase font-bold text-slate-400 w-12">Para:</span>
+              <span class="text-slate-700 text-[11px]">cliente.demo@empresa.cl</span>
+            </div>
+            <div class="flex items-baseline gap-2 pt-1 border-t border-slate-200/60">
+              <span class="text-[10px] uppercase font-bold text-slate-400 w-12">Asunto:</span>
+              <span id="previewAsunto" class="font-bold text-slate-900 text-xs">📧 Asunto</span>
+            </div>
+          </div>
+
+          {# Cuerpo Email #}
+          <div class="p-5 bg-white min-h-[250px] text-xs text-slate-800" id="previewEmailBody">
+            {# HTML inyectado #}
+          </div>
+        </div>
+
+        {# Variables Helper #}
+        <div class="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <div class="text-[11px] font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <i class="fa fa-tags text-cbblue"></i> Atajos de variables disponibles
+          </div>
+          <div class="flex flex-wrap gap-1">
+            <button type="button" class="btn-tag px-2 py-0.5 rounded bg-white border border-slate-200 text-[10px] font-mono text-slate-600 hover:bg-cbblue hover:text-white transition" data-tag="{% verbatim %}{{negocio}}{% endverbatim %}">{% verbatim %}{{negocio}}{% endverbatim %}</button>
+            <button type="button" class="btn-tag px-2 py-0.5 rounded bg-white border border-slate-200 text-[10px] font-mono text-slate-600 hover:bg-cbblue hover:text-white transition" data-tag="{% verbatim %}{{usuario}}{% endverbatim %}">{% verbatim %}{{usuario}}{% endverbatim %}</button>
+            <button type="button" class="btn-tag px-2 py-0.5 rounded bg-white border border-slate-200 text-[10px] font-mono text-slate-600 hover:bg-cbblue hover:text-white transition" data-tag="{% verbatim %}{{local}}{% endverbatim %}">{% verbatim %}{{local}}{% endverbatim %}</button>
+            <button type="button" class="btn-tag px-2 py-0.5 rounded bg-white border border-slate-200 text-[10px] font-mono text-slate-600 hover:bg-cbblue hover:text-white transition" data-tag="{% verbatim %}{{kpi_csat}}{% endverbatim %}">{% verbatim %}{{kpi_csat}}{% endverbatim %}</button>
+            <button type="button" class="btn-tag px-2 py-0.5 rounded bg-white border border-slate-200 text-[10px] font-mono text-slate-600 hover:bg-cbblue hover:text-white transition" data-tag="{% verbatim %}{{nps_score}}{% endverbatim %}">{% verbatim %}{{nps_score}}{% endverbatim %}</button>
+            <button type="button" class="btn-tag px-2 py-0.5 rounded bg-white border border-slate-200 text-[10px] font-mono text-slate-600 hover:bg-cbblue hover:text-white transition" data-tag="{% verbatim %}{{plan_nombre}}{% endverbatim %}">{% verbatim %}{{plan_nombre}}{% endverbatim %}</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  {# Barra Inferior de Guardado #}
+  <div class="sticky bottom-4 z-30 glass-effect rounded-2xl p-4 border border-slate-200 shadow-xl flex items-center justify-between gap-3">
+    <div class="text-xs text-slate-500">
+      <i class="fa fa-info-circle text-cbblue mr-1"></i>
+      Los cambios se aplicarán inmediatamente a los siguientes envíos automáticos de esta plantilla.
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{% url 'adminpanel:plantillas_notificaciones' %}?cat={{ object.categoria }}"
+         class="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-bold transition">
+        Cancelar
+      </a>
+      <button type="submit" class="px-6 py-2.5 bg-cbblue text-white rounded-xl text-xs font-bold hover:bg-cbblue/90 transition shadow-sm flex items-center gap-2">
+        <i class="fa fa-save"></i> Guardar Cambios en Plantilla
+      </button>
+    </div>
+  </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const inputAsunto = document.getElementById('inputAsunto');
+  const inputHtml = document.getElementById('inputHtml');
+  const previewAsunto = document.getElementById('previewAsunto');
+  const previewEmailBody = document.getElementById('previewEmailBody');
+
+  function renderDummyPreview() {
+    if (inputAsunto && previewAsunto) {
+      let subj = inputAsunto.value || 'Sin asunto';
+      subj = subj.replace(/{{\s*negocio\s*}}/g, 'Café Patagonia')
+                 .replace(/{{\s*usuario\s*}}/g, 'Carlos')
+                 .replace(/{{\s*local\s*}}/g, 'Sucursal Providencia')
+                 .replace(/{{\s*kpi_csat\s*}}/g, '94%')
+                 .replace(/{{\s*nps_score\s*}}/g, '+68');
+      previewAsunto.textContent = '📧 ' + subj;
+    }
+
+    if (inputHtml && previewEmailBody) {
+      let html = inputHtml.value || '<p class="text-slate-400 italic">Escribe contenido HTML arriba para visualizar...</p>';
+      html = html.replace(/{{\s*negocio\s*}}/g, '<strong>Café Patagonia</strong>')
+                 .replace(/{{\s*usuario\s*}}/g, 'Carlos Gómez')
+                 .replace(/{{\s*local\s*}}/g, 'Sucursal Providencia')
+                 .replace(/{{\s*kpi_csat\s*}}/g, '<span class="text-emerald-600 font-bold">94%</span>')
+                 .replace(/{{\s*nps_score\s*}}/g, '<span class="text-cbblue font-bold">+68</span>');
+      previewEmailBody.innerHTML = html;
+    }
+  }
+
+  if (inputAsunto) {
+    inputAsunto.addEventListener('input', renderDummyPreview);
+  }
+  if (inputHtml) {
+    inputHtml.addEventListener('input', renderDummyPreview);
+  }
+
+  // Tag helper inserter
+  document.querySelectorAll('.btn-tag').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const tag = btn.dataset.tag;
+      if (inputHtml) {
+        const start = inputHtml.selectionStart;
+        const end = inputHtml.selectionEnd;
+        const text = inputHtml.value;
+        inputHtml.value = text.substring(0, start) + tag + text.substring(end);
+        inputHtml.focus();
+        inputHtml.selectionStart = inputHtml.selectionEnd = start + tag.length;
+        renderDummyPreview();
+      }
+    });
+  });
+
+  renderDummyPreview();
+});
+</script>
+{% endblock %}

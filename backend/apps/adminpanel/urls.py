@@ -43,14 +43,20 @@ urlpatterns = [
     # ==============================
     # 3. MÉTRICAS
     # ==============================
+    path('metricas/criterios-benchmark/google/', views.MetricasCriteriosBenchmarkGoogleView.as_view(), name='metricas_criterios_benchmark_google'),
+    path('metricas/criterios-benchmark/clientbeat/', views.MetricasCriteriosBenchmarkClientBeatView.as_view(), name='metricas_criterios_benchmark_clientbeat'),
+    path('metricas/csat/', views.MetricasCsatView.as_view(), name='metricas_csat'),
+    path('metricas/nps/', views.MetricasNpsView.as_view(), name='metricas_nps'),
+    path('metricas/resenas-google/', views.MetricasResenasGoogleView.as_view(), name='metricas_resenas_google'),
+    # Compatibilidad retroactiva con URLs legacy
     path('metricas/criterios-benchmark/', views.MetricasCriteriosBenchmarkView.as_view(), name='metricas_criterios_benchmark'),
     path('metricas/csat-nps/', views.MetricasCsatNpsView.as_view(), name='metricas_csat_nps'),
-    path('metricas/resenas-google/', views.MetricasResenasGoogleView.as_view(), name='metricas_resenas_google'),
 
     # ==============================
     # 4. PLANES
     # ==============================
     path('planes/editar/', views.PlanesEditarView.as_view(), name='planes_editar'),
+    path('planes/simulador/', views.AdminPanelSimuladorPlanesView.as_view(), name='simulador_planes'),
     path('planes/crear/', views.AdminPanelPlanCreateView.as_view(), name='plan_create'),
     path('planes/<uuid:pk>/editar/', views.AdminPanelPlanUpdateView.as_view(), name='plan_update'),
     path('planes/<uuid:pk>/toggle-activo/', views.AdminPanelPlanToggleActivoView.as_view(), name='plan_toggle_activo'),
@@ -66,8 +72,12 @@ urlpatterns = [
     # ==============================
     # 6. NOTIFICACIONES
     # ==============================
-    path('notificaciones/', views.NotificacionesEditarEmitirView.as_view(), name='notificaciones'),
+    path('notificaciones/emitir/', views.NotificacionesEmitirView.as_view(), name='notificaciones_emitir'),
+    path('notificaciones/plantillas/', views.AdminPanelPlantillasNotifListView.as_view(), name='plantillas_notificaciones'),
+    path('notificaciones/plantillas/<int:pk>/editar/', views.AdminPanelPlantillaNotifUpdateView.as_view(), name='plantilla_notif_editar'),
     path('notificaciones/<int:pk>/toggle-activa/', views.AdminPanelPlantillaNotifToggleActivaView.as_view(), name='plantilla_notif_toggle_activa'),
+    path('notificaciones/bulk-toggle/<str:categoria>/', views.AdminPanelPlantillaNotifBulkToggleView.as_view(), name='plantilla_notif_bulk_toggle'),
+    path('notificaciones/', views.NotificacionesEmitirView.as_view(), name='notificaciones'),
 
     # ==============================
     # RUTAS AUXILIARES / SUB-FLUJOS Y ALIAS RETROCOMPATIBLES
@@ -106,4 +116,5 @@ urlpatterns = [
 
     path('rubros/<int:pk>/toggle-activo/', views.AdminPanelRubroToggleActivoView.as_view(), name='rubro_toggle_activo'),
     path('auditoria/', views.AdminPanelAuditoriaListView.as_view(), name='auditoria'),
+    path('super-salud/', views.SuperSaludView.as_view(), name='super_salud'),
 ]
