@@ -81,6 +81,57 @@
         </div>
       </div>
 
+      {# ====== BLOQUE ESTADO EN TIEMPO REAL FLOW CHILE ====== #}
+      <div class="mt-4 rounded-xl bg-slate-900 text-white p-4 border border-slate-800">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400">
+            <i class="fa fa-bolt"></i> Pasarela Flow Chile · Suscripción Recurrente
+          </div>
+          <div class="flex items-center gap-2">
+            <form method="POST" action="{% url 'adminpanel:suscripcion_sincronizar_flow' sus.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="accion_flow" value="sync">
+              <button type="submit" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] font-bold text-slate-200 border border-slate-700 transition">
+                <i class="fa fa-sync mr-1"></i> Sincronizar Estado Flow
+              </button>
+            </form>
+            {% if sus.tarjeta_enrolada %}
+            <form method="POST" action="{% url 'adminpanel:suscripcion_sincronizar_flow' sus.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="accion_flow" value="retry_charge">
+              <button type="submit" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[11px] font-bold text-white transition">
+                <i class="fa fa-credit-card mr-1"></i> Reintentar Cobro Manual
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <div>
+            <span class="text-slate-400 block text-[10px]">Flow Customer ID</span>
+            <span class="font-mono font-bold text-white">{{ sus.flow_customer_id|default:"No registrado" }}</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block text-[10px]">Flow Subscription ID</span>
+            <span class="font-mono font-bold text-white">{{ sus.flow_subscription_id|default:"Pendiente" }}</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block text-[10px]">Tarjeta Enrolada (Oneclick)</span>
+            <span class="font-bold {% if sus.tarjeta_enrolada %}text-emerald-400{% else %}text-amber-400{% endif %}">
+              {% if sus.tarjeta_enrolada %}
+                <i class="fa fa-check-circle mr-1"></i>{{ sus.tarjeta_tipo|default:"Tarjeta" }} •••• {{ sus.tarjeta_ultimos_4|default:"****" }}
+              {% else %}
+                Sin tarjeta activa
+              {% endif %}
+            </span>
+          </div>
+          <div>
+            <span class="text-slate-400 block text-[10px]">Intentos Fallidos / Gracia</span>
+            <span class="font-bold text-white">{{ sus.intentos_cobro_fallidos }} fallos · {{ sus.dias_gracia }}d gracia</span>
+          </div>
+        </div>
+      </div>
+
       {% if sus.motivo_cancelacion %}
       <div class="mt-4 rounded-xl bg-rose-50 border border-rose-200 p-4">
         <div class="text-[11px] font-bold uppercase tracking-wider text-rose-600 mb-1">Motivo de cancelación</div>

@@ -153,18 +153,30 @@ class PlanAdmin(SuperUserOnlyAdminMixin, admin.ModelAdmin):
 
 @admin.register(Suscripcion)
 class SuscripcionAdmin(SuperUserOnlyAdminMixin, admin.ModelAdmin):
-    list_display = ['id', 'negocio', 'plan', 'estado', 'fecha_inicio', 'fecha_vencimiento', 'renovacion_automatica']
-    list_filter = ['estado', 'renovacion_automatica', 'plan']
-    search_fields = ['negocio__nombre', 'motivo_cancelacion']
+    list_display = [
+        'id', 'negocio', 'plan', 'estado', 'tarjeta_enrolada',
+        'tarjeta_display', 'proximo_ciclo', 'dias_gracia', 'fecha_vencimiento'
+    ]
+    list_filter = ['estado', 'tarjeta_enrolada', 'renovacion_automatica', 'plan']
+    search_fields = ['negocio__nombre', 'flow_customer_id', 'flow_subscription_id', 'tarjeta_ultimos_4']
     readonly_fields = ['id']
     raw_id_fields = ['negocio', 'plan']
+
+    def tarjeta_display(self, obj):
+        if obj.tarjeta_enrolada:
+            return f"{obj.tarjeta_tipo or 'Tarjeta'} •••• {obj.tarjeta_ultimos_4}"
+        return "No vinculada"
+    tarjeta_display.short_description = "Tarjeta Flow"
 
 
 @admin.register(Pago)
 class PagoAdmin(SuperUserOnlyAdminMixin, admin.ModelAdmin):
-    list_display = ['flow_order_id', 'suscripcion', 'monto', 'moneda', 'estado', 'fecha_pago', 'firma_validada', 'fecha_creacion']
-    list_filter = ['estado', 'moneda', 'firma_validada']
-    search_fields = ['flow_order_id', 'suscripcion__id']
+    list_display = [
+        'flow_order_id', 'tipo_cobro', 'suscripcion', 'monto',
+        'estado', 'fecha_pago', 'flow_invoice_id', 'fecha_creacion'
+    ]
+    list_filter = ['estado', 'tipo_cobro', 'moneda', 'firma_validada']
+    search_fields = ['flow_order_id', 'flow_invoice_id', 'suscripcion__negocio__nombre']
     readonly_fields = ['id', 'fecha_creacion']
     raw_id_fields = ['suscripcion']
 

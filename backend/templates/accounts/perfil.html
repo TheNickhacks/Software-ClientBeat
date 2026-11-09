@@ -510,20 +510,93 @@
             {% endif %}
           </div>
 
-          <div class="grid md:grid-cols-3 gap-4 text-xs mb-4">
+          {% if suscripcion.en_periodo_gracia %}
+          <div class="p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center justify-between gap-3 mb-4 animate-pulse">
+            <div class="flex items-center gap-2">
+              <i class="fa fa-triangle-exclamation text-amber-600 text-base"></i>
+              <span><strong>Aviso de Cobranza:</strong> Tu último cobro mensual automático no pudo ser procesado. Cuentas con <strong>{{ suscripcion.dias_restantes_gracia }} día(s) de gracia</strong> antes de la suspensión del servicio.</span>
+            </div>
+            {% if es_dueno %}
+            <form method="POST" action="{% url 'billing:flow_suscripcion_iniciar' %}">
+              {% csrf_token %}
+              <button type="submit" class="px-3 py-1.5 bg-amber-600 text-white font-bold rounded-lg text-xs hover:bg-amber-700 transition">
+                Actualizar Tarjeta
+              </button>
+            </form>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          <div class="grid md:grid-cols-4 gap-4 text-xs mb-4">
             <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
               <span class="text-slate-400 block mb-1">Días de prueba gratis</span>
               <b class="text-sm text-slate-800">{{ plan_activo.dias_prueba_gratis|default:365 }} días</b>
             </div>
             <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-              <span class="text-slate-400 block mb-1">Fecha de activación</span>
-              <b class="text-sm text-slate-800">{{ suscripcion.fecha_inicio|date:"d/m/Y"|default:"Al completar registro" }}</b>
+              <span class="text-slate-400 block mb-1">Próximo Cobro Automático</span>
+              <b class="text-sm text-slate-800">{% if suscripcion %}{{ suscripcion.proximo_ciclo|default:suscripcion.fecha_vencimiento|date:"d/m/Y"|default:"Pendiente" }}{% else %}Pendiente{% endif %}</b>
+            </div>
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+              <span class="text-slate-400 block mb-1">Medio de Pago Registrado</span>
+              {% if suscripcion.tarjeta_enrolada %}
+                <b class="text-sm text-emerald-700 flex items-center gap-1">
+                  <i class="fa fa-credit-card"></i> {{ suscripcion.tarjeta_tipo|default:'Tarjeta' }} •••• {{ suscripcion.tarjeta_ultimos_4 }}
+                </b>
+              {% else %}
+                <b class="text-sm text-amber-700 flex items-center gap-1">
+                  <i class="fa fa-circle-question"></i> No vinculada
+                </b>
+              {% endif %}
             </div>
             <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
               <span class="text-slate-400 block mb-1">Pasarela de Pago</span>
-              <b class="text-sm text-cbblue flex items-center gap-1"><i class="fa fa-credit-card"></i> Flow Chile (API v2)</b>
+              <b class="text-sm text-cbblue flex items-center gap-1"><i class="fa fa-shield-halved"></i> Flow Suscripciones</b>
             </div>
           </div>
+
+          {# Historial de Pagos y Comprobantes Descargables #}
+          {% if suscripcion and suscripcion.pagos.exists %}
+          <div class="mt-6 pt-5 border-t border-slate-100">
+            <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider mb-3 flex items-center gap-2">
+              <i class="fa fa-receipt text-cbblue"></i> Historial de Pagos y Comprobantes
+            </h4>
+            <div class="overflow-x-auto rounded-xl border border-slate-200/70">
+              <table class="w-full text-xs">
+                <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px]">
+                  <tr>
+                    <th class="px-3 py-2.5 text-left">Fecha</th>
+                    <th class="px-3 py-2.5 text-left">Orden Flow</th>
+                    <th class="px-3 py-2.5 text-left">Concepto</th>
+                    <th class="px-3 py-2.5 text-right">Monto</th>
+                    <th class="px-3 py-2.5 text-center">Estado</th>
+                    <th class="px-3 py-2.5 text-right">Comprobante</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                  {% for p in suscripcion.pagos.all|slice:":8" %}
+                  <tr class="hover:bg-slate-50/80 transition">
+                    <td class="px-3 py-2.5 text-slate-700 font-medium whitespace-nowrap">{{ p.fecha_pago|default:p.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                    <td class="px-3 py-2.5 font-mono text-[11px] text-slate-500">{{ p.flow_order_id|slice:":20" }}</td>
+                    <td class="px-3 py-2.5 text-slate-600">{{ p.get_tipo_cobro_display }}</td>
+                    <td class="px-3 py-2.5 text-right font-bold text-slate-900">${{ p.monto|clp_format }} CLP</td>
+                    <td class="px-3 py-2.5 text-center">
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold
+                        {% if p.estado == 'APROBADO' %}bg-emerald-100 text-emerald-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+                        {{ p.get_estado_display }}
+                      </span>
+                    </td>
+                    <td class="px-3 py-2.5 text-right">
+                      <a href="{% url 'billing:comprobante_pago' p.id %}" target="_blank" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-cbblue hover:text-white text-slate-700 font-bold text-[11px] transition">
+                        <i class="fa fa-file-pdf"></i> Ver Recibo
+                      </a>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {% endif %}
           {% else %}
           <div class="p-4 rounded-xl bg-amber-50 text-amber-800 text-xs font-semibold flex items-center justify-between">
             <span>⚠️ No tienes una suscripción activa registrada.</span>
@@ -675,21 +748,13 @@
                   </button>
                   {% else %}
                   <div class="space-y-2">
-                    <form method="POST">
-                      {% csrf_token %}
-                      <input type="hidden" name="action" value="change_plan">
-                      <input type="hidden" name="plan_id" value="{{ p.id }}">
-                      <button type="submit" class="w-full py-2.5 bg-slate-900 text-white hover:bg-slate-800 font-bold rounded-xl text-xs transition-colors shadow">
-                        Selección Rápida
-                      </button>
-                    </form>
                     {% if negocio %}
-                    <form method="POST" action="{% url 'billing:flow_iniciar' %}">
+                    <form method="POST" action="{% url 'billing:flow_suscripcion_iniciar' %}">
                       {% csrf_token %}
                       <input type="hidden" name="plan_id" value="{{ p.id }}">
                       <input type="hidden" name="negocio_id" value="{{ negocio.id }}">
-                      <button type="submit" class="w-full py-2 bg-gradient-to-r from-cbblue to-cbgreen text-white font-bold rounded-xl text-xs hover:opacity-95 transition-opacity shadow flex items-center justify-center gap-1.5">
-                        <i class="fa fa-credit-card"></i> Pagar con Flow (${{ d.total_clp|clp_format }} CLP + IVA)
+                      <button type="submit" data-loading-text="Conectando con Flow…" class="w-full py-3 bg-gradient-to-r from-cbblue to-cbgreen text-white font-black rounded-xl text-xs hover:opacity-95 transition shadow flex items-center justify-center gap-1.5">
+                        <i class="fa fa-credit-card"></i> Suscribirse con Flow (${{ d.total_clp|clp_format }} CLP + IVA)
                       </button>
                     </form>
                     {% endif %}

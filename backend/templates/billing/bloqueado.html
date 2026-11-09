@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% load humanize currency_tags %}
+{% block title %}Acceso Pausado · Regularización de Suscripción ClientBeat{% endblock %}
+
+{% block content %}
+<section class="min-h-screen pt-28 pb-20 flex items-center justify-center relative overflow-hidden bg-gradient-to-b from-slate-900 via-slate-800 to-indigo-950 text-white">
+  {# Background Decorative Blurs #}
+  <div class="absolute -top-40 -right-40 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none"></div>
+  <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+  <div class="container mx-auto px-6 relative z-10 max-w-2xl">
+
+    <div class="bg-white/95 backdrop-blur-xl text-slate-900 rounded-3xl p-8 md:p-12 shadow-2xl border border-white/20 animate-fade-up">
+
+      {# Header Icon Status #}
+      <div class="text-center mb-8">
+        <div class="w-20 h-20 rounded-3xl bg-rose-50 text-rose-600 border border-rose-200/60 mx-auto flex items-center justify-center text-3xl mb-4 shadow-sm animate-pulse">
+          <i class="fa fa-lock"></i>
+        </div>
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 mb-2">
+          <i class="fa fa-triangle-exclamation"></i>
+          {% if suscripcion.estado == 'SUSPENDIDA' %}
+            Suscripción Suspendida por Pago Pendiente
+          {% elif suscripcion.estado == 'CANCELADA' %}
+            Suscripción Cancelada
+          {% else %}
+            Activación de Plan Pendiente
+          {% endif %}
+        </span>
+        <h1 class="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+          Tu cuenta se encuentra en pausa
+        </h1>
+        <p class="text-sm text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">
+          Para continuar accediendo al Dashboard, encuestas en tiempo real y métricas de reputación de <strong>{{ negocio.nombre }}</strong>, es necesario regularizar el pago de tu plan con Flow.
+        </p>
+      </div>
+
+      {# Card Resumen de la Cuenta #}
+      <div class="rounded-2xl p-6 bg-slate-50 border border-slate-200/80 mb-8 space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 text-sm">
+          <span class="text-slate-500 font-medium">Negocio / Razón Social</span>
+          <span class="font-bold text-slate-800">{{ negocio.nombre }}</span>
+        </div>
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 text-sm">
+          <span class="text-slate-500 font-medium">Plan Seleccionado</span>
+          <span class="font-bold text-cbblue">{{ plan.get_nombre_mostrar }}</span>
+        </div>
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 text-sm">
+          <span class="text-slate-500 font-medium">Sucursales Activas</span>
+          <span class="font-bold text-slate-800">{{ cant_locales }} sucursal{% if cant_locales > 1 %}es{% endif %}</span>
+        </div>
+        {% if desglose %}
+        <div class="flex items-center justify-between pt-1 text-base">
+          <span class="text-slate-700 font-bold">Total Mensual a Regularizar</span>
+          <span class="text-xl font-black text-slate-900">${{ desglose.total_clp|clp_format }} CLP <span class="text-xs font-normal text-slate-500">+ IVA</span></span>
+        </div>
+        {% endif %}
+      </div>
+
+      {# Mensaje Informativo según Perfil #}
+      {% if es_dueno %}
+        <div class="mb-8">
+          <form method="POST" action="{% url 'billing:flow_suscripcion_iniciar' %}">
+            {% csrf_token %}
+            {% if plan %}
+            <input type="hidden" name="plan_id" value="{{ plan.id }}">
+            {% endif %}
+            {% if negocio %}
+            <input type="hidden" name="negocio_id" value="{{ negocio.id }}">
+            {% endif %}
+
+            <button type="submit" data-loading-text="Conectando con Flow Chile…" class="w-full py-4 px-6 bg-gradient-to-r from-cbblue to-cbgreen text-white font-black text-base rounded-2xl hover:opacity-95 transition shadow-xl flex items-center justify-center gap-3">
+              <i class="fa fa-credit-card text-xl"></i>
+              <span>Pagar y Reactivar con Flow Chile →</span>
+            </button>
+          </form>
+          <p class="text-center text-xs text-slate-400 mt-2.5 flex items-center justify-center gap-1.5">
+            <i class="fa fa-shield-halved text-cbgreen"></i>
+            <span>Transacción segura vía Flow Chile · Webpay Plus, Oneclick, Tarjetas de Débito y Crédito</span>
+          </p>
+        </div>
+      {% else %}
+        <div class="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs leading-relaxed mb-8">
+          <div class="flex items-start gap-3">
+            <i class="fa fa-circle-info text-amber-600 text-base mt-0.5"></i>
+            <div>
+              <strong class="block font-bold text-amber-950 mb-1">Acceso restringido para colaboradores</strong>
+              <span>Solo el titular o dueño registrado del negocio (<strong>{{ negocio.dueño.get_full_name|default:negocio.dueño.email }}</strong>) tiene autorización para procesar pagos y vincular tarjetas en Flow. Por favor contáctale para reactivar el servicio.</span>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      {# Footer Actions #}
+      <div class="pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        <a href="mailto:contactoclientbeat@gmail.com?subject=Ayuda%20Regularizacion%20Cuenta%20{{ negocio.nombre|urlencode }}" class="hover:text-cbblue font-semibold flex items-center gap-1.5 transition">
+          <i class="fa fa-life-ring"></i> Contactar Soporte ClientBeat
+        </a>
+        <a href="/accounts/logout/" class="text-slate-400 hover:text-slate-700 font-semibold flex items-center gap-1.5 transition">
+          <i class="fa fa-arrow-right-from-bracket"></i> Cerrar Sesión
+        </a>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+{% endblock %}

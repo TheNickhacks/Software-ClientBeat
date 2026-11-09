@@ -47,9 +47,26 @@ class NotificationService:
                 cuerpo_final = fallback_mensaje
                 mensaje_plano = fallback_mensaje
         else:
+            from django.template.loader import render_to_string
             asunto_final = fallback_titulo
-            cuerpo_final = fallback_mensaje
             mensaje_plano = fallback_mensaje
+            domain = getattr(settings, 'SITE_DOMAIN', 'http://localhost:8000').rstrip('/')
+            cuerpo_final = render_to_string('emails/facturacion_flow.html', {
+                'asunto': asunto_final,
+                'badge_texto': 'Notificación ClientBeat',
+                'titulo_header': fallback_titulo,
+                'subtitulo_header': getattr(negocio, 'nombre', 'ClientBeat'),
+                'usuario_nombre': getattr(usuario, 'first_name', None) or getattr(usuario, 'email', 'Cliente'),
+                'mensaje_principal': fallback_mensaje,
+                'box_bg': '#eef4ff',
+                'box_border': '#0B3EA6',
+                'box_title_color': '#0B3EA6',
+                'box_titulo': 'Resumen de Alerta',
+                'detalles': [('Negocio', getattr(negocio, 'nombre', 'ClientBeat'))],
+                'nota_secundaria': 'Ingresa a tu panel para gestionar esta notificación.',
+                'cta_url': f'{domain}/dashboard/',
+                'cta_texto': 'Ir al Dashboard',
+            })
 
         # 1. Guardar notificación In-App
         notif = Notificacion.objects.create(
@@ -69,7 +86,7 @@ class NotificationService:
                 send_mail(
                     subject=asunto_final,
                     message=mensaje_plano,
-                    from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'contacto@avaapp.cl'),
+                    from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'Client Beat <contactoclientbeat@gmail.com>'),
                     recipient_list=[email_destinatario],
                     html_message=cuerpo_final,
                     fail_silently=True,
@@ -100,21 +117,27 @@ class NotificationService:
         if not (es_detractor or es_insatisfecho):
             return None
 
+        domain = getattr(settings, 'SITE_DOMAIN', 'http://localhost:8000').rstrip('/')
         contexto = {
+            'usuario': (dueño.first_name or dueño.email) if dueño else 'Equipo',
             'negocio': negocio.nombre if negocio else 'Tu negocio',
             'local': respuesta.local.nombre,
+            'cliente_nombre': getattr(respuesta, 'cliente_nombre', None) or 'Cliente en sucursal',
+            'puntaje': nps if nps is not None else 'N/A',
             'nps': nps if nps is not None else 'N/A',
             'csat': respuesta.get_csat_emocion_display() if csat else 'N/A',
             'comentario': respuesta.comentario or 'Sin comentario adicional',
+            'tiempo': 'unos instantes',
+            'responder_url': f'{domain}/dashboard/',
         }
 
-        titulo = f"⚠️ Alerta de Alerta: Calificación baja en {respuesta.local.nombre}"
+        titulo = f"⚠️ Alerta de Calificación Baja en {respuesta.local.nombre}"
         mensaje = f"Se ha registrado una calificación baja (NPS {nps}/10). Comentario: '{respuesta.comentario or 'Sin comentario'}'."
 
         return cls.enviar_notificacion(
             usuario=dueño,
             negocio=negocio,
-            codigo_plantilla='alerta-csat-nps-baja',
+            codigo_plantilla='NPS-001-DETRACTOR-ALERTA',
             context_data=contexto,
             canal='AMBOS',
             fallback_titulo=titulo,
@@ -135,12 +158,16 @@ class NotificationService:
         if resena.calificacion > 2:
             return None
 
+        domain = getattr(settings, 'SITE_DOMAIN', 'http://localhost:8000').rstrip('/')
         contexto = {
+            'usuario': (dueño.first_name or dueño.email) if dueño else 'Equipo',
             'negocio': negocio.nombre if negocio else 'Tu negocio',
             'local': resena.local.nombre,
             'calificacion': resena.calificacion,
+            'estrellas': resena.calificacion,
             'autor': resena.autor_nombre,
             'comentario': resena.comentario or 'Sin texto',
+            'responder_g_url': f'{domain}/dashboard/resenas/',
         }
 
         titulo = f"🚨 Reseña de {resena.calificacion}★ recibida en Google Maps ({resena.local.nombre})"
@@ -149,7 +176,7 @@ class NotificationService:
         return cls.enviar_notificacion(
             usuario=dueño,
             negocio=negocio,
-            codigo_plantilla='alerta-resena-negativa-google',
+            codigo_plantilla='G-RESEÑA-001-NUEVA-CALIFICADA',
             context_data=contexto,
             canal='AMBOS',
             fallback_titulo=titulo,

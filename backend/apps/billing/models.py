@@ -12,9 +12,17 @@ class MonedaChoices(TextChoices):
 class EstadoSuscripcionChoices(TextChoices):
     PENDIENTE = 'PENDIENTE', 'Pendiente'
     ACTIVA = 'ACTIVA', 'Activa'
+    EN_GRACIA = 'EN_GRACIA', 'En Período de Gracia'
     VENCIDA = 'VENCIDA', 'Vencida'
     SUSPENDIDA = 'SUSPENDIDA', 'Suspendida'
     CANCELADA = 'CANCELADA', 'Cancelada'
+
+
+class TipoCobroChoices(TextChoices):
+    CICLO_RECURRENTE = 'CICLO_RECURRENTE', 'Ciclo Recurrente Automático'
+    CARGO_EXTRA_LOCAL = 'CARGO_EXTRA_LOCAL', 'Cobro Proporcional Local Extra'
+    REGISTRO_INICIAL = 'REGISTRO_INICIAL', 'Primer Pago / Activación'
+    MANUAL = 'MANUAL', 'Aprobación Manual Soporte'
 
 
 class EstadoPagoChoices(TextChoices):
@@ -232,19 +240,74 @@ class Suscripcion(models.Model):
     cancelada_en = models.DateTimeField(null=True, blank=True)
     motivo_cancelacion = models.CharField(max_length=255, null=True, blank=True)
 
+    # Identificadores de Flow Suscripciones
+    flow_customer_id = models.CharField(max_length=100, blank=True, null=True, db_index=True, help_text="ID del cliente en Flow")
+    flow_subscription_id = models.CharField(max_length=100, blank=True, null=True, unique=True, help_text="ID de la suscripción en Flow")
+    flow_plan_id = models.CharField(max_length=100, blank=True, null=True, help_text="ID del plan asociado en Flow")
+
+    # Datos de la tarjeta registrada (custodiada en Flow)
+    tarjeta_tipo = models.CharField(max_length=50, blank=True, null=True, help_text="Ej: Visa, Mastercard, Redcompra")
+    tarjeta_ultimos_4 = models.CharField(max_length=4, blank=True, null=True, help_text="Últimos 4 dígitos para UI")
+    tarjeta_enrolada = models.BooleanField(default=False, help_text="Indica si la tarjeta fue validada exitosamente en Flow")
+
+    # Políticas de Cobranza y Gracia (Dunning)
+    dias_gracia = models.IntegerField(default=3, help_text="Días de gracia ante impago antes de suspender el acceso")
+    intentos_cobro_fallidos = models.IntegerField(default=0)
+    fecha_ultimo_intento_cobro = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         verbose_name = 'Suscripción'
         verbose_name_plural = 'Suscripciones'
         ordering = ['-fecha_inicio']
 
     def __str__(self):
-        return f'{self.negocio} - {self.plan.nombre}'
+        return f'{self.negocio} - {self.plan.nombre} ({self.estado})'
+
+    def esta_bloqueada(self) -> bool:
+        """Determina si la suscripción debe bloquear el acceso del usuario."""
+        if self.estado in [EstadoSuscripcionChoices.SUSPENDIDA, EstadoSuscripcionChoices.CANCELADA]:
+            return True
+        if self.estado in [EstadoSuscripcionChoices.VENCIDA, EstadoSuscripcionChoices.EN_GRACIA]:
+            from django.utils import timezone
+            from datetime import timedelta
+            limite_gracia = self.fecha_vencimiento + timedelta(days=self.dias_gracia)
+            return timezone.now() > limite_gracia
+        if self.estado == EstadoSuscripcionChoices.PENDIENTE:
+            # Si el plan es de lanzamiento gratuito con prueba activa, no se bloquea
+            if self.plan.es_lanzamiento_gratis and self.fecha_vencimiento:
+                from django.utils import timezone
+                return timezone.now() > self.fecha_vencimiento
+            return True
+        return False
+
+    def en_periodo_gracia(self) -> bool:
+        """Retorna True si está en mora/vencida pero aún dentro de los días de gracia."""
+        from django.utils import timezone
+        from datetime import timedelta
+        limite = self.fecha_vencimiento + timedelta(days=self.dias_gracia)
+        if self.estado == EstadoSuscripcionChoices.EN_GRACIA:
+            return timezone.now() <= limite
+        if self.estado in [EstadoSuscripcionChoices.VENCIDA, EstadoSuscripcionChoices.ACTIVA]:
+            return self.fecha_vencimiento <= timezone.now() <= limite
+        return False
+
+    def dias_restantes_gracia(self) -> int:
+        """Calcula cuántos días de gracia le quedan al usuario."""
+        if not self.en_periodo_gracia():
+            return 0
+        from django.utils import timezone
+        from datetime import timedelta
+        limite = self.fecha_vencimiento + timedelta(days=self.dias_gracia)
+        diff = limite - timezone.now()
+        return max(0, diff.days + (1 if diff.seconds > 0 else 0))
 
 
 class Pago(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     suscripcion = models.ForeignKey(Suscripcion, on_delete=models.CASCADE, related_name='pagos')
     flow_order_id = models.CharField(max_length=100, unique=True)
+    flow_invoice_id = models.CharField(max_length=100, blank=True, null=True, db_index=True, help_text="ID de la factura/invoice en Flow")
+    tipo_cobro = models.CharField(max_length=30, choices=TipoCobroChoices.choices, default=TipoCobroChoices.CICLO_RECURRENTE)
     monto = models.IntegerField()
     moneda = models.CharField(max_length=10, default=MonedaChoices.CLP)
     estado = models.CharField(max_length=20, choices=EstadoPagoChoices.choices, default=EstadoPagoChoices.PENDIENTE)
@@ -260,7 +323,7 @@ class Pago(models.Model):
         ordering = ['-fecha_creacion']
 
     def __str__(self):
-        return f'Pago {self.flow_order_id} - {self.estado}'
+        return f'Pago {self.flow_order_id} ({self.get_tipo_cobro_display()}) - {self.estado}'
 
 
 class RegistroCobranza(models.Model):

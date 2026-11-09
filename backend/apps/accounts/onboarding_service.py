@@ -98,6 +98,26 @@ def finalizar_onboarding(request, usuario, negocio, local, plan_id=None):
     request.session['negocio_actual_id'] = str(negocio.id)
     request.session['local_actual_id'] = str(local.id)
 
+    try:
+        from apps.notifications.services import NotificationService
+        domain = getattr(settings, 'SITE_DOMAIN', 'http://localhost:8000').rstrip('/')
+        NotificationService.enviar_notificacion(
+            usuario=usuario,
+            negocio=negocio,
+            codigo_plantilla='ONBOARD-001-BIENVENIDA-DUENO',
+            context_data={
+                'usuario': usuario.first_name or usuario.email,
+                'negocio': negocio.nombre,
+                'plan': suscripcion.plan.get_nombre_mostrar() if suscripcion and suscripcion.plan else 'ClientBeat',
+                'dashboard_url': f'{domain}/dashboard/',
+            },
+            canal='AMBOS',
+            fallback_titulo=f'🎉 ¡Bienvenido a ClientBeat, {negocio.nombre}!',
+            fallback_mensaje=f'Tu negocio {negocio.nombre} ya está registrado en ClientBeat.',
+        )
+    except Exception:
+        pass
+
     return {
         'usuario': usuario,
         'negocio': negocio,

@@ -44,7 +44,7 @@ Client Beat conserva todos los derechos sobre su software, algoritmos y diseño.
 El Servicio se presta "tal como está". La responsabilidad de Client Beat se limita al monto pagado en los últimos 12 meses.
 
 9. PROTECCIÓN DE DATOS PERSONALES
-Client Beat SpA (RUT 77.607.311-3) actúa como responsable del tratamiento. Los titulares pueden ejercer sus derechos ARCOPB al correo contacto@avaapp.cl.
+Client Beat SpA (RUT 77.607.311-3) actúa como responsable del tratamiento. Los titulares pueden ejercer sus derechos ARCOPB al correo contactoclientbeat@gmail.com.
 
 10. LEY APLICABLE Y JURISDICCIÓN
 Estos Términos se rigen por las leyes de la República de Chile y se someten a la jurisdicción de los tribunales ordinarios justicia.
@@ -57,7 +57,7 @@ POLITICA_PRIVACIDAD = """
 Nombre: Client Beat SpA
 RUT: 77.607.311-3
 Domicilio: Asturias 790 E, Rancagua
-Correo contacto: contacto@avaapp.cl
+Correo contacto: contactoclientbeat@gmail.com
 
 2. CATEGORÍAS DE DATOS
 • Datos del Cliente: nombre o razón social, RUT, rubro, datos de contacto, credenciales, facturación.
@@ -73,7 +73,7 @@ Correo contacto: contacto@avaapp.cl
 El tratamiento se funda en la ejecución del contrato (servicio contratado), el consentimiento del titular (encuestas QR) y el interés legítimo del responsable (benchmarking anonimizado).
 
 5. DERECHOS DEL TITULAR (ARCOPB)
-Todo titular puede ejercer gratuitamente sus derechos de Acceso, Rectificación, Cancelación/Supresión, Oposición, Portabilidad y Bloqueo escribiendo a contacto@avaapp.cl. Plazo de respuesta: 30 días, prorrogables por 30 más.
+Todo titular puede ejercer gratuitamente sus derechos de Acceso, Rectificación, Cancelación/Supresión, Oposición, Portabilidad y Bloqueo escribiendo a contactoclientbeat@gmail.com. Plazo de respuesta: 30 días, prorrogables por 30 más.
 
 6. CONSERVACIÓN
 • Datos tributarios: 6 años.

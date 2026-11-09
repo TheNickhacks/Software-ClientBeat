@@ -64,6 +64,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_htmx.middleware.HtmxMiddleware',
     'apps.businesses.middleware.tenant.TenantMiddleware',
+    'apps.billing.middleware.SubscriptionRequiredMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -172,6 +173,13 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    'procesar-ciclos-vencidos-flow-diario': {
+        'task': 'billing.procesar_ciclos_vencidos_diario',
+        'schedule': crontab(hour=8, minute=30),
+    },
+}
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -197,18 +205,45 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
-EMAIL_HOST = env('EMAIL_HOST', default='')
+EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = env.int('EMAIL_PORT', default=587)
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
-EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='contacto@avaapp.cl')
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='contactoclientbeat@gmail.com')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='').replace(' ', '')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='Client Beat <contactoclientbeat@gmail.com>')
 
-FLOW_API_KEY = env('FLOW_API_KEY', default='')
-FLOW_SECRET_KEY = env('FLOW_SECRET_KEY', default='')
-FLOW_ENVIRONMENT = env('FLOW_ENVIRONMENT', default='sandbox')
+# Si aún no se ha pegado la Contraseña de Aplicación real de Gmail, usa consola para no fallar;
+# apenas se pegue la clave real en EMAIL_HOST_PASSWORD, usa SMTP en vivo automáticamente.
+if not EMAIL_HOST_PASSWORD or EMAIL_HOST_PASSWORD.startswith(('your_', 'PEGA_AQUI')):
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+
+FLOW_ENVIRONMENT = env('FLOW_ENVIRONMENT', default='sandbox').lower()
+if FLOW_ENVIRONMENT == 'production':
+    FLOW_API_KEY = env('FLOW_PROD_API_KEY', default=env('FLOW_API_KEY', default=''))
+    FLOW_SECRET_KEY = env('FLOW_PROD_SECRET_KEY', default=env('FLOW_SECRET_KEY', default=''))
+else:
+    FLOW_API_KEY = env('FLOW_SANDBOX_API_KEY', default=env('FLOW_API_KEY', default=''))
+    FLOW_SECRET_KEY = env('FLOW_SANDBOX_SECRET_KEY', default=env('FLOW_SECRET_KEY', default=''))
+
 FLOW_WEBHOOK_SECRET = env('FLOW_WEBHOOK_SECRET', default='')
+FLOW_DIAS_GRACIA_IMPAGO = env.int('FLOW_DIAS_GRACIA_IMPAGO', default=3)
+SITE_DOMAIN = env('SITE_DOMAIN', default='http://localhost:8000')
+
+CSRF_TRUSTED_ORIGINS = env.list(
+    'CSRF_TRUSTED_ORIGINS',
+    default=[
+        'http://localhost:8000',
+        'http://127.0.0.1:8000',
+        'https://www.clientbeat.cl',
+        'https://clientbeat.cl',
+        'https://www.flow.cl',
+        'https://sandbox.flow.cl',
+    ]
+)
+if SITE_DOMAIN and SITE_DOMAIN not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(SITE_DOMAIN.rstrip('/'))
 
 GOOGLE_PLACES_API_KEY = env('GOOGLE_PLACES_API_KEY', default='')
 USE_MOCK_GOOGLE_PLACES = env.bool('USE_MOCK_GOOGLE_PLACES', default=not bool(GOOGLE_PLACES_API_KEY))
@@ -220,7 +255,7 @@ EMPRESA = {
     'NOMBRE': env('EMPRESA_NOMBRE', default='Client Beat SpA'),
     'RUT': env('EMPRESA_RUT', default='77.607.311-3'),
     'DOMICILIO': env('EMPRESA_DOMICILIO', default='Asturias 790 E, Rancagua'),
-    'CONTACTO': env('EMPRESA_CONTACTO', default='contacto@avaapp.cl'),
+    'CONTACTO': env('EMPRESA_CONTACTO', default='contactoclientbeat@gmail.com'),
     'SITIO_WEB': env('EMPRESA_SITIO_WEB', default='www.clientbeat.cl'),
 }
 

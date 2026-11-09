@@ -466,20 +466,18 @@ class OnboardingWizardView(View):
         request.session.pop(OMITIR_KEY, None)
 
         sus_estado = getattr(suscripcion, 'estado', None) if suscripcion else None
-        if suscripcion and sus_estado == 'PENDIENTE':
-            messages.warning(
+        if suscripcion and (sus_estado == 'PENDIENTE' or not getattr(plan_actual, 'es_lanzamiento_gratis', False)):
+            messages.info(
                 request,
-                f'🎉 ¡Bienvenido/a {user.first_name or user.email}! Tu negocio "{negocio.nombre}" ya está registrado. '
-                f'Tu plan "{plan_mostrar}" quedó PENDIENTE DE ACTIVACIÓN — nuestro equipo de soporte '
-                f'lo revisará y confirmará a la brevedad. Recibirás un correo cuando esté listo '
-                f'o puedes contactarnos en soporte@clientbeat.cl.'
+                f'🎉 ¡Tu negocio "{negocio.nombre}" está listo! Para activar tu cuenta, ingresa tu medio de pago en Flow Chile.'
             )
-        else:
-            messages.success(
-                request,
-                f'🎉 ¡Bienvenido/a {user.first_name or user.email}! Tu negocio "{negocio.nombre}" ya está listo. '
-                f'{plan_mostrar} activado por {dias} días gratuitos.'
-            )
+            return redirect(f"/billing/flow/suscripcion/iniciar/?plan_id={plan_actual.id}&negocio_id={negocio.id}")
+
+        messages.success(
+            request,
+            f'🎉 ¡Bienvenido/a {user.first_name or user.email}! Tu negocio "{negocio.nombre}" ya está listo. '
+            f'{plan_mostrar} activado por {dias} días gratuitos.'
+        )
         return redirect('/dashboard/?welcome=1')
 
     # ===========================
@@ -548,7 +546,7 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
         negocios = user.negocios_permitidos_qs()
         negocio = negocios.first() if negocios.exists() else None
         locales = negocio.locales.filter(estado='ACTIVO') if negocio else []
-        cant_locales = locales.count() or 1
+        cant_locales = (locales.count() if negocio else len(locales)) or 1
 
         es_dueno = bool(user.is_admin_soporte or user.is_dueno or (negocio and negocio.dueño_id == user.id))
 
@@ -785,6 +783,45 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
                             f'${desglose["total_clp"]:,} CLP (incluye {desglose["local_extra_cantidad"]} local(es) adicional(es) '
                             f'a ${plan_activo.costo_local_adicional_clp:,} CLP/mes).'
                         ).replace(',', '.')
+
+                        # Si tiene tarjeta enrolada en Flow, sincronizar el nuevo plan mensual y cobrar proporción si aplica
+                        if suscripcion and suscripcion.flow_customer_id and suscripcion.tarjeta_enrolada:
+                            import re
+                            from apps.billing.flow_service import FlowService
+                            from apps.billing.models import Pago, EstadoPagoChoices, TipoCobroChoices
+
+                            flow_service = FlowService()
+                            slug_plan = re.sub(r'[^A-Za-z0-9_-]', '', plan_activo.nombre[:15]) or 'PLAN'
+                            nuevo_plan_code = f"CB-{slug_plan}-{locales_activos}LOC-{desglose['total_clp']}"
+                            flow_service.sincronizar_o_crear_plan(
+                                plan_id=nuevo_plan_code,
+                                nombre=f"ClientBeat {plan_activo.get_nombre_mostrar()} ({locales_activos} sucursales)",
+                                monto_clp=desglose['total_clp'],
+                            )
+                            if suscripcion.flow_subscription_id:
+                                flow_service.modificar_plan_suscripcion(suscripcion.flow_subscription_id, nuevo_plan_code)
+                            suscripcion.flow_plan_id = nuevo_plan_code
+                            suscripcion.save(update_fields=['flow_plan_id'])
+
+                            if plan_activo.costo_local_adicional_clp > 0:
+                                dias_rest = max(1, min(30, suscripcion.dias_restantes()))
+                                monto_prorrateado = max(350, int(round((plan_activo.costo_local_adicional_clp / 30) * dias_rest)))
+                                cargo_resp = flow_service.cobrar_cargo_adicional(
+                                    customer_id=suscripcion.flow_customer_id,
+                                    monto=monto_prorrateado,
+                                    concepto=f"Sucursal adicional '{local_nuevo.nombre}' ({dias_rest} días proporcionales)"
+                                )
+                                if cargo_resp.get('status') == 2 or cargo_resp.get('flowOrder'):
+                                    Pago.objects.create(
+                                        suscripcion=suscripcion,
+                                        flow_order_id=str(cargo_resp.get('flowOrder') or f"EXT-{int(timezone.now().timestamp())}"),
+                                        tipo_cobro=TipoCobroChoices.CARGO_EXTRA_LOCAL,
+                                        monto=monto_prorrateado,
+                                        estado=EstadoPagoChoices.APROBADO,
+                                        fecha_pago=timezone.now(),
+                                        firma_validada=True,
+                                        datos_webhook=cargo_resp,
+                                    )
                     else:
                         msg_facturacion = (
                             f' Incluido sin costo adicional en los {plan_activo.locales_gratis_incluidos} locales gratis de tu plan.'
@@ -836,6 +873,9 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
             if negocio:
                 suscripcion = Suscripcion.objects.filter(negocio=negocio).order_by('-fecha_inicio').first()
                 if suscripcion:
+                    if suscripcion.flow_subscription_id:
+                        from apps.billing.flow_service import FlowService
+                        FlowService().cancelar_suscripcion(suscripcion.flow_subscription_id)
                     suscripcion.estado = EstadoSuscripcionChoices.CANCELADA
                     suscripcion.cancelada_en = timezone.now()
                     suscripcion.motivo_cancelacion = motivo
@@ -877,16 +917,56 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
                 user.set_password(pass_nueva)
                 user.save()
                 update_session_auth_hash(request, user)
-                messages.success(request, '🔒 Tu contraseña se ha actualizado con éxito.')
+                enviar_email_seguridad_password(user, tipo='actualizada')
+                messages.success(request, f'🔒 Tu contraseña se ha actualizado con éxito y te hemos enviado una confirmación de seguridad a {user.email}.')
 
         elif action == 'contact_support':
             asunto = request.POST.get('asunto', '').strip()
             mensaje = request.POST.get('mensaje', '').strip()
 
             if asunto and mensaje:
+                try:
+                    from django.core.mail import send_mail
+                    from django.template.loader import render_to_string
+
+                    domain = getattr(settings, 'SITE_DOMAIN', 'http://localhost:8000').rstrip('/')
+                    negocio_nombre = negocio.nombre if negocio else 'Sin negocio asociado'
+                    html_soporte = render_to_string('emails/facturacion_flow.html', {
+                        'asunto': f'📩 Ticket Soporte: {asunto}',
+                        'badge_texto': 'Soporte ClientBeat',
+                        'titulo_header': f'Solicitud de Soporte: {asunto}',
+                        'subtitulo_header': f'{negocio_nombre} · {user.email}',
+                        'usuario_nombre': user.get_full_name() or user.email,
+                        'mensaje_principal': f'Hemos recibido tu consulta de soporte y nuestro equipo te responderá a la brevedad al correo {user.email}.',
+                        'box_bg': '#eef4ff',
+                        'box_border': '#0B3EA6',
+                        'box_title_color': '#0B3EA6',
+                        'box_titulo': 'Detalle del Mensaje Enviado',
+                        'detalles': [
+                            ('Cliente', user.get_full_name() or user.email),
+                            ('Correo de Contacto', user.email),
+                            ('Negocio', negocio_nombre),
+                            ('Asunto', asunto),
+                            ('Mensaje', mensaje),
+                        ],
+                        'nota_secundaria': 'Este correo fue enviado automáticamente a nuestra casilla oficial contactoclientbeat@gmail.com.',
+                        'cta_url': f'{domain}/accounts/perfil/',
+                        'cta_texto': 'Volver a Mi Perfil',
+                    })
+                    send_mail(
+                        subject=f'📩 [Soporte ClientBeat] {asunto} — {negocio_nombre}',
+                        message=f'De: {user.get_full_name()} ({user.email})\nNegocio: {negocio_nombre}\nAsunto: {asunto}\n\nMensaje:\n{mensaje}',
+                        from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'Client Beat <contactoclientbeat@gmail.com>'),
+                        recipient_list=['contactoclientbeat@gmail.com', user.email],
+                        html_message=html_soporte,
+                        fail_silently=True,
+                    )
+                except Exception:
+                    pass
+
                 messages.success(
                     request,
-                    f'📩 Mensaje enviado a soporte@clientbeat.cl. Asunto: "{asunto}". Nos pondremos en contacto contigo a {user.email} a la brevedad.'
+                    f'📩 Mensaje enviado a contactoclientbeat@gmail.com. Asunto: "{asunto}". Nos pondremos en contacto contigo a {user.email} a la brevedad.'
                 )
             else:
                 messages.error(request, '⚠️ Por favor ingresa el asunto y el mensaje para el equipo de soporte.')
@@ -917,7 +997,7 @@ def enviar_email_invitacion(invitacion, request):
     send_mail(
         subject=f'¡{dueno_nombre} te ha invitado a unirte a {invitacion.negocio.nombre} en ClientBeat!',
         message=f'Hola! {dueno_nombre} te ha invitado a unirte a {invitacion.negocio.nombre}. Ingresa a: {url_invitacion}',
-        from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'contacto@avaapp.cl'),
+        from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'Client Beat <contactoclientbeat@gmail.com>'),
         recipient_list=[invitacion.email],
         html_message=html_message,
         fail_silently=True,
@@ -1028,5 +1108,127 @@ class AceptarInvitacionView(View):
 
         messages.success(request, f'🎉 ¡Perfil configurado con éxito! Bienvenido al equipo de {invitacion.negocio.nombre}.')
         return redirect('/dashboard/?welcome=1')
+
+
+def enviar_email_seguridad_password(user, tipo: str = 'actualizada', clave_temporal: str = None):
+    """
+    Envía notificación corporativa por correo electrónico ante cambios o restablecimientos de contraseña:
+      - 'actualizada': El usuario actualizó su contraseña desde Mi Perfil.
+      - 'restablecida': El usuario completó el flujo de recuperación de contraseña por enlace.
+      - 'reset_admin': Un Administrador de Soporte generó una clave temporal para el usuario.
+    """
+    from django.core.mail import send_mail
+    from django.template.loader import render_to_string
+    from django.conf import settings
+    from django.utils import timezone
+
+    try:
+        if not user or not user.email:
+            return
+
+        domain = getattr(settings, 'SITE_DOMAIN', 'http://localhost:8000').rstrip('/')
+        usuario_nombre = user.get_full_name() or user.first_name or user.email
+        fecha_hora = timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M hrs')
+
+        if tipo == 'reset_admin' and clave_temporal:
+            asunto = "🔑 Nueva Clave Temporal de Acceso — ClientBeat"
+            cuerpo = (
+                f"Hola {usuario_nombre},\n\n"
+                f"El equipo de Soporte de ClientBeat ha restablecido tu contraseña de acceso.\n"
+                f"Tu nueva clave temporal es: {clave_temporal}\n\n"
+                f"Te recomendamos iniciar sesión en {domain}/accounts/login/ y actualizarla desde Mi Perfil.\n\n"
+                f"Equipo ClientBeat · contactoclientbeat@gmail.com"
+            )
+            ctx_html = {
+                'asunto': asunto,
+                'badge_texto': 'Soporte y Seguridad · ClientBeat',
+                'titulo_header': 'Clave Temporal Generada',
+                'subtitulo_header': user.email,
+                'usuario_nombre': usuario_nombre,
+                'mensaje_principal': 'El equipo de Soporte de ClientBeat ha generado una clave temporal para que puedas ingresar nuevamente a tu cuenta.',
+                'box_bg': '#eef4ff',
+                'box_border': '#0B3EA6',
+                'box_title_color': '#0B3EA6',
+                'box_titulo': 'Credenciales Temporales de Acceso',
+                'detalles': [
+                    ('Correo Electrónico', user.email),
+                    ('Clave Temporal', clave_temporal),
+                    ('Fecha de Generación', fecha_hora),
+                ],
+                'nota_secundaria': 'Por tu seguridad, te recomendamos cambiar esta clave temporal desde la sección "Seguridad" en Mi Perfil apenas inicies sesión.',
+                'cta_url': f'{domain}/accounts/login/',
+                'cta_texto': 'Iniciar Sesión Ahora',
+            }
+        else:
+            origen_label = 'Recuperación por correo electrónico' if tipo == 'restablecida' else 'Actualización desde Mi Perfil'
+            asunto = "🔒 Tu contraseña en ClientBeat ha sido actualizada"
+            cuerpo = (
+                f"Hola {usuario_nombre},\n\n"
+                f"Te confirmamos que la contraseña de tu cuenta ({user.email}) en ClientBeat fue actualizada exitosamente el {fecha_hora}.\n"
+                f"Método: {origen_label}\n\n"
+                f"Si no realizaste este cambio, escríbenos de inmediato a contactoclientbeat@gmail.com.\n\n"
+                f"Equipo ClientBeat · contactoclientbeat@gmail.com"
+            )
+            ctx_html = {
+                'asunto': asunto,
+                'badge_texto': 'Seguridad de Cuenta · ClientBeat',
+                'titulo_header': 'Contraseña Actualizada con Éxito',
+                'subtitulo_header': user.email,
+                'usuario_nombre': usuario_nombre,
+                'mensaje_principal': 'Te confirmamos que la contraseña de acceso a tu cuenta en ClientBeat ha sido actualizada correctamente.',
+                'box_bg': '#ecfbf4',
+                'box_border': '#00B879',
+                'box_title_color': '#008E5C',
+                'box_titulo': 'Registro de Seguridad',
+                'detalles': [
+                    ('Cuenta Protegida', user.email),
+                    ('Acción Realizada', origen_label),
+                    ('Fecha y Hora', fecha_hora),
+                    ('Estado', 'Contraseña Activa y Verificada'),
+                ],
+                'nota_secundaria': 'Si tú no realizaste este cambio, por favor contáctanos de inmediato respondiendo a este correo (contactoclientbeat@gmail.com).',
+                'cta_url': f'{domain}/accounts/perfil/',
+                'cta_texto': 'Ir a Mi Cuenta',
+            }
+
+        html_content = render_to_string('emails/facturacion_flow.html', ctx_html)
+
+        send_mail(
+            subject=asunto,
+            message=cuerpo,
+            from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'Client Beat <contactoclientbeat@gmail.com>'),
+            recipient_list=[user.email],
+            html_message=html_content,
+            fail_silently=True,
+        )
+    except Exception:
+        pass
+
+
+class ClientBeatPasswordResetView(auth_views.PasswordResetView):
+    template_name = 'accounts/password_reset_form.html'
+    email_template_name = 'emails/password_reset_email.txt'
+    html_email_template_name = 'emails/password_reset_email.html'
+    subject_template_name = 'emails/password_reset_subject.txt'
+    success_url = '/accounts/password-reset/done/'
+
+
+class ClientBeatPasswordResetDoneView(auth_views.PasswordResetDoneView):
+    template_name = 'accounts/password_reset_done.html'
+
+
+class ClientBeatPasswordResetConfirmView(auth_views.PasswordResetConfirmView):
+    template_name = 'accounts/password_reset_confirm.html'
+    success_url = '/accounts/reset/done/'
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        enviar_email_seguridad_password(self.user, tipo='restablecida')
+        return response
+
+
+class ClientBeatPasswordResetCompleteView(auth_views.PasswordResetCompleteView):
+    template_name = 'accounts/password_reset_complete.html'
+
 
 

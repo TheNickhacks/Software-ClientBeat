@@ -552,6 +552,74 @@ class AdminPanelSuscripcionCambiarPlanView(AdminSoporteRequiredMixin, View):
         return redirect('adminpanel:suscripcion_detalle', pk=pk)
 
 
+@method_decorator(require_POST, name='dispatch')
+class AdminPanelSuscripcionSincronizarFlowView(AdminSoporteRequiredMixin, View):
+    """
+    Permite a Admin Soporte consultar el estado en vivo en Flow o ejecutar un reintento manual
+    de cobro a la tarjeta enrolada (/customer/charge) cuando la cuenta está en mora o gracia.
+    """
+    def post(self, request, pk):
+        from apps.billing.flow_service import FlowService
+        from apps.billing.models import TipoCobroChoices
+
+        sus = get_object_or_404(Suscripcion.objects.select_related('plan', 'negocio'), pk=pk)
+        accion_flow = request.POST.get('accion_flow', 'sync')
+        flow_service = FlowService()
+
+        if accion_flow == 'retry_charge':
+            if not sus.flow_customer_id or not sus.tarjeta_enrolada:
+                messages.error(request, '❌ El cliente aún no tiene una tarjeta enrolada activa en Flow para debitar.')
+                return redirect('adminpanel:suscripcion_detalle', pk=pk)
+
+            cant_locales = sus.negocio.locales.filter(estado='ACTIVO').count() or 1
+            monto = sus.plan.calcular_monto_mensual(cant_locales) if sus.plan else 0
+            resp = flow_service.cobrar_cargo_adicional(
+                customer_id=sus.flow_customer_id,
+                monto=monto,
+                concepto=f"Regularización mensual ClientBeat - {sus.negocio.nombre}"
+            )
+            if resp.get('status') == 2 or resp.get('flowOrder'):
+                ahora = timezone.now()
+                sus.estado = EstadoSuscripcionChoices.ACTIVA
+                sus.fecha_vencimiento = ahora + timezone.timedelta(days=30)
+                sus.proximo_ciclo = ahora + timezone.timedelta(days=30)
+                sus.intentos_cobro_fallidos = 0
+                sus.save()
+                Pago.objects.create(
+                    suscripcion=sus,
+                    flow_order_id=str(resp.get('flowOrder') or f"RETRY-{int(ahora.timestamp())}"),
+                    tipo_cobro=TipoCobroChoices.CICLO_RECURRENTE,
+                    monto=monto,
+                    estado=EstadoPagoChoices.APROBADO,
+                    fecha_pago=ahora,
+                    firma_validada=True,
+                    datos_webhook=resp,
+                )
+                messages.success(request, f'✅ Cobro manual en Flow aprobado (${monto:,} CLP). Suscripción reactivada por 30 días.')
+            else:
+                sus.intentos_cobro_fallidos += 1
+                sus.fecha_ultimo_intento_cobro = timezone.now()
+                sus.save(update_fields=['intentos_cobro_fallidos', 'fecha_ultimo_intento_cobro'])
+                messages.error(request, f'⚠️ Flow rechazó el reintento de cobro: {resp.get("error", "Tarjeta sin fondos o rechazada")}.')
+            return redirect('adminpanel:suscripcion_detalle', pk=pk)
+
+        # Sincronización de estado en vivo con Flow
+        if sus.flow_subscription_id:
+            info = flow_service.obtener_suscripcion(sus.flow_subscription_id)
+            messages.info(request, f'🔄 Estado en Flow para {sus.flow_subscription_id}: {info.get("status_str", "Consultado")}.')
+        elif sus.flow_customer_id:
+            info = flow_service.obtener_cliente(sus.flow_customer_id)
+            if info.get('last4CardDigits'):
+                sus.tarjeta_enrolada = True
+                sus.tarjeta_tipo = info.get('creditCardType') or sus.tarjeta_tipo or 'Tarjeta'
+                sus.tarjeta_ultimos_4 = str(info.get('last4CardDigits'))[-4:]
+                sus.save(update_fields=['tarjeta_enrolada', 'tarjeta_tipo', 'tarjeta_ultimos_4'])
+            messages.info(request, f'🔄 Cliente Flow ({sus.flow_customer_id}) sincronizado correctamente.')
+        else:
+            messages.warning(request, 'ℹ️ Esta suscripción aún no registra un identificador en Flow.')
+        return redirect('adminpanel:suscripcion_detalle', pk=pk)
+
+
 class AdminPanelSuscripcionNuevaView(AdminSoporteRequiredMixin, View):
     """Asignar plan manualmente a un negocio (crear Suscripcion PENDIENTE)."""
     def get(self, request):
@@ -2256,8 +2324,10 @@ class AdminPerfilView(AdminSoporteRequiredMixin, View):
                 return redirect('adminpanel:perfil')
             user.set_password(nueva_password)
             from django.contrib.auth import update_session_auth_hash
+            from apps.accounts.views import enviar_email_seguridad_password
             update_session_auth_hash(request, user)
-            messages.success(request, '¡Contraseña actualizada con éxito!')
+            enviar_email_seguridad_password(user, tipo='actualizada')
+            messages.success(request, f'¡Contraseña actualizada con éxito! Se envió confirmación a {user.email}.')
 
         user.save()
         _auditar(request, AccionAuditoriaChoices.EDITAR, ModuloAuditoriaChoices.USUARIOS, user, descripcion='Actualizó su perfil de administrador')
@@ -2383,13 +2453,16 @@ class AdminPanelUsuarioCambiarEstadoView(AdminSoporteRequiredMixin, View):
 
 class AdminPanelUsuarioResetClaveView(AdminSoporteRequiredMixin, View):
     def post(self, request, pk):
+        import secrets
+        from apps.accounts.views import enviar_email_seguridad_password
         target_user = get_object_or_404(User, pk=pk)
-        nueva_clave = User.objects.make_random_password(length=10)
+        nueva_clave = f"CB-{secrets.token_urlsafe(6)[:8]}"
         target_user.set_password(nueva_clave)
         target_user.save()
+        enviar_email_seguridad_password(target_user, tipo='reset_admin', clave_temporal=nueva_clave)
 
         _auditar(request, AccionAuditoriaChoices.RESETEAR_CLAVE, ModuloAuditoriaChoices.USUARIOS, target_user, descripcion='Reset clave por Admin Soporte')
-        messages.success(request, f'Clave reiniciada para {target_user.email}. La nueva clave temporal es: {nueva_clave}')
+        messages.success(request, f'Clave reiniciada para {target_user.email} y enviada por correo electrónico. La nueva clave temporal es: {nueva_clave}')
         return redirect('adminpanel:usuarios')
 
 

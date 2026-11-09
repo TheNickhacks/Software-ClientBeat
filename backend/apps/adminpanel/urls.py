@@ -95,6 +95,7 @@ urlpatterns = [
     path('suscripciones/<uuid:pk>/cancelar/', views.AdminPanelSuscripcionCancelarView.as_view(), name='suscripcion_cancelar'),
     path('suscripciones/<uuid:pk>/extender/', views.AdminPanelSuscripcionExtenderView.as_view(), name='suscripcion_extender'),
     path('suscripciones/<uuid:pk>/cambiar-plan/', views.AdminPanelSuscripcionCambiarPlanView.as_view(), name='suscripcion_cambiar_plan'),
+    path('suscripciones/<uuid:pk>/sincronizar-flow/', views.AdminPanelSuscripcionSincronizarFlowView.as_view(), name='suscripcion_sincronizar_flow'),
 
     path('usuarios/', views.AdminPanelUsuariosListView.as_view(), name='usuarios'),
     path('usuarios/<uuid:pk>/cambiar-rol/', views.AdminPanelUsuarioCambiarRolView.as_view(), name='usuario_cambiar_rol'),
