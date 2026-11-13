@@ -18,6 +18,14 @@ class OrigenRespuestaChoices(TextChoices):
     EMAIL = 'EMAIL', 'Invitación por email'
 
 
+class MotivoEvaluacionChoices(TextChoices):
+    SERVICIO_CLIENTE = 'SERVICIO_CLIENTE', 'Servicio al cliente'
+    CALIDAD_PRODUCTOS = 'CALIDAD_PRODUCTOS', 'Calidad de productos'
+    CALIDAD_PRECIO = 'CALIDAD_PRECIO', 'Relación calidad-precio'
+    AMBIENTE = 'AMBIENTE', 'Ambiente'
+
+
+
 class PlantillaEncuesta(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     nombre = models.CharField(max_length=150, verbose_name='Nombre interno plantilla')
@@ -83,12 +91,25 @@ class RespuestaEncuesta(models.Model):
     )
     nps_puntaje = models.IntegerField(
         verbose_name='NPS (0-10)')
+    csat_puntaje = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name='CSAT Puntaje (0-10)',
+        help_text='Escala del 0 al 10 sobre satisfacción en la experiencia en el local'
+    )
     csat_emocion = models.CharField(
         max_length=30,
         choices=EmocionCSATChoices.choices,
         blank=True,
         null=True,
         verbose_name='CSAT emoción')
+    motivo_evaluacion = models.CharField(
+        max_length=50,
+        choices=MotivoEvaluacionChoices.choices,
+        blank=True,
+        null=True,
+        verbose_name='Motivo principal evaluación'
+    )
     comentario = models.TextField(blank=True, null=True, verbose_name='Comentario cliente')
     email_opcional = models.EmailField(blank=True, null=True, verbose_name='Email cliente (opcional, para contacto)')
     origen = models.CharField(

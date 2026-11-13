@@ -1,6 +1,7 @@
 from django import forms
-from .models import RespuestaEncuesta, EmocionCSATChoices, PlantillaEncuesta
+from .models import RespuestaEncuesta, EmocionCSATChoices, PlantillaEncuesta, MotivoEvaluacionChoices
 from apps.businesses.models import Local
+
 
 
 class PlantillaEncuestaCustomForm(forms.ModelForm):
@@ -54,8 +55,21 @@ class RespuestaEncuestaPublicaForm(forms.ModelForm):
         min_value=0,
         max_value=10,
         required=True,
-        label='¿Qué tan probable es que nos recomiendes?',
+        label='¿En una escala del 0 al 10 qué tan probable es que nos recomiendes?',
         widget=forms.HiddenInput(attrs={'id': 'nps_puntaje_hidden'}),
+    )
+    csat_puntaje = forms.IntegerField(
+        min_value=0,
+        max_value=10,
+        required=False,
+        label='¿En una escala del 0 al 10 qué tan satisfecho(a) estás con la experiencia en el local?',
+        widget=forms.HiddenInput(attrs={'id': 'csat_puntaje_hidden'}),
+    )
+    motivo_evaluacion = forms.ChoiceField(
+        choices=[('', 'Selecciona el motivo principal')] + list(MotivoEvaluacionChoices.choices),
+        required=False,
+        label='¿Cuál sería el principal motivo por el que evaluarías así?',
+        widget=forms.HiddenInput(attrs={'id': 'motivo_evaluacion_hidden'}),
     )
     csat_emocion = forms.ChoiceField(
         choices=[('', 'Selecciona una emoción')] + list(EmocionCSATChoices.choices),
@@ -66,7 +80,8 @@ class RespuestaEncuestaPublicaForm(forms.ModelForm):
 
     class Meta:
         model = RespuestaEncuesta
-        fields = ['nps_puntaje', 'csat_emocion', 'comentario', 'email_opcional', 'es_anonima']
+        fields = ['nps_puntaje', 'csat_puntaje', 'motivo_evaluacion', 'csat_emocion', 'comentario', 'email_opcional', 'es_anonima']
+
         widgets = {
             'comentario': forms.Textarea(attrs={
                 'rows': 4,
@@ -138,7 +153,22 @@ class RespuestaEncuestaPublicaForm(forms.ModelForm):
         if resp.es_anonima:
             resp.email_opcional = None
 
+        # Sincronizar emoción CSAT a partir del puntaje 0-10 si no vino seleccionada
+        if resp.csat_puntaje is not None and not resp.csat_emocion:
+            p = resp.csat_puntaje
+            if p >= 9:
+                resp.csat_emocion = EmocionCSATChoices.MUY_FELIZ
+            elif p >= 7:
+                resp.csat_emocion = EmocionCSATChoices.FELIZ
+            elif p >= 5:
+                resp.csat_emocion = EmocionCSATChoices.NEUTRAL
+            elif p >= 3:
+                resp.csat_emocion = EmocionCSATChoices.INSATISFECHO
+            else:
+                resp.csat_emocion = EmocionCSATChoices.MUY_INSATISFECHO
+
         # Extract custom responses into metadata
+
         respuestas_custom = {}
         if plantilla and plantilla.preguntas_extra:
             for idx, q in enumerate(plantilla.preguntas_extra):

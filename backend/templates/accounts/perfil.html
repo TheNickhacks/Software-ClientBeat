@@ -67,9 +67,13 @@
             <a href="#plan" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 hover:bg-cbblue-50 hover:text-cbblue transition-colors">
               <i class="fa fa-credit-card text-amber-500 w-5"></i> Plan y Suscripción
             </a>
+            <a href="#notificaciones" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 hover:bg-cbblue-50 hover:text-cbblue transition-colors">
+              <i class="fa fa-bell text-yellow-500 w-5"></i> Notificaciones al Correo
+            </a>
             <a href="#seguridad" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 hover:bg-cbblue-50 hover:text-cbblue transition-colors">
               <i class="fa fa-lock text-rose-500 w-5"></i> Cambio de Contraseña
             </a>
+
             <a href="#soporte" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 hover:bg-cbblue-50 hover:text-cbblue transition-colors">
               <i class="fa fa-headset text-indigo-500 w-5"></i> Soporte y Ayuda
             </a>
@@ -168,16 +172,21 @@
             {% csrf_token %}
             <input type="hidden" name="action" value="update_business">
 
-            <div class="grid md:grid-cols-2 gap-5">
+            <div class="grid md:grid-cols-3 gap-5">
               <div>
                 <label class="form-label">Nombre del Negocio</label>
                 <input type="text" name="nombre_negocio" value="{{ negocio.nombre }}" class="form-input" required>
+              </div>
+              <div>
+                <label class="form-label">RUT Empresa / Negocio</label>
+                <input type="text" name="rut_negocio" value="{{ negocio.rut|default:'' }}" class="form-input" placeholder="76.123.456-7">
               </div>
               <div>
                 <label class="form-label">Rubro / Categoría</label>
                 <input type="text" value="{{ negocio.rubro.nombre|default:'Gastronomía / General' }}" readonly class="form-input bg-slate-100 text-slate-500 cursor-not-allowed">
               </div>
             </div>
+
 
             <div class="grid md:grid-cols-2 gap-5">
               <div>
@@ -243,7 +252,18 @@
                 <div class="flex items-center gap-2">
                   <span class="px-2.5 py-1 rounded-full font-bold bg-cbgreen-100 text-cbgreen-700 text-[11px]">Activo</span>
                   <span class="text-[11px] font-mono text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded">QR: {{ loc.qr_token }}</span>
+                  {% if es_dueno and locales|length > 1 %}
+                  <form method="POST" class="inline" onsubmit="return confirm('¿Confirmas que deseas dar de baja la sucursal \'{{ loc.nombre }}\'?');">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_local">
+                    <input type="hidden" name="local_id" value="{{ loc.id }}">
+                    <button type="submit" class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-800 transition-colors flex items-center justify-center text-xs font-bold" title="Eliminar / dar de baja sucursal">
+                      <i class="fa fa-trash-can"></i>
+                    </button>
+                  </form>
+                  {% endif %}
                 </div>
+
               </div>
               {% empty %}
               <p class="text-xs text-slate-400 italic">No tienes sucursales adicionales configuradas.</p>
@@ -256,6 +276,7 @@
         </div>
 
         {# Section: Team & Collaborators #}
+
         {% if es_dueno and negocio %}
         <div id="equipo" class="glass-effect rounded-2xl p-6 md:p-8 border border-slate-200/60 shadow-sm scroll-mt-28">
           <div class="flex items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100 flex-wrap">
@@ -303,23 +324,31 @@
                       <span class="text-slate-500"><i class="fa fa-envelope mr-1"></i>{{ m.usuario.email }}</span>
                     </div>
                   </div>
-                  <div class="flex items-center gap-3">
-                    <span class="px-2.5 py-1 rounded-full font-bold bg-indigo-50 text-indigo-700 text-[11px]">
-                      <i class="fa fa-shield-halved mr-1"></i>{{ m.get_rol_display }}
-                    </span>
+                  <div class="flex items-center gap-2">
                     {% if m.usuario_id != negocio.dueño_id %}
+                    <form method="POST" class="inline-flex items-center gap-1" title="Modificar rol del miembro">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="edit_member_role">
+                      <input type="hidden" name="miembro_id" value="{{ m.id }}">
+                      <select name="nuevo_rol" onchange="this.form.submit()" class="text-[11px] font-semibold py-1 px-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:border-cbblue cursor-pointer focus:ring-1 focus:ring-cbblue">
+                        {% for r_code, r_lbl in rol_choices %}
+                        <option value="{{ r_code }}" {% if m.rol == r_code %}selected{% endif %}>{{ r_lbl }}</option>
+                        {% endfor %}
+                      </select>
+                    </form>
                     <form method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de remover a este colaborador del equipo?');">
                       {% csrf_token %}
                       <input type="hidden" name="action" value="remove_member">
                       <input type="hidden" name="miembro_id" value="{{ m.id }}">
-                      <button type="submit" class="text-rose-600 hover:text-rose-800 text-xs font-bold p-1" title="Remover miembro">
+                      <button type="submit" class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-800 transition-colors flex items-center justify-center text-xs font-bold" title="Remover miembro">
                         <i class="fa fa-trash-can"></i>
                       </button>
                     </form>
                     {% else %}
-                    <span class="text-[11px] font-bold text-cbblue bg-cbblue-50 px-2 py-0.5 rounded-full">Dueño</span>
+                    <span class="text-[11px] font-bold text-cbblue bg-cbblue-50 px-2.5 py-1 rounded-full">👑 Dueño / Titular</span>
                     {% endif %}
                   </div>
+
                 </div>
                 {% empty %}
                 <p class="text-xs text-slate-400 italic">No hay otros miembros activos aún.</p>
@@ -536,18 +565,29 @@
               <span class="text-slate-400 block mb-1">Próximo Cobro Automático</span>
               <b class="text-sm text-slate-800">{% if suscripcion %}{{ suscripcion.proximo_ciclo|default:suscripcion.fecha_vencimiento|date:"d/m/Y"|default:"Pendiente" }}{% else %}Pendiente{% endif %}</b>
             </div>
-            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-              <span class="text-slate-400 block mb-1">Medio de Pago Registrado</span>
-              {% if suscripcion.tarjeta_enrolada %}
-                <b class="text-sm text-emerald-700 flex items-center gap-1">
-                  <i class="fa fa-credit-card"></i> {{ suscripcion.tarjeta_tipo|default:'Tarjeta' }} •••• {{ suscripcion.tarjeta_ultimos_4 }}
-                </b>
-              {% else %}
-                <b class="text-sm text-amber-700 flex items-center gap-1">
-                  <i class="fa fa-circle-question"></i> No vinculada
-                </b>
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
+              <div>
+                <span class="text-slate-400 block mb-1">Medio de Pago Registrado</span>
+                {% if suscripcion.tarjeta_enrolada %}
+                  <b class="text-sm text-emerald-700 flex items-center gap-1">
+                    <i class="fa fa-credit-card"></i> {{ suscripcion.tarjeta_tipo|default:'Tarjeta' }} •••• {{ suscripcion.tarjeta_ultimos_4 }}
+                  </b>
+                {% else %}
+                  <b class="text-sm text-amber-700 flex items-center gap-1">
+                    <i class="fa fa-circle-question"></i> No vinculada
+                  </b>
+                {% endif %}
+              </div>
+              {% if es_dueno %}
+              <form method="POST" action="{% url 'billing:flow_suscripcion_iniciar' %}" class="mt-2">
+                {% csrf_token %}
+                <button type="submit" class="w-full text-center py-1.5 px-2 rounded-lg bg-white border border-slate-200 text-cbblue hover:bg-cbblue hover:text-white font-bold text-[11px] transition-colors shadow-2xs">
+                  <i class="fa fa-credit-card mr-1"></i> {% if suscripcion.tarjeta_enrolada %}Cambiar Tarjeta{% else %}Inscribir en Flow{% endif %}
+                </button>
+              </form>
               {% endif %}
             </div>
+
             <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
               <span class="text-slate-400 block mb-1">Pasarela de Pago</span>
               <b class="text-sm text-cbblue flex items-center gap-1"><i class="fa fa-shield-halved"></i> Flow Suscripciones</b>
@@ -606,6 +646,73 @@
           </div>
           {% endif %}
         </div>
+
+        {# ================= SECCIÓN NOTIFICACIONES AL CORREO ================= #}
+        <div id="notificaciones" class="glass-effect rounded-2xl p-6 md:p-8 border border-slate-200/60 shadow-sm scroll-mt-28">
+          <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
+            <div class="w-10 h-10 rounded-xl bg-yellow-50 text-yellow-600 flex items-center justify-center">
+              <i class="fa fa-bell text-lg"></i>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-slate-900">Notificaciones y Alertas al Correo</h2>
+              <p class="text-xs text-slate-500">Personaliza los reportes automáticos y alertas que recibirás en tu casilla de email.</p>
+            </div>
+          </div>
+
+          <form method="POST" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_notifications">
+
+            <div class="space-y-3">
+              <label class="flex items-start gap-3 p-4 rounded-xl border border-slate-200/80 hover:bg-slate-50/80 transition cursor-pointer">
+                <input type="checkbox" name="posicion_semanal_bm" {% if preferencias_notif.posicion_semanal_bm %}checked{% endif %} class="w-4 h-4 rounded text-cbblue focus:ring-cbblue border-slate-300 mt-0.5">
+                <div class="flex-1">
+                  <b class="text-xs font-bold text-slate-800 block">Posición semanal del benchmark</b>
+                  <span class="text-[11px] text-slate-500">Resumen semanal con tu posición y evolución en el ranking del rubro frente a la competencia.</span>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-3 p-4 rounded-xl border border-slate-200/80 hover:bg-slate-50/80 transition cursor-pointer">
+                <input type="checkbox" name="top10_bm" {% if preferencias_notif.top10_bm %}checked{% endif %} class="w-4 h-4 rounded text-cbblue focus:ring-cbblue border-slate-300 mt-0.5">
+                <div class="flex-1">
+                  <b class="text-xs font-bold text-slate-800 block">Top 10 Benchmark</b>
+                  <span class="text-[11px] text-slate-500">Alerta destacada al ingresar o mantenerte dentro de los 10 mejores negocios evaluados de tu sector.</span>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-3 p-4 rounded-xl border border-slate-200/80 hover:bg-slate-50/80 transition cursor-pointer">
+                <input type="checkbox" name="puntaje_nps" {% if preferencias_notif.puntaje_nps %}checked{% endif %} class="w-4 h-4 rounded text-cbblue focus:ring-cbblue border-slate-300 mt-0.5">
+                <div class="flex-1">
+                  <b class="text-xs font-bold text-slate-800 block">Puntaje NPS acumulado</b>
+                  <span class="text-[11px] text-slate-500">Reporte mensual con el puntaje Net Promoter Score y balance de promotores vs detractores.</span>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-3 p-4 rounded-xl border border-slate-200/80 hover:bg-slate-50/80 transition cursor-pointer">
+                <input type="checkbox" name="variacion_csat_nps" {% if preferencias_notif.variacion_csat_nps %}checked{% endif %} class="w-4 h-4 rounded text-cbblue focus:ring-cbblue border-slate-300 mt-0.5">
+                <div class="flex-1">
+                  <b class="text-xs font-bold text-slate-800 block">Variación de puntaje CSAT y NPS</b>
+                  <span class="text-[11px] text-slate-500">Aviso inmediato si se detecta una subida o caída abrupta en los indicadores de satisfacción.</span>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-3 p-4 rounded-xl border border-rose-200/80 bg-rose-50/20 hover:bg-rose-50/40 transition cursor-pointer">
+                <input type="checkbox" name="alerta_resenas_negativas" {% if preferencias_notif.alerta_resenas_negativas %}checked{% endif %} class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 mt-0.5">
+                <div class="flex-1">
+                  <b class="text-xs font-bold text-rose-800 block">Alertas sobre reseñas negativas</b>
+                  <span class="text-[11px] text-rose-600">Alerta prioritaria al registrarse una reseña de 1 o 2 estrellas en Google o una calificación de detractor en QR.</span>
+                </div>
+              </label>
+            </div>
+
+            <div class="pt-3 flex justify-end">
+              <button type="submit" class="btn-primary !bg-yellow-600 hover:!bg-yellow-700 text-xs !py-2.5">
+                <i class="fa fa-floppy-disk mr-1"></i> Guardar Preferencias de Notificaciones
+              </button>
+            </div>
+          </form>
+        </div>
+
 
         {# ================= MODAL AGREGAR LOCAL / SUCURSAL ================= #}
         {% if es_dueno %}

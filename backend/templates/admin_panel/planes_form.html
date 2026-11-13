@@ -101,12 +101,13 @@
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.precio_clp.label }}</label>
-            {% render_field form.precio_clp class="input-base text-lg font-bold" type="number" min="0" %}
+            {% render_field form.precio_clp class="input-base text-lg font-bold" type="number" min="0" step="any" placeholder="Ej: 39990" %}
           </div>
           <div>
             <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.precio_uf.label }}</label>
-            {% render_field form.precio_uf class="input-base text-lg font-bold" type="number" min="0" step="0.01" %}
+            {% render_field form.precio_uf class="input-base text-lg font-bold" type="number" min="0" step="any" placeholder="Ej: 1.5" %}
           </div>
+
           <div>
             <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.moneda.label }}</label>
             {% render_field form.moneda class="input-base" %}
@@ -144,8 +145,9 @@
           </div>
           <div>
             <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.costo_local_adicional_clp.label }} (CLP)</label>
-            {% render_field form.costo_local_adicional_clp class="input-base" type="number" min="0" %}
+            {% render_field form.costo_local_adicional_clp class="input-base" type="number" min="0" step="any" %}
           </div>
+
         </div>
       </div>
 
@@ -170,8 +172,9 @@
           </div>
           <div>
             <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.costo_rubro_adicional_clp.label }} (CLP)</label>
-            {% render_field form.costo_rubro_adicional_clp class="input-base" type="number" min="0" %}
+            {% render_field form.costo_rubro_adicional_clp class="input-base" type="number" min="0" step="any" %}
           </div>
+
           <div class="col-span-2">
             <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.rubros.label }}</label>
             {% render_field form.rubros class="input-base h-28 !p-2 text-xs" %}
@@ -245,8 +248,9 @@
           </label>
           <div class="p-3 rounded-xl border border-slate-200">
             <label class="text-xs font-semibold text-slate-600 mb-1.5 block">{{ form.orden.label }}</label>
-            {% render_field form.orden class="input-base" type="number" min="0" step="10" %}
+            {% render_field form.orden class="input-base" type="number" min="0" step="1" %}
           </div>
+
         </div>
       </div>
 

@@ -592,6 +592,17 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
             total_colaboradores_usados = len(miembros_equipo) + len(invitaciones_pendientes)
             puede_invitar_colaborador = total_colaboradores_usados < limite_colaboradores
 
+        preferencias_notif = None
+        if user.is_authenticated:
+            try:
+                from apps.notifications.models import PreferenciaNotificacion
+                preferencias_notif, _ = PreferenciaNotificacion.objects.get_or_create(
+                    usuario=user,
+                    defaults={'negocio': negocio}
+                )
+            except Exception:
+                preferencias_notif = None
+
         return {
             'usuario': user,
             'negocio': negocio,
@@ -610,7 +621,9 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
             'total_colaboradores_usados': total_colaboradores_usados,
             'puede_invitar_colaborador': puede_invitar_colaborador,
             'rol_choices': MiembroEquipo.RolChoices.choices if negocio else [],
+            'preferencias_notif': preferencias_notif,
         }
+
 
     def get(self, request, *args, **kwargs):
         context = self.get_context_data(request)
@@ -627,14 +640,15 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
         negocio = negocios.first() if negocios.exists() else None
         es_dueno = bool(user.is_admin_soporte or user.is_dueno or (negocio and negocio.dueño_id == user.id))
 
-        # Restricción RBAC: Solo el Dueño o Admin Soporte pueden modificar la cuenta, plan, agregar locales o gestionar colaboradores
-        if action in ['update_business', 'change_plan', 'cancel_subscription', 'reactivate_subscription', 'add_local', 'invite_collaborator', 'resend_invitation', 'cancel_invitation', 'remove_member'] and not es_dueno:
+        # Restricción RBAC: Solo el Dueño o Admin Soporte pueden modificar la cuenta, plan, agregar/eliminar locales o gestionar colaboradores
+        if action in ['update_business', 'change_plan', 'cancel_subscription', 'reactivate_subscription', 'add_local', 'delete_local', 'invite_collaborator', 'resend_invitation', 'cancel_invitation', 'remove_member', 'edit_member_role'] and not es_dueno:
             messages.error(
                 request,
                 '🔒 Permiso denegado: Solo el dueño del negocio tiene atribuciones para modificar datos corporativos, planes, sucursales o equipo.'
             )
             context = self.get_context_data(request)
             return render(request, self.template_name, context)
+
 
         if action == 'invite_collaborator':
             if not negocio:
@@ -716,6 +730,35 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
             else:
                 messages.error(request, '⚠️ No se encontró el miembro del equipo.')
 
+        elif action == 'edit_member_role':
+            miembro_id = request.POST.get('miembro_id')
+            nuevo_rol = request.POST.get('nuevo_rol', '').strip()
+            miembro = MiembroEquipo.objects.filter(id=miembro_id, negocio=negocio).first()
+            if not miembro:
+                messages.error(request, '⚠️ No se encontró el miembro del equipo seleccionado.')
+            elif miembro.usuario_id == negocio.dueño_id:
+                messages.error(request, '❌ No es posible modificar el rol del dueño del negocio.')
+            elif nuevo_rol not in dict(MiembroEquipo.RolChoices.choices):
+                messages.error(request, '⚠️ El rol seleccionado no es válido.')
+            else:
+                miembro.rol = nuevo_rol
+                miembro.save(update_fields=['rol'])
+                messages.success(request, f'✅ Rol de {miembro.usuario.email} actualizado a "{miembro.get_rol_display()}".')
+
+        elif action == 'update_notifications':
+            try:
+                from apps.notifications.models import PreferenciaNotificacion
+                pref, _ = PreferenciaNotificacion.objects.get_or_create(usuario=user, defaults={'negocio': negocio})
+                pref.posicion_semanal_bm = request.POST.get('posicion_semanal_bm') == 'on'
+                pref.top10_bm = request.POST.get('top10_bm') == 'on'
+                pref.puntaje_nps = request.POST.get('puntaje_nps') == 'on'
+                pref.variacion_csat_nps = request.POST.get('variacion_csat_nps') == 'on'
+                pref.alerta_resenas_negativas = request.POST.get('alerta_resenas_negativas') == 'on'
+                pref.save()
+                messages.success(request, '🔔 Preferencias de notificaciones al correo actualizadas correctamente.')
+            except Exception as e:
+                messages.error(request, f'⚠️ Error al guardar preferencias: {e}')
+
         elif action == 'update_profile':
             first_name = request.POST.get('first_name', '').strip()
             last_name = request.POST.get('last_name', '').strip()
@@ -731,12 +774,15 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
         elif action == 'update_business':
             if negocio:
                 nombre = request.POST.get('nombre_negocio', '').strip()
+                rut = request.POST.get('rut_negocio', '').strip()
                 direccion = request.POST.get('direccion_negocio', '').strip()
                 ciudad = request.POST.get('ciudad_negocio', '').strip()
                 sitio_web = request.POST.get('sitio_web', '').strip()
 
                 if nombre:
                     negocio.nombre = nombre
+                if rut:
+                    negocio.rut = rut
                 negocio.direccion = direccion
                 negocio.ciudad = ciudad
                 negocio.sitio_web = sitio_web
@@ -745,6 +791,23 @@ class PerfilUsuarioView(LoginRequiredMixin, View):
                 messages.success(request, '✅ La información de tu negocio fue actualizada exitosamente.')
             else:
                 messages.error(request, '⚠️ No tienes permisos para modificar este negocio.')
+
+        elif action == 'delete_local':
+            from apps.businesses.models import Local
+            local_id = request.POST.get('local_id')
+            local = Local.objects.filter(id=local_id, negocio=negocio).first()
+            if not local:
+                messages.error(request, '⚠️ No se encontró la sucursal seleccionada.')
+            else:
+                activos_cnt = negocio.locales.filter(estado=Local.EstadoChoices.ACTIVO).count()
+                if activos_cnt <= 1:
+                    messages.error(request, '⚠️ No es posible eliminar la única sucursal activa de tu negocio.')
+                else:
+                    nombre_loc = local.nombre
+                    local.estado = Local.EstadoChoices.INACTIVO
+                    local.save(update_fields=['estado'])
+                    messages.warning(request, f'🗑️ La sucursal "{nombre_loc}" ha sido dada de baja del negocio.')
+
 
         elif action == 'add_local':
             from apps.businesses.models import Local

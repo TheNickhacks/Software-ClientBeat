@@ -112,13 +112,14 @@ class PlanForm(forms.ModelForm):
             'max_preguntas_encuesta_custom': forms.NumberInput(attrs={'min': 0, 'max': 50, 'step': 1}),
             'max_preguntas_adicionales': forms.NumberInput(attrs={'min': 0, 'max': 20, 'step': 1}),
             'orden': forms.NumberInput(attrs={'min': 0, 'step': 1}),
-            'precio_clp': forms.NumberInput(attrs={'min': 0, 'step': 500}),
+            'precio_clp': forms.NumberInput(attrs={'min': 0, 'step': 'any'}),
             'locales_permitidos': forms.NumberInput(attrs={'min': 0, 'step': 1}),
             'locales_gratis_incluidos': forms.NumberInput(attrs={'min': 0, 'step': 1}),
-            'costo_local_adicional_clp': forms.NumberInput(attrs={'min': 0, 'step': 500}),
+            'costo_local_adicional_clp': forms.NumberInput(attrs={'min': 0, 'step': 'any'}),
             'rubros_permitidos': forms.NumberInput(attrs={'min': 0, 'step': 1}),
             'rubros_gratis_incluidos': forms.NumberInput(attrs={'min': 0, 'step': 1}),
-            'costo_rubro_adicional_clp': forms.NumberInput(attrs={'min': 0, 'step': 500}),
+            'costo_rubro_adicional_clp': forms.NumberInput(attrs={'min': 0, 'step': 'any'}),
+
             'usuarios_permitidos': forms.NumberInput(attrs={'min': 1, 'step': 1}),
             'dias_prueba_gratis': forms.NumberInput(attrs={'min': 0, 'step': 1}),
         }

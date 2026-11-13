@@ -73,7 +73,7 @@ class EncuestaPublicaQRView(View):
             'lang': request.META.get('HTTP_ACCEPT_LANGUAGE', '')[:100],
         }
         resp = form.save_respuesta(local=local, plantilla=plantilla, commit=False)
-        resp.metadata = metadata
+        resp.metadata = {**(resp.metadata or {}), **metadata}
         resp.origen = 'QR_IMPRESO'
         resp.save()
 

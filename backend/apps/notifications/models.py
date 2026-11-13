@@ -104,3 +104,44 @@ class Notificacion(models.Model):
     def __str__(self):
         return f"{self.titulo} ({self.usuario or 'Global'})"
 
+
+class PreferenciaNotificacion(models.Model):
+    """Preferencias de notificaciones por email para dueños y miembros de equipo."""
+    usuario = models.OneToOneField('accounts.User', on_delete=models.CASCADE, related_name='preferencias_notificacion')
+    negocio = models.ForeignKey('businesses.Negocio', on_delete=models.CASCADE, related_name='preferencias_notificacion', null=True, blank=True)
+
+    posicion_semanal_bm = models.BooleanField(
+        default=True,
+        verbose_name="Posición semanal del benchmark",
+        help_text="Resumen semanal del ranking del negocio vs competidores del rubro."
+    )
+    top10_bm = models.BooleanField(
+        default=True,
+        verbose_name="Top 10 benchmark",
+        help_text="Alerta especial cuando el negocio ingresa al Top 10 del sector."
+    )
+    puntaje_nps = models.BooleanField(
+        default=True,
+        verbose_name="Puntaje NPS",
+        help_text="Notificación periódica con el cálculo acumulado del Net Promoter Score."
+    )
+    variacion_csat_nps = models.BooleanField(
+        default=True,
+        verbose_name="Variación de puntaje CSAT y NPS",
+        help_text="Alertas de variaciones estadísticas significativas en la satisfacción de clientes."
+    )
+    alerta_resenas_negativas = models.BooleanField(
+        default=True,
+        verbose_name="Alertas sobre reseñas negativas",
+        help_text="Aviso inmediato al recibir una valoración baja (1-2 estrellas o detractor QR)."
+    )
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Preferencia de Notificación"
+        verbose_name_plural = "Preferencias de Notificaciones"
+
+    def __str__(self):
+        return f"Preferencias de {self.usuario.email}"
+
+

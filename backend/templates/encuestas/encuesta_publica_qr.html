@@ -128,45 +128,91 @@
 
       <form method="post" class="space-y-8" id="surveyForm">
         {% csrf_token %}
+        <input type="hidden" id="csat_puntaje_hidden" name="csat_puntaje" value="" />
         <input type="hidden" id="nps_puntaje_hidden" name="nps_puntaje" value="" />
+        <input type="hidden" id="motivo_evaluacion_hidden" name="motivo_evaluacion" value="" />
+        <input type="hidden" name="csat_emocion" id="csat_emocion_hidden" value="" />
 
-        <!-- NPS Question -->
-        {% if plantilla.activar_nps %}
-        <div class="bg-white/80 p-5 rounded-2xl border border-slate-100 shadow-sm">
-          <label class="block font-bold text-slate-800 mb-2 text-center md:text-lg">
-            {{ plantilla.titulo_nps|default:"¿Qué tan probable es que nos recomiendes a un familiar o amigo?" }}
+        <!-- 1. CSAT Question (0 al 10) -->
+        <div class="bg-white/90 p-6 rounded-2xl border border-slate-200/80 shadow-sm text-center">
+          <label class="block font-black text-slate-900 mb-1 text-base md:text-lg">
+            En una escala del 0 al 10, ¿qué tan satisfecho(a) estás con la experiencia en el local?
           </label>
-          <div class="text-center text-xs text-slate-500 mb-4">0 = Nada probable · 5 = Neutral · 10 = Muy probable</div>
+          <div class="text-xs text-slate-500 mb-4">0 = Nada satisfecho · 10 = Totalmente satisfecho</div>
+
+          <!-- Estrellas / Escala Visual 0-10 -->
+          <div class="flex items-center justify-center gap-1 md:gap-2 mb-3 flex-wrap" id="csat-stars-container">
+            {% for s in "0123456789"|make_list %}
+            <button type="button" class="csat-score-btn w-9 h-11 md:w-11 md:h-12 rounded-xl border border-slate-200 bg-white font-bold text-xs md:text-sm text-slate-700 hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700 transition-all flex flex-col items-center justify-center gap-0.5 shadow-2xs" data-score="{{ s }}">
+              <i class="fa fa-star text-[10px] md:text-xs text-slate-300 pointer-events-none"></i>
+              <span>{{ s }}</span>
+            </button>
+            {% endfor %}
+            <button type="button" class="csat-score-btn w-9 h-11 md:w-11 md:h-12 rounded-xl border border-slate-200 bg-white font-bold text-xs md:text-sm text-slate-700 hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700 transition-all flex flex-col items-center justify-center gap-0.5 shadow-2xs" data-score="10">
+              <i class="fa fa-star text-[10px] md:text-xs text-slate-300 pointer-events-none"></i>
+              <span>10</span>
+            </button>
+          </div>
+          <div id="csat-selected-label" class="text-xs font-bold text-amber-600 min-h-[18px]"></div>
+        </div>
+
+        <!-- 2. NPS Question (0 al 10) -->
+        <div class="bg-white/90 p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+          <label class="block font-black text-slate-900 mb-1 text-center text-base md:text-lg">
+            En una escala del 0 al 10, ¿qué tan probable es que nos recomiendes?
+          </label>
+          <div class="text-center text-xs text-slate-500 mb-4">0 = Jamás recomendaría · 10 = Recomiendo absolutamente</div>
           <div class="grid grid-cols-11 gap-1 md:gap-2 max-w-2xl mx-auto" id="nps-grid">
             {% for n in "0123456789"|make_list %}
-            <button type="button" class="nps-btn unselected text-center" data-value="{{ n }}">{{ n }}</button>
+            <button type="button" class="nps-btn unselected text-center !py-2.5 !px-1 md:!py-3 text-xs md:text-sm" data-value="{{ n }}">{{ n }}</button>
             {% endfor %}
-            <button type="button" class="nps-btn unselected text-center" data-value="10">10</button>
+            <button type="button" class="nps-btn unselected text-center !py-2.5 !px-1 md:!py-3 text-xs md:text-sm" data-value="10">10</button>
+          </div>
+          <div class="flex justify-between items-center text-[10px] md:text-xs text-slate-400 mt-2 px-1">
+            <span class="text-rose-500 font-semibold"><i class="fa fa-face-frown mr-1"></i>Detractor (0-6)</span>
+            <span class="text-amber-600 font-semibold"><i class="fa fa-face-meh mr-1"></i>Pasivo (7-8)</span>
+            <span class="text-emerald-600 font-semibold"><i class="fa fa-face-smile mr-1"></i>Promotor (9-10)</span>
           </div>
         </div>
-        {% endif %}
 
-        <!-- CSAT Question -->
-        {% if plantilla.activar_csat %}
-        <div class="bg-white/80 p-5 rounded-2xl border border-slate-100 shadow-sm text-center">
-          <label class="block font-bold text-slate-800 mb-4 md:text-lg">
-            {{ plantilla.titulo_csat|default:"¿Qué tan satisfecho estás con la atención recibida?" }}
+        <!-- 3. Motivo Principal con 4 Casillas -->
+        <div class="bg-white/90 p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+          <label class="block font-black text-slate-900 mb-1 text-center text-base md:text-lg">
+            ¿Cuál sería el principal motivo por el que evaluarías así?
           </label>
-          <div class="flex gap-4 md:gap-6 justify-center items-end">
-            {% for val, lbl in form.csat_emocion.field.choices %}
-            {% if val %}
-            <button type="button" class="csat-btn flex flex-col items-center gap-1" data-value="{{ val }}">
-              <span class="select-none" data-emoji>
-                {% if val == 'MUY_FELIZ' %}😍{% elif val == 'FELIZ' %}😊{% elif val == 'NEUTRAL' %}😐{% elif val == 'INSATISFECHO' %}😞{% elif val == 'MUY_INSATISFECHO' %}😡{% else %}🙂{% endif %}
-              </span>
-              <span class="text-[10px] md:text-xs font-semibold text-slate-500 whitespace-nowrap">{{ lbl|slice:":12" }}</span>
+          <p class="text-center text-xs text-slate-500 mb-4">Selecciona la opción principal que mejor define tu experiencia:</p>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="motivos-container">
+            <button type="button" data-motivo="SERVICIO_CLIENTE" class="motivo-card p-4 rounded-2xl border-2 border-slate-200 bg-white hover:border-cbblue hover:bg-blue-50/40 transition-all flex flex-col items-center justify-center text-center gap-2 group cursor-pointer shadow-2xs">
+              <div class="w-11 h-11 rounded-xl bg-blue-50 text-cbblue flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                <i class="fa fa-user-tie"></i>
+              </div>
+              <span class="font-bold text-xs text-slate-800 leading-tight">Servicio al cliente</span>
             </button>
-            {% endif %}
-            {% endfor %}
-            <input type="hidden" name="csat_emocion" id="csat_emocion_hidden" value="" />
+
+            <button type="button" data-motivo="CALIDAD_PRODUCTOS" class="motivo-card p-4 rounded-2xl border-2 border-slate-200 bg-white hover:border-cbblue hover:bg-blue-50/40 transition-all flex flex-col items-center justify-center text-center gap-2 group cursor-pointer shadow-2xs">
+              <div class="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                <i class="fa fa-gem"></i>
+              </div>
+              <span class="font-bold text-xs text-slate-800 leading-tight">Calidad de productos</span>
+            </button>
+
+            <button type="button" data-motivo="CALIDAD_PRECIO" class="motivo-card p-4 rounded-2xl border-2 border-slate-200 bg-white hover:border-cbblue hover:bg-blue-50/40 transition-all flex flex-col items-center justify-center text-center gap-2 group cursor-pointer shadow-2xs">
+              <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                <i class="fa fa-scale-balanced"></i>
+              </div>
+              <span class="font-bold text-xs text-slate-800 leading-tight">Relación calidad-precio</span>
+            </button>
+
+            <button type="button" data-motivo="AMBIENTE" class="motivo-card p-4 rounded-2xl border-2 border-slate-200 bg-white hover:border-cbblue hover:bg-blue-50/40 transition-all flex flex-col items-center justify-center text-center gap-2 group cursor-pointer shadow-2xs">
+              <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                <i class="fa fa-couch"></i>
+              </div>
+              <span class="font-bold text-xs text-slate-800 leading-tight">Ambiente</span>
+            </button>
           </div>
         </div>
-        {% endif %}
+
 
         <!-- Custom Extra Questions -->
         {% if plantilla.preguntas_extra %}
@@ -257,6 +303,59 @@
 
 <script>
 (function(){
+  // CSAT Score 0-10 Buttons & Stars
+  const csatContainer = document.getElementById('csat-stars-container');
+  const csatHidden = document.getElementById('csat_puntaje_hidden');
+  const csatLabel = document.getElementById('csat-selected-label');
+  if (csatContainer) {
+    const csatBtns = csatContainer.querySelectorAll('.csat-score-btn');
+    csatBtns.forEach(btn => {
+      btn.addEventListener('click', function(){
+        const val = parseInt(btn.dataset.score, 10);
+        csatHidden.value = val;
+        csatBtns.forEach(b => {
+          const bVal = parseInt(b.dataset.score, 10);
+          const starIcon = b.querySelector('i');
+          if (bVal <= val && val > 0) {
+            b.classList.add('border-amber-400', 'bg-amber-50', 'text-amber-800');
+            b.classList.remove('border-slate-200', 'bg-white', 'text-slate-700');
+            if (starIcon) {
+              starIcon.classList.remove('text-slate-300');
+              starIcon.classList.add('text-amber-400');
+            }
+          } else {
+            b.classList.remove('border-amber-400', 'bg-amber-50', 'text-amber-800');
+            b.classList.add('border-slate-200', 'bg-white', 'text-slate-700');
+            if (starIcon) {
+              starIcon.classList.remove('text-amber-400');
+              starIcon.classList.add('text-slate-300');
+            }
+          }
+        });
+        if (csatLabel) {
+          csatLabel.textContent = `★ Calificación CSAT: ${val} de 10 estrellas`;
+        }
+      });
+    });
+  }
+
+  // Motivos 4 Casillas Cards
+  const motivoHidden = document.getElementById('motivo_evaluacion_hidden');
+  const motivoCards = document.querySelectorAll('.motivo-card');
+  motivoCards.forEach(card => {
+    card.addEventListener('click', function(){
+      const val = card.dataset.motivo;
+      motivoHidden.value = val;
+      motivoCards.forEach(c => {
+        if (c.dataset.motivo === val) {
+          c.classList.add('!border-cbblue', '!bg-blue-50/70', 'ring-2', 'ring-cbblue/30', 'scale-[1.02]');
+        } else {
+          c.classList.remove('!border-cbblue', '!bg-blue-50/70', 'ring-2', 'ring-cbblue/30', 'scale-[1.02]');
+        }
+      });
+    });
+  });
+
   // NPS Grid
   const npsGrid = document.getElementById('nps-grid');
   const npsHidden = document.getElementById('nps_puntaje_hidden');
@@ -272,6 +371,7 @@
       npsHidden.value = val;
     });
   }
+
 
   // CSAT Buttons
   document.querySelectorAll('.csat-btn[data-value]').forEach(btn => {
