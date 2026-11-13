@@ -173,20 +173,24 @@
 
     {# ================= TABS / PESTAÑAS NAVBAR (CENTRADAS) ================= #}
     <div class="mb-6 animate-fade-up delay-2 w-full">
-      <div class="glass-effect rounded-2xl p-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 w-full text-center">
+      <div id="dashboardTabsNav" class="glass-effect rounded-2xl p-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 w-full text-center">
         {% for t in tabs %}
           <a href="?tab={{ t.key }}&temporalidad={{ temporalidad_actual }}&ubicacion={{ ubicacion_actual }}{% if filtro_local_id %}&local={{ filtro_local_id }}{% endif %}{% if welcome %}&welcome=1{% endif %}"
-             class="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap
+             data-cb-tab="{{ t.key }}"
+             class="cb-tab-link inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap
                {% if tab_actual == t.key %}
-                 bg-gradient-to-r from-cbblue to-cbgreen text-white shadow-lg shadow-cbblue-500/20
+                 bg-gradient-to-r from-cbblue to-cbgreen text-white shadow-lg shadow-cbblue-500/20 active-tab
                {% else %}
-                 text-slate-600 hover:bg-slate-100
+                 text-slate-600 hover:bg-slate-100 inactive-tab
                {% endif %}">
             {{ t.label }}
           </a>
         {% endfor %}
       </div>
     </div>
+
+    {# Contenedor dinámico para transiciones suaves de pestañas (sin recargas bruscas ni saltos) #}
+    <div id="dashboard-dynamic-content" class="transition-opacity duration-200" style="min-height: 480px;">
 
     {# ================= SELECTORES FILTROS GLOBALES ================= #}
     {% if tab_actual != 'csat_nps' and tab_actual != 'google' %}
@@ -593,7 +597,12 @@
           {# 3. PREVISUALIZACIÓN EN VIVO DEL CÓDIGO QR (CON LOGO CENTRADO) #}
           <div class="text-center p-5 bg-white/95 rounded-2xl border border-slate-100 shadow-sm space-y-3 relative overflow-hidden">
             <div id="qrCanvasWrapper" class="relative inline-block p-3 bg-white rounded-2xl shadow-md border border-slate-100">
-              <div id="qrCanvasBox" class="flex items-center justify-center min-h-[220px] min-w-[220px]"></div>
+              <div id="qrCanvasBox" class="flex items-center justify-center min-h-[220px] min-w-[220px]" style="height: 220px; width: 220px; min-height: 220px; min-width: 220px; aspect-ratio: 1/1;">
+                <div class="w-full h-full rounded-xl bg-slate-50 border border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 text-xs">
+                  <i class="fa fa-qrcode text-3xl mb-1 text-cbblue/40 animate-pulse"></i>
+                  <span>Generando código QR...</span>
+                </div>
+              </div>
             </div>
             <div>
               <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Enlace directo a la encuesta del local</label>
@@ -1950,7 +1959,7 @@
                   <span class="text-blue-600 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-600"></span> NPS Score</span>
                 </div>
               </div>
-              <div class="relative h-48 w-full">
+              <div class="relative h-48 w-full" style="height: 192px; min-height: 192px;">
                 <canvas id="chartComparativoHistoricoCsatNps"></canvas>
               </div>
             </div>
@@ -1965,7 +1974,7 @@
                   {{ local_seleccionado_nombre|default:"Mi Local" }}
                 </span>
               </div>
-              <div class="relative h-48 w-full">
+              <div class="relative h-48 w-full" style="height: 192px; min-height: 192px;">
                 <canvas id="chartIndividualLocalNpsCsat"></canvas>
               </div>
             </div>
@@ -1996,7 +2005,7 @@
               {# Gráfico 1: CSAT comparativo por local #}
               <div class="bg-white/95 p-3 rounded-2xl border border-slate-100 shadow-2xs space-y-1">
                 <h5 class="text-[11px] font-extrabold text-slate-800 text-center">CSAT comparativo por local</h5>
-                <div class="relative h-40 w-full">
+                <div class="relative h-40 w-full" style="height: 160px; min-height: 160px;">
                   <canvas id="chartCSATPorLocal"></canvas>
                 </div>
               </div>
@@ -2004,7 +2013,7 @@
               {# Gráfico 2: NPS comparativo por local #}
               <div class="bg-white/95 p-3 rounded-2xl border border-slate-100 shadow-2xs space-y-1">
                 <h5 class="text-[11px] font-extrabold text-slate-800 text-center">NPS comparativo por local</h5>
-                <div class="relative h-40 w-full">
+                <div class="relative h-40 w-full" style="height: 160px; min-height: 160px;">
                   <canvas id="chartNPSPorLocal"></canvas>
                 </div>
               </div>
@@ -2017,7 +2026,7 @@
                 <h5 class="text-[10px] font-extrabold text-slate-800 text-center leading-tight">
                   Promedio mensual puntaje Google
                 </h5>
-                <div class="relative h-40 w-full">
+                <div class="relative h-40 w-full" style="height: 160px; min-height: 160px;">
                   <canvas id="chartGooglePorLocal"></canvas>
                 </div>
                 <div class="text-[9px] text-slate-400 text-center font-medium">*Promedios mensuales</div>
@@ -2033,7 +2042,7 @@
                 <h5 class="text-[10px] font-extrabold text-slate-800 text-center leading-tight">
                   CSAT, NPS y Google vs Rubro
                 </h5>
-                <div class="relative h-40 w-full">
+                <div class="relative h-40 w-full" style="height: 160px; min-height: 160px;">
                   <canvas id="chartGoogleCsatNpsVsRubro"></canvas>
                 </div>
               </div>
@@ -2078,7 +2087,7 @@
                 </h4>
                 <span class="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">Menciones</span>
               </div>
-              <div class="relative h-44 w-full">
+              <div class="relative h-44 w-full" style="height: 176px; min-height: 176px;">
                 <canvas id="chartTopicosPositivos"></canvas>
               </div>
             </div>
@@ -2092,7 +2101,7 @@
                 </h4>
                 <span class="text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md">Menciones</span>
               </div>
-              <div class="relative h-44 w-full">
+              <div class="relative h-44 w-full" style="height: 176px; min-height: 176px;">
                 <canvas id="chartTopicosNegativos"></canvas>
               </div>
             </div>
@@ -2129,7 +2138,7 @@
                 </h4>
                 <span class="text-[9px] font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-md">% Satisfacción</span>
               </div>
-              <div class="relative h-44 w-full">
+              <div class="relative h-44 w-full" style="height: 176px; min-height: 176px;">
                 <canvas id="chartRankingAreasPos"></canvas>
               </div>
             </div>
@@ -2143,7 +2152,7 @@
                 </h4>
                 <span class="text-[9px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">% Insatisfacción</span>
               </div>
-              <div class="relative h-44 w-full">
+              <div class="relative h-44 w-full" style="height: 176px; min-height: 176px;">
                 <canvas id="chartRankingAreasNeg"></canvas>
               </div>
             </div>
@@ -2157,7 +2166,7 @@
 
     {# SCRIPTS PARA GRÁFICOS CHART.JS DE ANÁLISIS COMPARATIVO #}
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    window.initAnalisisCharts = function() {
       if (typeof Chart === 'undefined') return;
 
       const labelsMeses = {{ google_history_labels|safe }};
@@ -2166,6 +2175,7 @@
       // 1. Histórico comparado: CSAT y NPS como 2 líneas en un mismo gráfico con ejes duales
       const ctxCompCsatNps = document.getElementById('chartComparativoHistoricoCsatNps');
       if (ctxCompCsatNps) {
+        if (Chart.getChart(ctxCompCsatNps)) Chart.getChart(ctxCompCsatNps).destroy();
         new Chart(ctxCompCsatNps, {
           type: 'line',
           data: {
@@ -2501,7 +2511,11 @@
         });
       }
 
-    });
+    };
+    document.addEventListener('DOMContentLoaded', window.initAnalisisCharts);
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      setTimeout(window.initAnalisisCharts, 10);
+    }
     </script>
     {% endif %}
     {# ============================================================ #}
@@ -2840,8 +2854,125 @@
       })();
     </script>
     {% endif %}
+    </div>{# Fin de #dashboard-dynamic-content #}
 
-    {% else %}
+    {# ============================================================ #}
+    {# SCRIPT DE TRANSICIÓN INSTANTÁNEA Y SUAVE ENTRE PESTAÑAS (SPA) #}
+    {# ============================================================ #}
+    <script>
+    (function initSeamlessDashboardTabs() {
+      function rebindTabFeatures() {
+        // 1. QR Generator si estamos en pestaña encuestas
+        if (typeof renderQRForSelectedLocal === 'function' && document.getElementById('qrCanvasBox')) {
+          renderQRForSelectedLocal();
+        }
+        // 2. Charts si estamos en pestaña analisis
+        if (typeof window.initAnalisisCharts === 'function' && document.getElementById('chartComparativoHistoricoCsatNps')) {
+          window.initAnalisisCharts();
+        }
+        // 3. Auto-submit de selectores de filtro dashboard
+        const form = document.getElementById('filtrosDashboardForm');
+        if (form) {
+          const autosubmitSel = ['select[name="temporalidad"]','select[name="local"]'];
+          autosubmitSel.forEach(sel => {
+            const el = form.querySelector(sel);
+            if (el && !el.dataset.boundAutoSubmit) {
+              el.dataset.boundAutoSubmit = '1';
+              el.addEventListener('change', () => {
+                if (window.CBLoader) window.CBLoader.start();
+                form.submit();
+              });
+            }
+          });
+        }
+      }
+
+      // Interceptar clics en pestañas
+      document.addEventListener('click', function(e) {
+        const tabLink = e.target.closest('.cb-tab-link');
+        if (!tabLink) return;
+
+        const targetUrl = tabLink.getAttribute('href');
+        if (!targetUrl || targetUrl.startsWith('#') || targetUrl.includes('export=excel')) return;
+
+        e.preventDefault();
+
+        // 1. Feedback visual inmediato en el botón de pestaña
+        const allTabLinks = document.querySelectorAll('.cb-tab-link');
+        allTabLinks.forEach(link => {
+          link.classList.remove('bg-gradient-to-r', 'from-cbblue', 'to-cbgreen', 'text-white', 'shadow-lg', 'shadow-cbblue-500/20', 'active-tab');
+          link.classList.add('text-slate-600', 'hover:bg-slate-100', 'inactive-tab');
+        });
+        tabLink.classList.remove('text-slate-600', 'hover:bg-slate-100', 'inactive-tab');
+        tabLink.classList.add('bg-gradient-to-r', 'from-cbblue', 'to-cbgreen', 'text-white', 'shadow-lg', 'shadow-cbblue-500/20', 'active-tab');
+
+        // 2. Barra de carga reactiva superior
+        if (window.CBLoader) window.CBLoader.start();
+
+        const container = document.getElementById('dashboard-dynamic-content');
+        if (container) {
+          container.style.opacity = '0.45';
+          container.style.pointerEvents = 'none';
+        }
+
+        // 3. Cargar dinámicamente el contenido sin recargar la página entera
+        fetch(targetUrl, {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.text();
+        })
+        .then(function(html) {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+          const newContent = doc.getElementById('dashboard-dynamic-content');
+
+          if (newContent && container) {
+            container.innerHTML = newContent.innerHTML;
+
+            // Ejecutar scripts embebidos en el contenido de la pestaña
+            const scripts = container.querySelectorAll('script');
+            scripts.forEach(function(oldScript) {
+              const newScript = document.createElement('script');
+              Array.from(oldScript.attributes).forEach(function(attr) {
+                newScript.setAttribute(attr.name, attr.value);
+              });
+              newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+              oldScript.parentNode.replaceChild(newScript, oldScript);
+            });
+          } else {
+            window.location.href = targetUrl;
+            return;
+          }
+
+          window.history.pushState({ cbUrl: targetUrl }, '', targetUrl);
+          rebindTabFeatures();
+
+          if (container) {
+            container.style.opacity = '1';
+            container.style.pointerEvents = '';
+          }
+          if (window.CBLoader) window.CBLoader.done();
+        })
+        .catch(function(err) {
+          console.warn('Fallback a recarga tradicional:', err);
+          window.location.href = targetUrl;
+        });
+      });
+
+      // Navegación con historial del navegador
+      window.addEventListener('popstate', function() {
+        if (window.location.pathname.startsWith('/dashboard')) {
+          window.location.reload();
+        }
+      });
+
+      // Inicialización inicial
+      document.addEventListener('DOMContentLoaded', rebindTabFeatures);
+    })();
+    </script>
+
     <div class="glass-effect p-8 md:p-10 rounded-2xl animate-fade-up delay-4">
       <div class="flex items-start gap-4 mb-6">
         <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-cbblue via-cbblue-600 to-cbgreen text-white flex items-center justify-center text-xl shadow-lg flex-shrink-0">

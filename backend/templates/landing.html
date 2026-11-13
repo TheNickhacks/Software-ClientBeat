@@ -16,7 +16,10 @@
           <img
             src="{% static 'img/LogoClientBeat.png' %}"
             alt="Client Beat Logo"
-            class="h-24 md:h-32 w-auto object-contain mx-auto drop-shadow-sm"
+            width="128"
+            height="128"
+            style="aspect-ratio: 1/1; height: 128px; width: 128px;"
+            class="h-24 md:h-32 w-24 md:w-32 object-contain mx-auto drop-shadow-sm"
           />
         </div>
       </div>
@@ -234,15 +237,16 @@
 </section>
 
 {# CALL TO ACTION FINAL #}
-<section class="py-20 bg-gradient-to-r from-cbblue via-indigo-700 to-purple-800 text-white">
-  <div class="container mx-auto px-6 text-center max-w-3xl">
-    <h2 class="text-3xl md:text-5xl font-extrabold mb-6">
+<section class="py-20 text-white relative overflow-hidden" style="background: linear-gradient(135deg, #041B3A 0%, #0B3EA6 50%, #1e1b4b 100%) !important; color: #ffffff !important;">
+  <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-500/20 via-transparent to-transparent pointer-events-none"></div>
+  <div class="container mx-auto px-6 text-center max-w-3xl relative z-10">
+    <h2 class="text-3xl md:text-5xl font-extrabold mb-6" style="color: #ffffff !important;">
       ¿Listo para llevar la voz de tus clientes al siguiente nivel?
     </h2>
-    <p class="text-base md:text-lg text-blue-100 mb-8 font-normal">
+    <p class="text-base md:text-lg mb-8 font-normal" style="color: #cbd5e1 !important;">
       Comienza hoy mismo a medir la satisfacción en tus locales y toma mejores decisiones basadas en datos reales.
     </p>
-    <a href="/accounts/register/" class="inline-flex items-center gap-2 bg-white text-cbblue font-extrabold text-base px-8 py-4 rounded-xl shadow-xl hover:bg-slate-100 transition-all hover:-translate-y-0.5">
+    <a href="/accounts/register/" class="inline-flex items-center gap-2.5 font-extrabold text-base px-8 py-4 rounded-xl shadow-2xl transition-all hover:bg-slate-100 hover:-translate-y-0.5" style="background-color: #ffffff !important; color: #0B3EA6 !important;">
       <i class="fa fa-user-plus"></i> Crear Cuenta de Negocio
     </a>
   </div>

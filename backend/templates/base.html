@@ -10,16 +10,94 @@
   {% load static %}
   <link rel="icon" type="image/png" sizes="512x512" href="{% static 'img/LogoClientBeat.png' %}" />
   <link rel="apple-touch-icon" href="{% static 'img/LogoClientBeat.png' %}" />
+  {# ============ ANTI-FOUC: PREVENCIÓN DE TEXTO PLANO SIN FORMATO ============ #}
+  <style id="cb-anti-fouc">
+    html.cb-loading body {
+      visibility: hidden !important;
+      opacity: 0 !important;
+    }
+    body {
+      visibility: visible;
+      opacity: 1;
+      transition: opacity 0.12s ease-in;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      -webkit-font-smoothing: antialiased;
+    }
+  </style>
+  <script>
+    document.documentElement.classList.add('cb-loading');
+    window.cbRevealPage = function(){
+      if (document.documentElement.classList.contains('cb-loading')) {
+        document.documentElement.classList.remove('cb-loading');
+      }
+    };
+    // Salvaguarda: revelar a los 250ms si cualquier recurso externo tarda
+    setTimeout(window.cbRevealPage, 250);
+    window.addEventListener('DOMContentLoaded', window.cbRevealPage);
+  </script>
+  <noscript>
+    <style>html.cb-loading body { visibility: visible !important; opacity: 1 !important; }</style>
+  </noscript>
+
   {# ============ PERFORMANCE: EARLY PRECONNECT / DNS PREFETCH CDN ============ #}
-  {# Abre conexiones TLS anticipadamente y resuelve DNS antes de que el navegador pida los recursos. Ahorra 200-600ms en first paint. #}
+  {# Abre conexiones TLS anticipadamente hacia CDN de Tailwind y FontAwesome #}
+  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin="anonymous" />
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin="anonymous" />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin="anonymous" />
-  <link rel="dns-prefetch" href="https://cdn.tailwindcss.com" />
-  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
   <link rel="dns-prefetch" href="https://ka-f.fontawesome.com" />
-  {# ============ PRELOAD CRÍTICO: FontAwesome CSS (evita flash sin iconos 200ms+) ============ #}
+
+  {# ============ TAILWIND CSS: CONFIGURACIÓN SÍNCRONA CRÍTICA (CERO FOUC) ============ #}
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cbblue: { DEFAULT: '#0B3EA6', 50: '#eef4ff', 100: '#d9e7ff', 600: '#08337a', 700: '#062556', 900: '#041B3A' },
+            cbgreen: { DEFAULT: '#00B879', 50: '#ecfbf4', 600: '#008E5C', 700: '#00633F' },
+          }
+        }
+      }
+    };
+    // En cuanto Tailwind se carga y compila en head, revelar el contenido estilizado
+    window.cbRevealPage();
+  </script>
+
+  {# ============ PRELOAD CRÍTICO: FontAwesome CSS ============ #}
   <link rel="preload" as="style" fetchpriority="high" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" fetchpriority="high" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  {# ============ GLOBAL TOP LOADER Y TRANSICIÓN FLUIDA ============ #}
+  <script>
+    (function(){
+      window.CBLoader = {
+        start: function(){
+          var b = document.getElementById('global-top-loader');
+          if (!b) return;
+          b.style.transition = 'width 0.4s ease-out, opacity 0.2s ease';
+          b.style.opacity = '1';
+          b.style.width = '35%';
+          setTimeout(function(){
+            if (b && b.style.opacity === '1') b.style.width = '75%';
+          }, 250);
+        },
+        done: function(){
+          var b = document.getElementById('global-top-loader');
+          if (!b) return;
+          b.style.transition = 'width 0.15s ease-out, opacity 0.25s ease 0.1s';
+          b.style.width = '100%';
+          b.style.opacity = '0';
+          setTimeout(function(){
+            if (b) { b.style.transition = 'none'; b.style.width = '0%'; }
+          }, 350);
+        }
+      };
+      // Iniciar loader al enviar cualquier formulario que no sea omitido
+      window.addEventListener('beforeunload', function(){ window.CBLoader.start(); });
+    })();
+  </script>
   {# ============ PROTECCIÓN DOBLE CLICK / MULTI-SUBMIT (RÁPIDA Y SIN BLOQUEAR NAVEGACIÓN) ============ #}
   <script>
     (function(){
@@ -68,35 +146,6 @@
       });
     })();
   </script>
-  <script src="https://cdn.tailwindcss.com" fetchpriority="low" defer></script>
-  <script>
-    (function initTailwindCfg(){
-      var cfg = {
-        theme: {
-          extend: {
-            colors: {
-              cbblue: { DEFAULT: '#0B3EA6', 50: '#eef4ff', 100: '#d9e7ff', 600: '#08337a', 700: '#062556', 900: '#041B3A' },
-              cbgreen: { DEFAULT: '#00B879', 50: '#ecfbf4', 600: '#008E5C', 700: '#00633F' },
-            }
-          }
-        }
-      };
-      function applyCfg(){
-        if (window.tailwind && typeof window.tailwind.config !== 'undefined') {
-          window.tailwind.config = cfg;
-          return true;
-        }
-        return false;
-      }
-      if (!applyCfg()) {
-        var tries = 0;
-        var intervalo = setInterval(function(){
-          if (applyCfg() || tries++ > 80) clearInterval(intervalo);
-        }, 50);
-        window.addEventListener('load', function(){ applyCfg(); clearInterval(intervalo); }, { once: true });
-      }
-    })();
-  </script>
   <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
   <style>
     .gradient-text {
@@ -143,13 +192,20 @@
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
     }
+    .bg-cbblue-900 { background-color: #041B3A !important; }
+    .bg-cbblue { background-color: #0B3EA6 !important; }
+    .text-cbblue { color: #0B3EA6 !important; }
+    .bg-cbgreen { background-color: #00B879 !important; }
+    .text-cbgreen { color: #00B879 !important; }
   </style>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col">
+  {# Barra de carga superior global reactiva para navegación y cambios de pestaña #}
+  <div id="global-top-loader" class="fixed top-0 left-0 h-[3px] bg-gradient-to-r from-cbblue via-sky-400 to-cbgreen z-[9999] opacity-0 pointer-events-none" style="width: 0%; box-shadow: 0 0 10px rgba(0, 184, 121, 0.7);"></div>
   <header class="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-lg border-b border-slate-200/60">
     <nav class="container mx-auto px-6 py-3 flex items-center justify-between">
       <a href="/" class="flex items-center gap-3">
-        <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" class="h-12 w-auto object-contain" />
+        <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" width="48" height="48" style="height: 48px; width: 48px; aspect-ratio: 1/1;" class="h-12 w-12 object-contain" />
       </a>
       <div class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
         <a href="/#caracteristicas" class="hover:text-cbblue transition-colors">Características</a>
@@ -194,36 +250,36 @@
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="bg-cbblue-900 text-slate-300 py-12">
+  <footer class="text-slate-300 py-12 border-t border-slate-800" style="background-color: #041B3A !important; color: #cbd5e1 !important;">
     <div class="container mx-auto px-6">
       <div class="grid md:grid-cols-4 gap-8 mb-8">
         <div>
-          <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" class="h-12 w-auto object-contain mb-3 brightness-[0.95]" />
-          <p class="text-sm text-slate-400">El Pulso de tu Marca · Transforma la experiencia de tus clientes con inteligencia de datos NPS y CSAT QR.</p>
+          <img src="{% static 'img/LogoClientBeat.png' %}" alt="Logo ClientBeat" width="48" height="48" style="height: 48px; width: 48px; aspect-ratio: 1/1;" class="h-12 w-12 object-contain mb-3 brightness-[0.95]" />
+          <p class="text-sm" style="color: #94a3b8 !important;">El Pulso de tu Marca · Transforma la experiencia de tus clientes con inteligencia de datos NPS y CSAT QR.</p>
         </div>
         <div>
-          <h4 class="text-sm font-semibold text-white mb-3">Producto</h4>
+          <h4 class="text-sm font-semibold mb-3" style="color: #ffffff !important;">Producto</h4>
           <ul class="space-y-2 text-sm">
-            <li><a href="#features" class="hover:text-cbgreen transition-colors">Características</a></li>
-            <li><a href="#pricing" class="hover:text-cbgreen transition-colors">Precios</a></li>
+            <li><a href="#features" class="hover:text-emerald-400 transition-colors" style="color: #cbd5e1 !important;">Características</a></li>
+            <li><a href="#pricing" class="hover:text-emerald-400 transition-colors" style="color: #cbd5e1 !important;">Precios</a></li>
           </ul>
         </div>
         <div>
-          <h4 class="text-sm font-semibold text-white mb-3">Legal</h4>
+          <h4 class="text-sm font-semibold mb-3" style="color: #ffffff !important;">Legal</h4>
           <ul class="space-y-2 text-sm">
-            <li><a href="/legal/terms/" class="hover:text-cbgreen transition-colors">Términos y Condiciones</a></li>
-            <li><a href="/legal/privacy/" class="hover:text-cbgreen transition-colors">Política de Privacidad</a></li>
+            <li><a href="/legal/terms/" class="hover:text-emerald-400 transition-colors" style="color: #cbd5e1 !important;">Términos y Condiciones</a></li>
+            <li><a href="/legal/privacy/" class="hover:text-emerald-400 transition-colors" style="color: #cbd5e1 !important;">Política de Privacidad</a></li>
           </ul>
         </div>
         <div>
-          <h4 class="text-sm font-semibold text-white mb-3">Contacto</h4>
+          <h4 class="text-sm font-semibold mb-3" style="color: #ffffff !important;">Contacto</h4>
           <ul class="space-y-2 text-sm">
-            <li><a href="mailto:contactoclientbeat@gmail.com" class="hover:text-cbgreen transition-colors">contactoclientbeat@gmail.com</a></li>
-            <li class="text-slate-400"><i class="fa fa-location-dot mr-2 text-cbgreen"></i>Asturias 790 E, Rancagua · Chile</li>
+            <li><a href="mailto:contactoclientbeat@gmail.com" class="hover:text-emerald-400 transition-colors" style="color: #cbd5e1 !important;">contactoclientbeat@gmail.com</a></li>
+            <li style="color: #94a3b8 !important;"><i class="fa fa-location-dot mr-2 text-emerald-400"></i>Asturias 790 E, Rancagua · Chile</li>
           </ul>
         </div>
       </div>
-      <div class="border-t border-cbblue-700/60 pt-6 text-center text-sm text-slate-400">
+      <div class="border-t border-slate-800/80 pt-6 text-center text-sm" style="color: #94a3b8 !important;">
         © {% now "Y" %} ClientBeat SpA · El Pulso de tu Marca. Todos los derechos reservados.
       </div>
     </div>

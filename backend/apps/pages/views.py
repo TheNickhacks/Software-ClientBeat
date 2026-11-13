@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
+from django.core.cache import cache
 from datetime import datetime
 
 from apps.accounts.onboarding_service import onboarding_pendiente, onboarding_siguiente_paso
@@ -619,51 +620,15 @@ def dashboard(request):
         desde_temp = ahora - timezone.timedelta(days=temp_days)
         hace_30d = ahora - timezone.timedelta(days=30)
         hace_60d = ahora - timezone.timedelta(days=60)
+        es_export_excel = (request.GET.get('export') == 'excel')
 
-        # Construir base QS con filtros
+        # Base QS con filtros de local y fechas
         locales_negocio_qs = RespuestaEncuesta.objects.filter(
             local__negocio=negocio,
         ).select_related('local', 'plantilla')
 
         if filtro_local_id:
             locales_negocio_qs = _filter_by_local_uuid_or_id(locales_negocio_qs, filtro_local_id, 'local_id')
-
-        # Variación respecto al mes anterior (últimos 30 días vs 30 días previos)
-        qs_val_mes_actual = locales_negocio_qs.filter(fecha_respuesta__gte=hace_30d)
-        qs_val_mes_anterior = locales_negocio_qs.filter(fecha_respuesta__gte=hace_60d, fecha_respuesta__lt=hace_30d)
-
-        val_mes_actual = qs_val_mes_actual.count()
-        val_mes_anterior = qs_val_mes_anterior.count()
-        var_valoraciones_diff = val_mes_actual - val_mes_anterior
-        if val_mes_anterior > 0:
-            var_valoraciones_pct = round(100.0 * var_valoraciones_diff / val_mes_anterior, 1)
-        elif val_mes_actual > 0:
-            var_valoraciones_pct = 100.0
-        else:
-            var_valoraciones_pct = 0.0
-
-        stats_nps_mes_act = _calcular_stats_nps_csat(qs_val_mes_actual)
-        stats_nps_mes_ant = _calcular_stats_nps_csat(qs_val_mes_anterior)
-        nps_mes_actual = stats_nps_mes_act['nps_score']
-        nps_mes_anterior = stats_nps_mes_ant['nps_score']
-        var_nps_diff = nps_mes_actual - nps_mes_anterior
-        if nps_mes_anterior != 0:
-            var_nps_pct = round(100.0 * var_nps_diff / abs(nps_mes_anterior), 1)
-        elif var_nps_diff != 0:
-            var_nps_pct = float(var_nps_diff)
-        else:
-            var_nps_pct = 0.0
-
-        ctx.update({
-            'val_mes_actual': val_mes_actual,
-            'val_mes_anterior': val_mes_anterior,
-            'var_valoraciones_diff': var_valoraciones_diff,
-            'var_valoraciones_pct': var_valoraciones_pct,
-            'nps_mes_actual': nps_mes_actual,
-            'nps_mes_anterior': nps_mes_anterior,
-            'var_nps_diff': var_nps_diff,
-            'var_nps_pct': var_nps_pct,
-        })
 
         if filtro_fecha_desde:
             dt_desde = datetime.combine(filtro_fecha_desde, datetime.min.time(), tzinfo=timezone.get_current_timezone())
@@ -676,16 +641,11 @@ def dashboard(request):
             dt_exacta_fin = datetime.combine(filtro_fecha_exacta, datetime.max.time(), tzinfo=timezone.get_current_timezone())
             locales_negocio_qs = locales_negocio_qs.filter(fecha_respuesta__range=(dt_exacta, dt_exacta_fin))
 
-        locales_negocio_total = locales_negocio_qs.count()
-        ctx['kpi_total_respuestas'] = locales_negocio_total
-
-        # Aplicar rango temporal (si no hay filtros personalizados de fecha, usamos temp)
+        # Rango temporal
         if not (filtro_fecha_desde or filtro_fecha_hasta or filtro_fecha_exacta):
             locales_rango = locales_negocio_qs.filter(fecha_respuesta__gte=desde_temp)
         else:
             locales_rango = locales_negocio_qs
-        ctx['kpi_respuestas_rango'] = locales_rango.count()
-        ctx['kpi_respuestas_30d'] = val_mes_actual
 
         # Filtrar por categoría NPS
         if filtro_nps_cat == 'PROMOTOR':
@@ -695,126 +655,204 @@ def dashboard(request):
         elif filtro_nps_cat == 'DETRACTOR':
             locales_rango = locales_rango.filter(nps_puntaje__lte=6)
 
-        stats_rango = _calcular_stats_nps_csat(locales_rango)
-        promedio_nps = stats_rango['promedio_nps']
-        promotores = stats_rango['promotores']
-        pasivos = stats_rango['pasivos']
-        detractores = stats_rango['detractores']
-        nps_score = stats_rango['nps_score']
+        # Contexto base con defaults seguros para todas las pestañas
+        ctx.update({
+            'kpi_total_respuestas': 0,
+            'kpi_respuestas_rango': 0,
+            'kpi_respuestas_30d': 0,
+            'val_mes_actual': 0,
+            'val_mes_anterior': 0,
+            'var_valoraciones_diff': 0,
+            'var_valoraciones_pct': 0.0,
+            'nps_mes_actual': 0,
+            'nps_mes_anterior': 0,
+            'var_nps_diff': 0,
+            'var_nps_pct': 0.0,
+            'kpi_nps_score': 0,
+            'kpi_nps_promedio': '0.0',
+            'kpi_promotores': 0,
+            'kpi_pasivos': 0,
+            'kpi_detractores': 0,
+            'nps_badge': 'Neutro',
+            'nps_color': 'amber',
+            'kpi_csat_felices_pct': 0,
+            'kpi_csat_total': 0,
+            'kpi_muy_feliz': 0,
+            'kpi_feliz': 0,
+            'kpi_neutral': 0,
+            'kpi_insatisfecho': 0,
+            'kpi_muy_insatisfecho': 0,
+            'google_total': 0,
+            'google_rango': 0,
+            'google_rating_promedio': 0.0,
+            'google_estrellas': _estrellas_html(0),
+            'res_mes_actual': 0,
+            'res_mes_anterior': 0,
+            'var_resenas_diff': 0,
+            'var_resenas_pct': 0.0,
+            'ultimas_respuestas': [],
+            'metricas_motivos': [],
+            'locales_qr_data': [],
+            'benchmark_rubro_nombre': (negocio.rubro.nombre if negocio and negocio.rubro else (negocio.rubro_google or 'General')) if negocio else 'General',
+        })
 
-        ctx['kpi_nps_score'] = nps_score
-        ctx['kpi_nps_promedio'] = promedio_nps
-        ctx['kpi_promotores'] = promotores
-        ctx['kpi_pasivos'] = pasivos
-        ctx['kpi_detractores'] = detractores
-        ctx['nps_badge'] = stats_rango['nps_badge']
-        ctx['nps_color'] = stats_rango['nps_color']
-        ctx['kpi_csat_felices_pct'] = stats_rango['csat_pct_int']
-        ctx['kpi_csat_total'] = stats_rango['csat_total']
-        ctx['kpi_muy_feliz'] = stats_rango['muy_feliz']
-        ctx['kpi_feliz'] = stats_rango['feliz']
-        ctx['kpi_neutral'] = stats_rango['neutral']
-        ctx['kpi_insatisfecho'] = stats_rango['insatisfecho']
-        ctx['kpi_muy_insatisfecho'] = stats_rango['muy_insatisfecho']
+        locales_negocio_total = 0
 
-        ultimas_respuestas = list(locales_rango.order_by('-fecha_respuesta')[:30])
-        # Enriquecer cada respuesta para mostrar clasificación, local y nombre o anónimo
-        for r in ultimas_respuestas:
-            meta = r.metadata if isinstance(r.metadata, dict) else {}
-            cliente_nombre = meta.get('nombre') or meta.get('autor') or meta.get('cliente')
-            if not cliente_nombre and r.email_opcional:
-                cliente_nombre = r.email_opcional.split('@')[0]
-            if not cliente_nombre or r.es_anonima:
-                r.nombre_cliente = 'Anónimo'
-                r.es_cliente_anonimo = True
-            else:
-                r.nombre_cliente = cliente_nombre
-                r.es_cliente_anonimo = False
+        # ==========================================================
+        # 1. PESTAÑAS QUE REQUIEREN STATS GENERALES DE ENCUESTAS
+        # ==========================================================
+        if tab_actual in ('resumen', 'encuestas', 'analisis') or es_export_excel:
+            locales_negocio_total = locales_negocio_qs.count()
+            ctx['kpi_total_respuestas'] = locales_negocio_total
+            ctx['kpi_respuestas_rango'] = locales_rango.count()
 
-        # Métricas clave en base a los 4 motivos de evaluación asignados por rubro
-        motivos_counts = {
-            'SERVICIO_CLIENTE': 0,
-            'CALIDAD_PRODUCTOS': 0,
-            'CALIDAD_PRECIO': 0,
-            'AMBIENTE': 0,
-        }
-        for r in locales_rango:
-            m = getattr(r, 'motivo_evaluacion', None)
-            if m in motivos_counts:
-                motivos_counts[m] += 1
-        total_motivos = sum(motivos_counts.values()) or 1
-        ctx['metricas_motivos'] = [
-            {'key': 'SERVICIO_CLIENTE', 'label': 'Servicio al cliente', 'count': motivos_counts['SERVICIO_CLIENTE'], 'pct': round(100.0 * motivos_counts['SERVICIO_CLIENTE'] / total_motivos, 1), 'icon': 'fa-user-tie', 'color': 'blue'},
-            {'key': 'CALIDAD_PRODUCTOS', 'label': 'Calidad de productos', 'count': motivos_counts['CALIDAD_PRODUCTOS'], 'pct': round(100.0 * motivos_counts['CALIDAD_PRODUCTOS'] / total_motivos, 1), 'icon': 'fa-gem', 'color': 'purple'},
-            {'key': 'CALIDAD_PRECIO', 'label': 'Relación calidad-precio', 'count': motivos_counts['CALIDAD_PRECIO'], 'pct': round(100.0 * motivos_counts['CALIDAD_PRECIO'] / total_motivos, 1), 'icon': 'fa-scale-balanced', 'color': 'emerald'},
-            {'key': 'AMBIENTE', 'label': 'Ambiente', 'count': motivos_counts['AMBIENTE'], 'pct': round(100.0 * motivos_counts['AMBIENTE'] / total_motivos, 1), 'icon': 'fa-couch', 'color': 'amber'},
-        ]
-
-        ctx['ultimas_respuestas'] = ultimas_respuestas
-
-
-        locales_primer_local = negocio.locales.order_by('fecha_creacion').first()
-        if locales_primer_local:
-            ctx['qr_primer_local'] = locales_primer_local
-            ctx['qr_url'] = request.build_absolute_uri('/e/' + locales_primer_local.qr_token + '/')
-
-        locales_qr_data = []
-        for loc in negocio.locales.all().order_by('fecha_creacion'):
-            locales_qr_data.append({
-                'id': str(loc.id),
-                'nombre': loc.nombre,
-                'direccion': loc.direccion or '',
-                'estado': loc.estado,
-                'qr_token': loc.qr_token,
-                'qr_url': request.build_absolute_uri(f'/e/{loc.qr_token}/'),
-                'qr_logo_url': loc.qr_logo.url if getattr(loc, 'qr_logo', None) else '',
+            stats_rango = _calcular_stats_nps_csat(locales_rango)
+            ctx.update({
+                'kpi_nps_score': stats_rango['nps_score'],
+                'kpi_nps_promedio': stats_rango['promedio_nps'],
+                'kpi_promotores': stats_rango['promotores'],
+                'kpi_pasivos': stats_rango['pasivos'],
+                'kpi_detractores': stats_rango['detractores'],
+                'nps_badge': stats_rango['nps_badge'],
+                'nps_color': stats_rango['nps_color'],
+                'kpi_csat_felices_pct': stats_rango['csat_pct_int'],
+                'kpi_csat_total': stats_rango['csat_total'],
+                'kpi_muy_feliz': stats_rango['muy_feliz'],
+                'kpi_feliz': stats_rango['feliz'],
+                'kpi_neutral': stats_rango['neutral'],
+                'kpi_insatisfecho': stats_rango['insatisfecho'],
+                'kpi_muy_insatisfecho': stats_rango['muy_insatisfecho'],
             })
-        ctx['locales_qr_data'] = locales_qr_data
 
         # ==========================================================
-        #  SECCIÓN CSAT Y NPS (Filtros separados Izquierda y Derecha)
+        # 2. PESTAÑA RESUMEN (VARIACIONES RESPECTO AL MES ANTERIOR)
         # ==========================================================
-        csat_izq_local = request.GET.get('csat_izq_local', filtro_local_id or '')
-        csat_izq_temp = request.GET.get('csat_izq_temp', temp_key or 'MENSUAL')
-        izq_temp_tuple = temp_map.get(csat_izq_temp, TEMPORALIDAD_CHOICES[1])
-        izq_temp_days = izq_temp_tuple[2]
-        izq_temp_label = izq_temp_tuple[1]
+        if tab_actual == 'resumen' or es_export_excel:
+            qs_val_mes_actual = locales_negocio_qs.filter(fecha_respuesta__gte=hace_30d)
+            qs_val_mes_anterior = locales_negocio_qs.filter(fecha_respuesta__gte=hace_60d, fecha_respuesta__lt=hace_30d)
 
-        csat_der_local = request.GET.get('csat_der_local', filtro_local_id or '')
-        csat_der_temp = request.GET.get('csat_der_temp', temp_key or 'MENSUAL')
-        der_temp_tuple = temp_map.get(csat_der_temp, TEMPORALIDAD_CHOICES[1])
-        der_temp_days = der_temp_tuple[2]
-        der_temp_label = der_temp_tuple[1]
+            val_mes_actual = qs_val_mes_actual.count()
+            val_mes_anterior = qs_val_mes_anterior.count()
+            var_valoraciones_diff = val_mes_actual - val_mes_anterior
+            var_valoraciones_pct = round(100.0 * var_valoraciones_diff / val_mes_anterior, 1) if val_mes_anterior > 0 else (100.0 if val_mes_actual > 0 else 0.0)
 
-        qs_izq = RespuestaEncuesta.objects.filter(
-            local__negocio=negocio,
-            fecha_respuesta__gte=ahora - timezone.timedelta(days=izq_temp_days),
-        )
-        if csat_izq_local:
-            qs_izq = _filter_by_local_uuid_or_id(qs_izq, csat_izq_local, 'local_id')
+            stats_nps_mes_act = _calcular_stats_nps_csat(qs_val_mes_actual)
+            stats_nps_mes_ant = _calcular_stats_nps_csat(qs_val_mes_anterior)
+            nps_mes_actual = stats_nps_mes_act['nps_score']
+            nps_mes_anterior = stats_nps_mes_ant['nps_score']
+            var_nps_diff = nps_mes_actual - nps_mes_anterior
+            var_nps_pct = round(100.0 * var_nps_diff / abs(nps_mes_anterior), 1) if nps_mes_anterior != 0 else (float(var_nps_diff) if var_nps_diff != 0 else 0.0)
 
-        qs_der = RespuestaEncuesta.objects.filter(
-            local__negocio=negocio,
-            fecha_respuesta__gte=ahora - timezone.timedelta(days=der_temp_days),
-        )
-        if csat_der_local:
-            qs_der = _filter_by_local_uuid_or_id(qs_der, csat_der_local, 'local_id')
+            ctx.update({
+                'val_mes_actual': val_mes_actual,
+                'val_mes_anterior': val_mes_anterior,
+                'var_valoraciones_diff': var_valoraciones_diff,
+                'var_valoraciones_pct': var_valoraciones_pct,
+                'nps_mes_actual': nps_mes_actual,
+                'nps_mes_anterior': nps_mes_anterior,
+                'var_nps_diff': var_nps_diff,
+                'var_nps_pct': var_nps_pct,
+                'kpi_respuestas_30d': val_mes_actual,
+            })
 
-        ctx['csat_izq_local'] = str(csat_izq_local or '')
-        ctx['csat_izq_temp'] = csat_izq_temp
-        ctx['csat_izq_temp_label'] = izq_temp_label
-        ctx['csat_nps_izq'] = _calcular_stats_nps_csat(qs_izq)
+        # ==========================================================
+        # 3. PESTAÑA ENCUESTAS (MI QR)
+        # ==========================================================
+        if tab_actual == 'encuestas':
+            locales_primer_local = negocio.locales.order_by('fecha_creacion').first()
+            if locales_primer_local:
+                ctx['qr_primer_local'] = locales_primer_local
+                ctx['qr_url'] = request.build_absolute_uri('/e/' + locales_primer_local.qr_token + '/')
 
-        ctx['csat_der_local'] = str(csat_der_local or '')
-        ctx['csat_der_temp'] = csat_der_temp
-        ctx['csat_der_temp_label'] = der_temp_label
-        ctx['csat_nps_der'] = _analizar_areas_csat_encuestas(qs_der)
+            locales_qr_data = []
+            for loc in negocio.locales.all().order_by('fecha_creacion'):
+                locales_qr_data.append({
+                    'id': str(loc.id),
+                    'nombre': loc.nombre,
+                    'direccion': loc.direccion or '',
+                    'estado': loc.estado,
+                    'qr_token': loc.qr_token,
+                    'qr_url': request.build_absolute_uri(f'/e/{loc.qr_token}/'),
+                    'qr_logo_url': loc.qr_logo.url if getattr(loc, 'qr_logo', None) else '',
+                })
+            ctx['locales_qr_data'] = locales_qr_data
+
+            ultimas_respuestas = list(locales_rango.order_by('-fecha_respuesta')[:30])
+            for r in ultimas_respuestas:
+                meta = r.metadata if isinstance(r.metadata, dict) else {}
+                cliente_nombre = meta.get('nombre') or meta.get('autor') or meta.get('cliente')
+                if not cliente_nombre and r.email_opcional:
+                    cliente_nombre = r.email_opcional.split('@')[0]
+                if not cliente_nombre or r.es_anonima:
+                    r.nombre_cliente = 'Anónimo'
+                    r.es_cliente_anonimo = True
+                else:
+                    r.nombre_cliente = cliente_nombre
+                    r.es_cliente_anonimo = False
+            ctx['ultimas_respuestas'] = ultimas_respuestas
+
+            motivos_counts = {
+                'SERVICIO_CLIENTE': 0,
+                'CALIDAD_PRODUCTOS': 0,
+                'CALIDAD_PRECIO': 0,
+                'AMBIENTE': 0,
+            }
+            for m in locales_rango.values_list('motivo_evaluacion', flat=True):
+                if m in motivos_counts:
+                    motivos_counts[m] += 1
+            total_motivos = sum(motivos_counts.values()) or 1
+            ctx['metricas_motivos'] = [
+                {'key': 'SERVICIO_CLIENTE', 'label': 'Servicio al cliente', 'count': motivos_counts['SERVICIO_CLIENTE'], 'pct': round(100.0 * motivos_counts['SERVICIO_CLIENTE'] / total_motivos, 1), 'icon': 'fa-user-tie', 'color': 'blue'},
+                {'key': 'CALIDAD_PRODUCTOS', 'label': 'Calidad de productos', 'count': motivos_counts['CALIDAD_PRODUCTOS'], 'pct': round(100.0 * motivos_counts['CALIDAD_PRODUCTOS'] / total_motivos, 1), 'icon': 'fa-gem', 'color': 'purple'},
+                {'key': 'CALIDAD_PRECIO', 'label': 'Relación calidad-precio', 'count': motivos_counts['CALIDAD_PRECIO'], 'pct': round(100.0 * motivos_counts['CALIDAD_PRECIO'] / total_motivos, 1), 'icon': 'fa-scale-balanced', 'color': 'emerald'},
+                {'key': 'AMBIENTE', 'label': 'Ambiente', 'count': motivos_counts['AMBIENTE'], 'pct': round(100.0 * motivos_counts['AMBIENTE'] / total_motivos, 1), 'icon': 'fa-couch', 'color': 'amber'},
+            ]
+
+        # ==========================================================
+        # 4. PESTAÑA CSAT Y NPS (Filtros separados Izquierda y Derecha)
+        # ==========================================================
+        if tab_actual == 'csat_nps':
+            csat_izq_local = request.GET.get('csat_izq_local', filtro_local_id or '')
+            csat_izq_temp = request.GET.get('csat_izq_temp', temp_key or 'MENSUAL')
+            izq_temp_tuple = temp_map.get(csat_izq_temp, TEMPORALIDAD_CHOICES[1])
+            izq_temp_days = izq_temp_tuple[2]
+            izq_temp_label = izq_temp_tuple[1]
+
+            csat_der_local = request.GET.get('csat_der_local', filtro_local_id or '')
+            csat_der_temp = request.GET.get('csat_der_temp', temp_key or 'MENSUAL')
+            der_temp_tuple = temp_map.get(csat_der_temp, TEMPORALIDAD_CHOICES[1])
+            der_temp_days = der_temp_tuple[2]
+            der_temp_label = der_temp_tuple[1]
+
+            qs_izq = RespuestaEncuesta.objects.filter(
+                local__negocio=negocio,
+                fecha_respuesta__gte=ahora - timezone.timedelta(days=izq_temp_days),
+            )
+            if csat_izq_local:
+                qs_izq = _filter_by_local_uuid_or_id(qs_izq, csat_izq_local, 'local_id')
+
+            qs_der = RespuestaEncuesta.objects.filter(
+                local__negocio=negocio,
+                fecha_respuesta__gte=ahora - timezone.timedelta(days=der_temp_days),
+            )
+            if csat_der_local:
+                qs_der = _filter_by_local_uuid_or_id(qs_der, csat_der_local, 'local_id')
+
+            ctx['csat_izq_local'] = str(csat_izq_local or '')
+            ctx['csat_izq_temp'] = csat_izq_temp
+            ctx['csat_izq_temp_label'] = izq_temp_label
+            ctx['csat_nps_izq'] = _calcular_stats_nps_csat(qs_izq)
+
+            ctx['csat_der_local'] = str(csat_der_local or '')
+            ctx['csat_der_temp'] = csat_der_temp
+            ctx['csat_der_temp_label'] = der_temp_label
+            ctx['csat_nps_der'] = _analizar_areas_csat_encuestas(qs_der)
 
         # ==========================================================
         #  ANÁLISIS LATENCIA + DISTRIBUCIÓN TEMPORAL + TEMÁTICA 4D
-        #  (Solo si tab es 'resumen' o 'analisis')
+        #  (Solo si tab es 'resumen' o exportación Excel)
         # ==========================================================
-        if tab_actual in ('resumen', 'analisis'):
+        if tab_actual == 'resumen' or es_export_excel:
             analisis_latencia = None
             if locales_negocio_total >= 2:
                 try:
@@ -873,9 +911,10 @@ def dashboard(request):
             tematicas_list.sort(key=lambda kv: kv[1]['menciones'], reverse=True)
             ctx['tematicas_ranking'] = tematicas_list
 
-            # ==========================================================
-            #  MÉTRICAS POR LOCALES INDIVIDUALES (PARA ANÁLISIS COMPARATIVO)
-            # ==========================================================
+        # ==========================================================
+        #  MÉTRICAS POR LOCALES INDIVIDUALES (SOLO PARA ANÁLISIS COMPARATIVO)
+        # ==========================================================
+        if tab_actual == 'analisis':
             from apps.reputation.models import ResenaGoogle
             locales_activos = list(negocio.locales.filter(estado='ACTIVO').order_by('fecha_creacion'))
             analisis_locales_data = []
@@ -1045,396 +1084,387 @@ def dashboard(request):
                     ctx['google_rating_dist'] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
             ctx['google_resenas'] = google_rango_list
 
-            rating_dist = ctx.get('google_rating_dist', {1: 0, 2: 0, 3: 0, 4: 0, 5: 0})
-            google_total_count = sum(rating_dist.values()) or 1
-            google_rating_rows = []
-            total_estrellas_entregadas = 0
-            for stars in (5, 4, 3, 2, 1):
-                c = rating_dist.get(stars, 0)
-                est_ent = c * stars
-                total_estrellas_entregadas += est_ent
-                google_rating_rows.append({
-                    'stars': stars,
-                    'estrellas': _estrellas_html(stars),
-                    'count': c,
-                    'estrellas_entregadas': est_ent,
-                    'pct': round(100 * c / google_total_count, 0) if google_total_count else 0,
-                })
-            ctx['google_rating_rows'] = google_rating_rows
-            ctx['google_total_estrellas_entregadas'] = total_estrellas_entregadas
-            ctx['google_total_max_estrellas'] = sum(rating_dist.values()) * 5
-            ctx['google_total_pct_estrellas'] = (
-                round(100.0 * total_estrellas_entregadas / (sum(rating_dist.values()) * 5), 1)
-                if sum(rating_dist.values()) > 0 else 0.0
-            )
-
-            # ==========================================================
-            #  INDICADOR DE ESTRELLAS SEGÚN LAS ÚLTIMAS 20 VALORACIONES TOTALES DE GOOGLE
-            # ==========================================================
-            ultimas_20_google = list(google_qs[:20])
-            u20_dist = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
-            if ultimas_20_google:
-                for rg20 in ultimas_20_google:
-                    st20 = max(1, min(5, int(rg20.calificacion or 5)))
-                    u20_dist[st20] += 1
-                u20_count = len(ultimas_20_google)
-            else:
-                ultimas_20_fb = list(locales_negocio_qs.order_by('-fecha_respuesta')[:20])
-                for r20 in ultimas_20_fb:
-                    nps20 = r20.nps_puntaje if r20.nps_puntaje is not None else 8
-                    st20 = max(1, min(5, round(nps20 / 2.0))) if nps20 > 0 else 1
-                    u20_dist[st20] += 1
-                u20_count = len(ultimas_20_fb)
-
-            u20_suma_estrellas = sum(stars * cnt for stars, cnt in u20_dist.items())
-            u20_max_estrellas = (u20_count * 5) if u20_count > 0 else 100
-            u20_promedio = round(u20_suma_estrellas / u20_count, 1) if u20_count > 0 else 0.0
-            u20_pct_estrellas = round(100.0 * u20_suma_estrellas / u20_max_estrellas, 1) if u20_count > 0 else 0.0
-            u20_rows = []
-            for stars in (5, 4, 3, 2, 1):
-                c = u20_dist[stars]
-                u20_rows.append({
-                    'stars': stars,
-                    'estrellas': _estrellas_html(stars),
-                    'count': c,
-                    'estrellas_entregadas': c * stars,
-                    'pct': round(100.0 * c / u20_count, 0) if u20_count > 0 else 0,
-                })
-            ctx.update({
-                'google_u20_count': u20_count,
-                'google_u20_promedio': u20_promedio,
-                'google_u20_estrellas': _estrellas_html(round(u20_promedio)),
-                'google_u20_suma_estrellas': u20_suma_estrellas,
-                'google_u20_max_estrellas': u20_max_estrellas,
-                'google_u20_pct_estrellas': u20_pct_estrellas,
-                'google_u20_rows': u20_rows,
-            })
-
-            # ==========================================================
-            #  ÚLTIMAS 2 RESEÑAS QUE SE ACTUALIZAN (CON NPS X/10, ORIGEN, LOCAL, FECHA Y COMENTARIO)
-            # ==========================================================
-            candidatas_2 = []
-            for rg_item in google_rango[:2]:
-                cal_val = int(rg_item.calificacion or 5)
-                nps_eq = max(1, min(10, cal_val * 2))
-                cat_eq = 'Promotor' if nps_eq >= 9 else ('Pasivo' if nps_eq >= 7 else 'Detractor')
-                candidatas_2.append({
-                    'nps_puntaje': nps_eq,
-                    'nps_label': f'{nps_eq}/10',
-                    'nps_categoria': cat_eq,
-                    'calificacion': cal_val,
-                    'estrellas': _estrellas_html(cal_val),
-                    'origen': 'Google Maps',
-                    'origen_icono': 'fa-brands fa-google',
-                    'origen_badge_cls': 'bg-amber-100 text-amber-800 border-amber-200',
-                    'local_nombre': rg_item.local.nombre if rg_item.local else negocio.nombre,
-                    'autor': rg_item.autor_nombre or 'Usuario Google',
-                    'fecha': rg_item.fecha_google,
-                    'comentario': rg_item.comentario or '',
-                })
-            if len(candidatas_2) < 2:
-                faltan = 2 - len(candidatas_2)
-                for r_item in locales_rango.order_by('-fecha_respuesta')[:faltan]:
-                    nps_v = r_item.nps_puntaje if r_item.nps_puntaje is not None else 8
-                    cal_v = max(1, min(5, round(nps_v / 2.0))) if nps_v > 0 else 1
-                    cat_v = 'Promotor' if nps_v >= 9 else ('Pasivo' if nps_v >= 7 else 'Detractor')
-                    candidatas_2.append({
-                        'nps_puntaje': nps_v,
-                        'nps_label': f'{nps_v}/10',
-                        'nps_categoria': cat_v,
-                        'calificacion': cal_v,
-                        'estrellas': _estrellas_html(cal_v),
-                        'origen': 'Encuesta QR ClientBeat',
-                        'origen_icono': 'fa-solid fa-qrcode',
-                        'origen_badge_cls': 'bg-cbblue-50 text-cbblue-700 border-cbblue-200',
-                        'local_nombre': r_item.local.nombre if r_item.local else negocio.nombre,
-                        'autor': 'Cliente Verificado QR',
-                        'fecha': r_item.fecha_respuesta,
-                        'comentario': r_item.comentario or '',
+            # Cálculos profundos de distribución, sentiment y tópicos (solo para pestaña Google, Análisis o Excel)
+            if tab_actual in ('google', 'analisis') or es_export_excel:
+                rating_dist = ctx.get('google_rating_dist', {1: 0, 2: 0, 3: 0, 4: 0, 5: 0})
+                google_total_count = sum(rating_dist.values()) or 1
+                google_rating_rows = []
+                total_estrellas_entregadas = 0
+                for stars in (5, 4, 3, 2, 1):
+                    c = rating_dist.get(stars, 0)
+                    est_ent = c * stars
+                    total_estrellas_entregadas += est_ent
+                    google_rating_rows.append({
+                        'stars': stars,
+                        'estrellas': _estrellas_html(stars),
+                        'count': c,
+                        'estrellas_entregadas': est_ent,
+                        'pct': round(100 * c / google_total_count, 0) if google_total_count else 0,
                     })
-            ctx['google_ultimas_2_resenas'] = candidatas_2[:2]
+                ctx['google_rating_rows'] = google_rating_rows
+                ctx['google_total_estrellas_entregadas'] = total_estrellas_entregadas
+                ctx['google_total_max_estrellas'] = sum(rating_dist.values()) * 5
+                ctx['google_total_pct_estrellas'] = (
+                    round(100.0 * total_estrellas_entregadas / (sum(rating_dist.values()) * 5), 1)
+                    if sum(rating_dist.values()) > 0 else 0.0
+                )
 
-            # ==========================================================
-            #  ANÁLISIS DE INDICADORES, DISTRIBUCIÓN 24H, SEMANAL Y TEMÁTICA SEGÚN RUBRO
-            # ==========================================================
-            google_fechas = list(google_rango.order_by('fecha_google').values_list('fecha_google', flat=True))
-            encuestas_fechas = list(locales_rango.order_by('fecha_respuesta').values_list('fecha_respuesta', flat=True))
-            fechas_combinadas = sorted([dt for dt in (google_fechas + encuestas_fechas) if dt is not None])
+                # ==========================================================
+                #  INDICADOR DE ESTRELLAS SEGÚN LAS ÚLTIMAS 20 VALORACIONES TOTALES DE GOOGLE
+                # ==========================================================
+                ultimas_20_google = list(google_qs[:20])
+                u20_dist = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
+                if ultimas_20_google:
+                    for rg20 in ultimas_20_google:
+                        st20 = max(1, min(5, int(rg20.calificacion or 5)))
+                        u20_dist[st20] += 1
+                    u20_count = len(ultimas_20_google)
+                else:
+                    ultimas_20_fb = list(locales_negocio_qs.order_by('-fecha_respuesta')[:20])
+                    for r20 in ultimas_20_fb:
+                        nps20 = r20.nps_puntaje if r20.nps_puntaje is not None else 8
+                        st20 = max(1, min(5, round(nps20 / 2.0))) if nps20 > 0 else 1
+                        u20_dist[st20] += 1
+                    u20_count = len(ultimas_20_fb)
 
-            g_prom_horas = 0.0
-            n_intervalos_medidos = 0
-            if len(fechas_combinadas) >= 2:
-                g_deltas = [
-                    (fechas_combinadas[i] - fechas_combinadas[i-1]).total_seconds() / 3600.0
-                    for i in range(1, len(fechas_combinadas))
-                    if (fechas_combinadas[i] - fechas_combinadas[i-1]).total_seconds() >= 0
-                ]
-                n_intervalos_medidos = len(g_deltas)
-                if g_deltas:
-                    g_prom_horas = sum(g_deltas) / len(g_deltas)
-
-            # Respuestas y día promedio basándose en 30 días
-            respuestas_30d_total = res_mes_actual + val_mes_actual
-            respuestas_dia_30d = round(respuestas_30d_total / 30.0, 2)
-
-            g_horas_count = [0] * 24
-            g_dias_count = [0] * 7
-            dias_labels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
-            dias_labels_largos = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
-            for dt in fechas_combinadas:
-                if dt:
-                    g_horas_count[timezone.localtime(dt).hour] += 1
-                    g_dias_count[timezone.localtime(dt).weekday()] += 1
-
-            pico_h_idx = max(range(24), key=lambda i: g_horas_count[i]) if any(g_horas_count) else 12
-            pico_d_idx = max(range(7), key=lambda i: g_dias_count[i]) if any(g_dias_count) else 0
-
-            ctx['google_analisis_latencia'] = {
-                'promedio_horas': round(g_prom_horas, 1),
-                'promedio_minutos': round(g_prom_horas * 60, 0),
-                'n_intervalos': n_intervalos_medidos,
-                'respuestas_30d': respuestas_30d_total,
-                'respuestas_dia_30d': respuestas_dia_30d,
-                'respuestas_por_dia_prom': respuestas_dia_30d,
-                'pico_hora': pico_h_idx,
-                'pico_hora_label': f'{pico_h_idx:02d}:00 hrs',
-                'pico_hora_count': g_horas_count[pico_h_idx],
-                'pico_dia': dias_labels[pico_d_idx],
-                'pico_dia_largo': dias_labels_largos[pico_d_idx],
-                'pico_dia_count': g_dias_count[pico_d_idx],
-            }
-            g_max_h = max(g_horas_count) if any(g_horas_count) else 1
-            ctx['google_dist_horas'] = {
-                'labels': list(range(24)),
-                'data': g_horas_count,
-                'pico_hora': pico_h_idx,
-                'max_val': g_max_h,
-                'rows': [
-                    {
-                        'hora': h,
-                        'label': f'{h:02d}:00',
-                        'count': g_horas_count[h],
-                        'pct': round(100 * g_horas_count[h] / g_max_h, 0),
-                    }
-                    for h in range(24)
-                ],
-            }
-            g_max_d = max(g_dias_count) if any(g_dias_count) else 1
-            ctx['google_dist_dias'] = {
-                'labels': dias_labels,
-                'data': g_dias_count,
-                'pico_dia': dias_labels[pico_d_idx],
-                'pico_dia_largo': dias_labels_largos[pico_d_idx],
-                'max_val': g_max_d,
-                'rows': [
-                    {
-                        'label': dias_labels[i],
-                        'label_largo': dias_labels_largos[i],
-                        'count': g_dias_count[i],
-                        'pct': round(100 * g_dias_count[i] / g_max_d, 0),
-                    }
-                    for i in range(7)
-                ],
-            }
-
-            # ==========================================================
-            #  VALORACIONES POSITIVAS Y NEGATIVAS + DISTRIBUCIÓN POR TEMA Y RUBRO
-            # ==========================================================
-            rubro_obj = getattr(negocio, 'rubro', None)
-            rubro_nombre_actual = rubro_obj.nombre if rubro_obj else 'General'
-            rubro_dims_db = {}
-            if rubro_obj:
-                for rd in rubro_obj.dimensiones.prefetch_related('atributos').all():
-                    kws_extra = []
-                    attrs_nombres = []
-                    for attr in rd.atributos.all():
-                        attrs_nombres.append(attr.nombre)
-                        kws_extra.append(attr.nombre.lower())
-                        if isinstance(attr.sinonimos, list):
-                            kws_extra.extend([str(s).lower() for s in attr.sinonimos])
-                    rubro_dims_db[rd.tipo] = {
-                        'nombre_rubro': rd.nombre,
-                        'descripcion': rd.descripcion,
-                        'keywords': kws_extra,
-                        'atributos': attrs_nombres[:5],
-                    }
-
-            tematicas_sent = {
-                'PRODUCTO': {
-                    'key': 'PRODUCTO',
-                    'nombre': 'Calidad de Producto',
-                    'nombre_rubro': rubro_dims_db.get('PRODUCTO', {}).get('nombre_rubro', 'Calidad de Producto / Servicio'),
-                    'atributos_ejemplos': rubro_dims_db.get('PRODUCTO', {}).get('atributos', ['Sabor y frescura', 'Relación calidad-precio', 'Presentación']),
-                    'icono': 'fa-mug-hot',
-                    'color': 'amber',
-                    'pos': 0, 'neg': 0, 'neu': 0, 'total': 0,
-                },
-                'LIMPIEZA': {
-                    'key': 'LIMPIEZA',
-                    'nombre': 'Higiene y Limpieza',
-                    'nombre_rubro': rubro_dims_db.get('LIMPIEZA', {}).get('nombre_rubro', 'Limpieza e Higiene'),
-                    'atributos_ejemplos': rubro_dims_db.get('LIMPIEZA', {}).get('atributos', ['Limpieza de mesas y local', 'Higiene de baños', 'Orden general']),
-                    'icono': 'fa-soap',
-                    'color': 'emerald',
-                    'pos': 0, 'neg': 0, 'neu': 0, 'total': 0,
-                },
-                'ATENCION': {
-                    'key': 'ATENCION',
-                    'nombre': 'Atención al Cliente',
-                    'nombre_rubro': rubro_dims_db.get('ATENCION', {}).get('nombre_rubro', 'Atención al Cliente'),
-                    'atributos_ejemplos': rubro_dims_db.get('ATENCION', {}).get('atributos', ['Amabilidad del personal', 'Rapidez en atención', 'Resolución de dudas']),
-                    'icono': 'fa-user-tie',
-                    'color': 'cbblue',
-                    'pos': 0, 'neg': 0, 'neu': 0, 'total': 0,
-                },
-                'ESPACIO': {
-                    'key': 'ESPACIO',
-                    'nombre': 'Espacio / Ambiente',
-                    'nombre_rubro': rubro_dims_db.get('ESPACIO', {}).get('nombre_rubro', 'Espacio y Ambiente'),
-                    'atributos_ejemplos': rubro_dims_db.get('ESPACIO', {}).get('atributos', ['Comodidad y mobiliario', 'Música e iluminación', 'Climatización']),
-                    'icono': 'fa-couch',
-                    'color': 'purple',
-                    'pos': 0, 'neg': 0, 'neu': 0, 'total': 0,
-                },
-            }
-
-            g_pos_cnt = 0
-            g_neg_cnt = 0
-            g_neu_cnt = 0
-            textos_evaluados = []
-
-            if google_rango.exists():
-                for rg in google_rango:
-                    calif = rg.calificacion or 0
-                    sent = rg.sentimiento or ''
-                    is_p = (calif >= 4) or (sent == 'POSITIVO')
-                    is_n = (calif <= 2) or (sent == 'NEGATIVO')
-                    if is_p:
-                        g_pos_cnt += 1
-                    elif is_n:
-                        g_neg_cnt += 1
-                    else:
-                        g_neu_cnt += 1
-                    if rg.comentario:
-                        textos_evaluados.append((rg.comentario.lower(), is_p, is_n))
-            else:
-                for r_ev in locales_rango:
-                    nps_v = r_ev.nps_puntaje if r_ev.nps_puntaje is not None else 8
-                    is_p = (nps_v >= 9) or (r_ev.csat_emocion in ('MUY_FELIZ', 'FELIZ'))
-                    is_n = (nps_v <= 6) or (r_ev.csat_emocion in ('INSATISFECHO', 'MUY_INSATISFECHO'))
-                    if is_p:
-                        g_pos_cnt += 1
-                    elif is_n:
-                        g_neg_cnt += 1
-                    else:
-                        g_neu_cnt += 1
-                    if r_ev.comentario:
-                        textos_evaluados.append((r_ev.comentario.lower(), is_p, is_n))
-
-            g_total_val = g_pos_cnt + g_neg_cnt + g_neu_cnt or 1
-            ctx['google_positivas_count'] = g_pos_cnt
-            ctx['google_negativas_count'] = g_neg_cnt
-            ctx['google_neutrales_count'] = g_neu_cnt
-            ctx['google_positivas_pct'] = round(100 * g_pos_cnt / g_total_val)
-            ctx['google_negativas_pct'] = round(100 * g_neg_cnt / g_total_val)
-
-            for txt, is_p, is_n in textos_evaluados:
-                matched_dim = False
-                for k, dim_info in DIMENSIONES_TEMATICAS.items():
-                    kws = list(dim_info['keywords']) + rubro_dims_db.get(k, {}).get('keywords', [])
-                    if any(kw in txt for kw in kws):
-                        t_item = tematicas_sent[k]
-                        t_item['total'] += 1
-                        matched_dim = True
-                        if is_p:
-                            t_item['pos'] += 1
-                        elif is_n:
-                            t_item['neg'] += 1
-                        else:
-                            t_item['neu'] += 1
-                if not matched_dim:
-                    # Si el comentario es general (ej. "Excelente todo"), lo asociamos a Atención y Producto
-                    for k_def in ('PRODUCTO', 'ATENCION'):
-                        t_item = tematicas_sent[k_def]
-                        t_item['total'] += 1
-                        if is_p:
-                            t_item['pos'] += 1
-                        elif is_n:
-                            t_item['neg'] += 1
-                        else:
-                            t_item['neu'] += 1
-
-            total_menciones_temas = sum(item['total'] for item in tematicas_sent.values()) or 1
-            for k, item in tematicas_sent.items():
-                tot = item['total'] or 1
-                item['pct_pos'] = round(100 * item['pos'] / tot) if item['total'] > 0 else 0
-                item['pct_neg'] = round(100 * item['neg'] / tot) if item['total'] > 0 else 0
-                item['pct_neu'] = max(0, 100 - item['pct_pos'] - item['pct_neg']) if item['total'] > 0 else 0
-                item['pct_del_total'] = round(100 * item['total'] / total_menciones_temas, 1) if item['total'] > 0 else 0
-
-            ctx['google_rubro_nombre'] = rubro_nombre_actual
-            ctx['google_tematicas_sentiment'] = tematicas_sent
-            # Orden prioritario solicitado por el usuario para el análisis inferior: Calidad de Producto, Higiene, Atención (+ Espacio)
-            ctx['google_rubro_dimensiones'] = [
-                tematicas_sent['PRODUCTO'],
-                tematicas_sent['LIMPIEZA'],
-                tematicas_sent['ATENCION'],
-                tematicas_sent['ESPACIO'],
-            ]
-            tem_ranking = list(tematicas_sent.items())
-            tem_ranking.sort(key=lambda kv: kv[1]['total'], reverse=True)
-            ctx['google_tematicas_ranking'] = tem_ranking
-
-            # -----------------------------------------------------------------
-            # DATASETS PARA EL MÓDULO INFERIOR DE ANÁLISIS COMPARATIVO
-            # 1. Reseñas positivas agrupadas según tópico potenciado (barras acostadas)
-            # 2. Reseñas negativas agrupadas según tópico (barras acostadas)
-            # 3. Ranking según área de valoraciones positivas (promedio)
-            # 4. Ranking según área de valoraciones negativas (promedio)
-            # -----------------------------------------------------------------
-            dims_for_charts = ctx.get('google_rubro_dimensiones', [])
-            if not dims_for_charts:
-                dims_for_charts = [
-                    {'nombre': 'Calidad de Producto', 'pos': 5, 'neg': 1, 'pct_pos': 83, 'pct_neg': 17},
-                    {'nombre': 'Atención al Cliente', 'pos': 4, 'neg': 2, 'pct_pos': 67, 'pct_neg': 33},
-                    {'nombre': 'Higiene y Limpieza', 'pos': 4, 'neg': 1, 'pct_pos': 80, 'pct_neg': 20},
-                    {'nombre': 'Espacio y Ambiente', 'pos': 3, 'neg': 1, 'pct_pos': 75, 'pct_neg': 25},
-                ]
-
-            ctx['chart_topicos_labels'] = [d['nombre'] for d in dims_for_charts]
-            ctx['chart_topicos_pos'] = [d.get('pos', 0) for d in dims_for_charts]
-            ctx['chart_topicos_neg'] = [d.get('neg', 0) for d in dims_for_charts]
-
-            # Ranking áreas positivas (ordenado por % positivo descendente)
-            ranking_pos_sorted = sorted(dims_for_charts, key=lambda x: x.get('pct_pos', 0), reverse=True)
-            ctx['chart_ranking_pos_labels'] = [d['nombre'] for d in ranking_pos_sorted]
-            ctx['chart_ranking_pos_data'] = [d.get('pct_pos', 0) for d in ranking_pos_sorted]
-
-            # Ranking áreas negativas (ordenado por % negativo descendente)
-            ranking_neg_sorted = sorted(dims_for_charts, key=lambda x: x.get('pct_neg', 0), reverse=True)
-            ctx['chart_ranking_neg_labels'] = [d['nombre'] for d in ranking_neg_sorted]
-            ctx['chart_ranking_neg_data'] = [d.get('pct_neg', 0) for d in ranking_neg_sorted]
-
-        if 'dist_horas' in ctx:
-            horas_data = ctx['dist_horas']['data']
-            ctx['dist_horas']['max_val'] = max(horas_data) if any(horas_data) else 1
-        if 'dist_dias' in ctx:
-            dias_max = max(ctx['dist_dias']['data']) if any(ctx['dist_dias']['data']) else 1
-            ctx['dist_dias']['max_val'] = dias_max
-            dias_list = []
-            for i, lbl in enumerate(ctx['dist_dias']['labels']):
-                val = ctx['dist_dias']['data'][i]
-                dias_list.append({
-                    'label': lbl,
-                    'count': val,
-                    'pct': round(100 * val / dias_max, 0) if dias_max else 0,
+                u20_suma_estrellas = sum(stars * cnt for stars, cnt in u20_dist.items())
+                u20_max_estrellas = (u20_count * 5) if u20_count > 0 else 100
+                u20_promedio = round(u20_suma_estrellas / u20_count, 1) if u20_count > 0 else 0.0
+                u20_pct_estrellas = round(100.0 * u20_suma_estrellas / u20_max_estrellas, 1) if u20_count > 0 else 0.0
+                u20_rows = []
+                for stars in (5, 4, 3, 2, 1):
+                    c = u20_dist[stars]
+                    u20_rows.append({
+                        'stars': stars,
+                        'estrellas': _estrellas_html(stars),
+                        'count': c,
+                        'estrellas_entregadas': c * stars,
+                        'pct': round(100.0 * c / u20_count, 0) if u20_count > 0 else 0,
+                    })
+                ctx.update({
+                    'google_u20_count': u20_count,
+                    'google_u20_promedio': u20_promedio,
+                    'google_u20_estrellas': _estrellas_html(round(u20_promedio)),
+                    'google_u20_suma_estrellas': u20_suma_estrellas,
+                    'google_u20_max_estrellas': u20_max_estrellas,
+                    'google_u20_pct_estrellas': u20_pct_estrellas,
+                    'google_u20_rows': u20_rows,
                 })
-            ctx['dist_dias']['rows'] = dias_list
+
+                # ==========================================================
+                #  ÚLTIMAS 2 RESEÑAS QUE SE ACTUALIZAN (CON NPS X/10, ORIGEN, LOCAL, FECHA Y COMENTARIO)
+                # ==========================================================
+                candidatas_2 = []
+                for rg_item in google_rango[:2]:
+                    cal_val = int(rg_item.calificacion or 5)
+                    nps_eq = max(1, min(10, cal_val * 2))
+                    cat_eq = 'Promotor' if nps_eq >= 9 else ('Pasivo' if nps_eq >= 7 else 'Detractor')
+                    candidatas_2.append({
+                        'nps_puntaje': nps_eq,
+                        'nps_label': f'{nps_eq}/10',
+                        'nps_categoria': cat_eq,
+                        'calificacion': cal_val,
+                        'estrellas': _estrellas_html(cal_val),
+                        'origen': 'Google Maps',
+                        'origen_icono': 'fa-brands fa-google',
+                        'origen_badge_cls': 'bg-amber-100 text-amber-800 border-amber-200',
+                        'local_nombre': rg_item.local.nombre if rg_item.local else negocio.nombre,
+                        'autor': rg_item.autor_nombre or 'Usuario Google',
+                        'fecha': rg_item.fecha_google,
+                        'comentario': rg_item.comentario or '',
+                    })
+                if len(candidatas_2) < 2:
+                    faltan = 2 - len(candidatas_2)
+                    for r_item in locales_rango.order_by('-fecha_respuesta')[:faltan]:
+                        nps_v = r_item.nps_puntaje if r_item.nps_puntaje is not None else 8
+                        cal_v = max(1, min(5, round(nps_v / 2.0))) if nps_v > 0 else 1
+                        cat_v = 'Promotor' if nps_v >= 9 else ('Pasivo' if nps_v >= 7 else 'Detractor')
+                        candidatas_2.append({
+                            'nps_puntaje': nps_v,
+                            'nps_label': f'{nps_v}/10',
+                            'nps_categoria': cat_v,
+                            'calificacion': cal_v,
+                            'estrellas': _estrellas_html(cal_v),
+                            'origen': 'Encuesta QR ClientBeat',
+                            'origen_icono': 'fa-solid fa-qrcode',
+                            'origen_badge_cls': 'bg-cbblue-50 text-cbblue-700 border-cbblue-200',
+                            'local_nombre': r_item.local.nombre if r_item.local else negocio.nombre,
+                            'autor': 'Cliente Verificado QR',
+                            'fecha': r_item.fecha_respuesta,
+                            'comentario': r_item.comentario or '',
+                        })
+                ctx['google_ultimas_2_resenas'] = candidatas_2[:2]
+
+                # ==========================================================
+                #  ANÁLISIS DE INDICADORES, DISTRIBUCIÓN 24H, SEMANAL Y TEMÁTICA SEGÚN RUBRO
+                # ==========================================================
+                google_fechas = list(google_rango.order_by('fecha_google').values_list('fecha_google', flat=True))
+                encuestas_fechas = list(locales_rango.order_by('fecha_respuesta').values_list('fecha_respuesta', flat=True))
+                fechas_combinadas = sorted([dt for dt in (google_fechas + encuestas_fechas) if dt is not None])
+
+                g_prom_horas = 0.0
+                n_intervalos_medidos = 0
+                if len(fechas_combinadas) >= 2:
+                    g_deltas = [
+                        (fechas_combinadas[i] - fechas_combinadas[i-1]).total_seconds() / 3600.0
+                        for i in range(1, len(fechas_combinadas))
+                        if (fechas_combinadas[i] - fechas_combinadas[i-1]).total_seconds() >= 0
+                    ]
+                    n_intervalos_medidos = len(g_deltas)
+                    if g_deltas:
+                        g_prom_horas = sum(g_deltas) / len(g_deltas)
+
+                respuestas_30d_total = res_mes_actual + ctx.get('val_mes_actual', 0)
+                respuestas_dia_30d = round(respuestas_30d_total / 30.0, 2)
+
+                g_horas_count = [0] * 24
+                g_dias_count = [0] * 7
+                dias_labels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+                dias_labels_largos = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+                for dt in fechas_combinadas:
+                    if dt:
+                        g_horas_count[timezone.localtime(dt).hour] += 1
+                        g_dias_count[timezone.localtime(dt).weekday()] += 1
+
+                pico_h_idx = max(range(24), key=lambda i: g_horas_count[i]) if any(g_horas_count) else 12
+                pico_d_idx = max(range(7), key=lambda i: g_dias_count[i]) if any(g_dias_count) else 0
+
+                ctx['google_analisis_latencia'] = {
+                    'promedio_horas': round(g_prom_horas, 1),
+                    'promedio_minutos': round(g_prom_horas * 60, 0),
+                    'n_intervalos': n_intervalos_medidos,
+                    'respuestas_30d': respuestas_30d_total,
+                    'respuestas_dia_30d': respuestas_dia_30d,
+                    'respuestas_por_dia_prom': respuestas_dia_30d,
+                    'pico_hora': pico_h_idx,
+                    'pico_hora_label': f'{pico_h_idx:02d}:00 hrs',
+                    'pico_hora_count': g_horas_count[pico_h_idx],
+                    'pico_dia': dias_labels[pico_d_idx],
+                    'pico_dia_largo': dias_labels_largos[pico_d_idx],
+                    'pico_dia_count': g_dias_count[pico_d_idx],
+                }
+                g_max_h = max(g_horas_count) if any(g_horas_count) else 1
+                ctx['google_dist_horas'] = {
+                    'labels': list(range(24)),
+                    'data': g_horas_count,
+                    'pico_hora': pico_h_idx,
+                    'max_val': g_max_h,
+                    'rows': [
+                        {
+                            'hora': h,
+                            'label': f'{h:02d}:00',
+                            'count': g_horas_count[h],
+                            'pct': round(100 * g_horas_count[h] / g_max_h, 0),
+                        }
+                        for h in range(24)
+                    ],
+                }
+                g_max_d = max(g_dias_count) if any(g_dias_count) else 1
+                ctx['google_dist_dias'] = {
+                    'labels': dias_labels,
+                    'data': g_dias_count,
+                    'pico_dia': dias_labels[pico_d_idx],
+                    'pico_dia_largo': dias_labels_largos[pico_d_idx],
+                    'max_val': g_max_d,
+                    'rows': [
+                        {
+                            'label': dias_labels[i],
+                            'label_largo': dias_labels_largos[i],
+                            'count': g_dias_count[i],
+                            'pct': round(100 * g_dias_count[i] / g_max_d, 0),
+                        }
+                        for i in range(7)
+                    ],
+                }
+
+                # ==========================================================
+                #  VALORACIONES POSITIVAS Y NEGATIVAS + DISTRIBUCIÓN POR TEMA Y RUBRO
+                # ==========================================================
+                rubro_obj = getattr(negocio, 'rubro', None)
+                rubro_nombre_actual = rubro_obj.nombre if rubro_obj else 'General'
+                rubro_dims_db = {}
+                if rubro_obj:
+                    for rd in rubro_obj.dimensiones.prefetch_related('atributos').all():
+                        kws_extra = []
+                        attrs_nombres = []
+                        for attr in rd.atributos.all():
+                            attrs_nombres.append(attr.nombre)
+                            kws_extra.append(attr.nombre.lower())
+                            if isinstance(attr.sinonimos, list):
+                                kws_extra.extend([str(s).lower() for s in attr.sinonimos])
+                        rubro_dims_db[rd.tipo] = {
+                            'nombre_rubro': rd.nombre,
+                            'descripcion': rd.descripcion,
+                            'keywords': kws_extra,
+                            'atributos': attrs_nombres[:5],
+                        }
+
+                tematicas_sent = {
+                    'PRODUCTO': {
+                        'key': 'PRODUCTO',
+                        'nombre': 'Calidad de Producto',
+                        'nombre_rubro': rubro_dims_db.get('PRODUCTO', {}).get('nombre_rubro', 'Calidad de Producto / Servicio'),
+                        'atributos_ejemplos': rubro_dims_db.get('PRODUCTO', {}).get('atributos', ['Sabor y frescura', 'Relación calidad-precio', 'Presentación']),
+                        'icono': 'fa-mug-hot',
+                        'color': 'amber',
+                        'pos': 0, 'neg': 0, 'neu': 0, 'total': 0,
+                    },
+                    'LIMPIEZA': {
+                        'key': 'LIMPIEZA',
+                        'nombre': 'Higiene y Limpieza',
+                        'nombre_rubro': rubro_dims_db.get('LIMPIEZA', {}).get('nombre_rubro', 'Limpieza e Higiene'),
+                        'atributos_ejemplos': rubro_dims_db.get('LIMPIEZA', {}).get('atributos', ['Limpieza de mesas y local', 'Higiene de baños', 'Orden general']),
+                        'icono': 'fa-soap',
+                        'color': 'emerald',
+                        'pos': 0, 'neg': 0, 'neu': 0, 'total': 0,
+                    },
+                    'ATENCION': {
+                        'key': 'ATENCION',
+                        'nombre': 'Atención al Cliente',
+                        'nombre_rubro': rubro_dims_db.get('ATENCION', {}).get('nombre_rubro', 'Atención al Cliente'),
+                        'atributos_ejemplos': rubro_dims_db.get('ATENCION', {}).get('atributos', ['Amabilidad del personal', 'Rapidez en atención', 'Resolución de dudas']),
+                        'icono': 'fa-user-tie',
+                        'color': 'cbblue',
+                        'pos': 0, 'neg': 0, 'neu': 0, 'total': 0,
+                    },
+                    'ESPACIO': {
+                        'key': 'ESPACIO',
+                        'nombre': 'Espacio / Ambiente',
+                        'nombre_rubro': rubro_dims_db.get('ESPACIO', {}).get('nombre_rubro', 'Espacio y Ambiente'),
+                        'atributos_ejemplos': rubro_dims_db.get('ESPACIO', {}).get('atributos', ['Comodidad y mobiliario', 'Música e iluminación', 'Climatización']),
+                        'icono': 'fa-couch',
+                        'color': 'purple',
+                        'pos': 0, 'neg': 0, 'neu': 0, 'total': 0,
+                    },
+                }
+
+                g_pos_cnt = 0
+                g_neg_cnt = 0
+                g_neu_cnt = 0
+                textos_evaluados = []
+
+                if google_rango.exists():
+                    for rg in google_rango:
+                        calif = rg.calificacion or 0
+                        sent = rg.sentimiento or ''
+                        is_p = (calif >= 4) or (sent == 'POSITIVO')
+                        is_n = (calif <= 2) or (sent == 'NEGATIVO')
+                        if is_p:
+                            g_pos_cnt += 1
+                        elif is_n:
+                            g_neg_cnt += 1
+                        else:
+                            g_neu_cnt += 1
+                        if rg.comentario:
+                            textos_evaluados.append((rg.comentario.lower(), is_p, is_n))
+                else:
+                    for r_ev in locales_rango:
+                        nps_v = r_ev.nps_puntaje if r_ev.nps_puntaje is not None else 8
+                        is_p = (nps_v >= 9) or (r_ev.csat_emocion in ('MUY_FELIZ', 'FELIZ'))
+                        is_n = (nps_v <= 6) or (r_ev.csat_emocion in ('INSATISFECHO', 'MUY_INSATISFECHO'))
+                        if is_p:
+                            g_pos_cnt += 1
+                        elif is_n:
+                            g_neg_cnt += 1
+                        else:
+                            g_neu_cnt += 1
+                        if r_ev.comentario:
+                            textos_evaluados.append((r_ev.comentario.lower(), is_p, is_n))
+
+                g_total_val = g_pos_cnt + g_neg_cnt + g_neu_cnt or 1
+                ctx['google_positivas_count'] = g_pos_cnt
+                ctx['google_negativas_count'] = g_neg_cnt
+                ctx['google_neutrales_count'] = g_neu_cnt
+                ctx['google_positivas_pct'] = round(100 * g_pos_cnt / g_total_val)
+                ctx['google_negativas_pct'] = round(100 * g_neg_cnt / g_total_val)
+
+                for txt, is_p, is_n in textos_evaluados:
+                    matched_dim = False
+                    for k, dim_info in DIMENSIONES_TEMATICAS.items():
+                        kws = list(dim_info['keywords']) + rubro_dims_db.get(k, {}).get('keywords', [])
+                        if any(kw in txt for kw in kws):
+                            t_item = tematicas_sent[k]
+                            t_item['total'] += 1
+                            matched_dim = True
+                            if is_p:
+                                t_item['pos'] += 1
+                            elif is_n:
+                                t_item['neg'] += 1
+                            else:
+                                t_item['neu'] += 1
+                    if not matched_dim:
+                        for k_def in ('PRODUCTO', 'ATENCION'):
+                            t_item = tematicas_sent[k_def]
+                            t_item['total'] += 1
+                            if is_p:
+                                t_item['pos'] += 1
+                            elif is_n:
+                                t_item['neg'] += 1
+                            else:
+                                t_item['neu'] += 1
+
+                total_menciones_temas = sum(item['total'] for item in tematicas_sent.values()) or 1
+                for k, item in tematicas_sent.items():
+                    tot = item['total'] or 1
+                    item['pct_pos'] = round(100 * item['pos'] / tot) if item['total'] > 0 else 0
+                    item['pct_neg'] = round(100 * item['neg'] / tot) if item['total'] > 0 else 0
+                    item['pct_neu'] = max(0, 100 - item['pct_pos'] - item['pct_neg']) if item['total'] > 0 else 0
+                    item['pct_del_total'] = round(100 * item['total'] / total_menciones_temas, 1) if item['total'] > 0 else 0
+
+                ctx['google_rubro_nombre'] = rubro_nombre_actual
+                ctx['google_tematicas_sentiment'] = tematicas_sent
+                ctx['google_rubro_dimensiones'] = [
+                    tematicas_sent['PRODUCTO'],
+                    tematicas_sent['LIMPIEZA'],
+                    tematicas_sent['ATENCION'],
+                    tematicas_sent['ESPACIO'],
+                ]
+                tem_ranking = list(tematicas_sent.items())
+                tem_ranking.sort(key=lambda kv: kv[1]['total'], reverse=True)
+                ctx['google_tematicas_ranking'] = tem_ranking
+
+                # Datasets para módulo inferior de análisis comparativo
+                dims_for_charts = ctx.get('google_rubro_dimensiones', [])
+                if not dims_for_charts:
+                    dims_for_charts = [
+                        {'nombre': 'Calidad de Producto', 'pos': 5, 'neg': 1, 'pct_pos': 83, 'pct_neg': 17},
+                        {'nombre': 'Atención al Cliente', 'pos': 4, 'neg': 2, 'pct_pos': 67, 'pct_neg': 33},
+                        {'nombre': 'Higiene y Limpieza', 'pos': 4, 'neg': 1, 'pct_pos': 80, 'pct_neg': 20},
+                        {'nombre': 'Espacio y Ambiente', 'pos': 3, 'neg': 1, 'pct_pos': 75, 'pct_neg': 25},
+                    ]
+
+                ctx['chart_topicos_labels'] = [d['nombre'] for d in dims_for_charts]
+                ctx['chart_topicos_pos'] = [d.get('pos', 0) for d in dims_for_charts]
+                ctx['chart_topicos_neg'] = [d.get('neg', 0) for d in dims_for_charts]
+
+                ranking_pos_sorted = sorted(dims_for_charts, key=lambda x: x.get('pct_pos', 0), reverse=True)
+                ctx['chart_ranking_pos_labels'] = [d['nombre'] for d in ranking_pos_sorted]
+                ctx['chart_ranking_pos_data'] = [d.get('pct_pos', 0) for d in ranking_pos_sorted]
+
+                ranking_neg_sorted = sorted(dims_for_charts, key=lambda x: x.get('pct_neg', 0), reverse=True)
+                ctx['chart_ranking_neg_labels'] = [d['nombre'] for d in ranking_neg_sorted]
+                ctx['chart_ranking_neg_data'] = [d.get('pct_neg', 0) for d in ranking_neg_sorted]
+
+                if 'dist_horas' in ctx:
+                    horas_data = ctx['dist_horas']['data']
+                    ctx['dist_horas']['max_val'] = max(horas_data) if any(horas_data) else 1
+                if 'dist_dias' in ctx:
+                    dias_max = max(ctx['dist_dias']['data']) if any(ctx['dist_dias']['data']) else 1
+                    ctx['dist_dias']['max_val'] = dias_max
+                    dias_list = []
+                    for i, lbl in enumerate(ctx['dist_dias']['labels']):
+                        val = ctx['dist_dias']['data'][i]
+                        dias_list.append({
+                            'label': lbl,
+                            'count': val,
+                            'pct': round(100 * val / dias_max, 0) if dias_max else 0,
+                        })
+                    ctx['dist_dias']['rows'] = dias_list
 
         # ==========================================================
         #  BENCHMARK CLIENTBEAT (Indicadores CSAT Encuestas Nativas + Top 10 Competidores)
         # ==========================================================
-        if tab_actual in ('resumen', 'benchmark', 'analisis'):
+        if tab_actual == 'benchmark' or es_export_excel:
             from apps.reputation.models import Benchmark
             from apps.businesses.models import Local as LocalModel, Competidor as CompetidorModel
 
@@ -1459,23 +1489,28 @@ def dashboard(request):
             ctx['benchmark_clientbeat_activo'] = benchmark_clientbeat_activo
             ctx['cant_locales_rubro'] = cant_locales_rubro
 
-
-            rubro_csat_map = {}
-            for loc_r in locales_rubro_qs:
-                r_qs = RespuestaEncuesta.objects.filter(local=loc_r)
-                if not (filtro_fecha_desde or filtro_fecha_hasta or filtro_fecha_exacta):
-                    r_qs_temp = r_qs.filter(fecha_respuesta__gte=desde_temp)
-                    if r_qs_temp.exists():
-                        r_qs = r_qs_temp
-                st_r = _calcular_stats_nps_csat(r_qs)
-                if st_r['csat_total'] > 0:
-                    rubro_csat_map[str(loc_r.id)] = {
-                        'local_id': str(loc_r.id),
-                        'csat_pct': st_r['csat_pct'],
-                        'csat_satisfechos': st_r['csat_satisfechos'],
-                        'csat_total': st_r['csat_total'],
-                        'nps_score': st_r['nps_score'],
-                    }
+            # Optimización de latencia: Cache en memoria de distribución CSAT de pares del rubro (60s)
+            rubro_id_tag = str(rubro_obj.id) if rubro_obj else 'general'
+            cache_key = f"cb_rubro_csat_map_{rubro_id_tag}_{temp_days}"
+            rubro_csat_map = cache.get(cache_key)
+            if rubro_csat_map is None:
+                rubro_csat_map = {}
+                for loc_r in locales_rubro_qs:
+                    r_qs = RespuestaEncuesta.objects.filter(local=loc_r)
+                    if not (filtro_fecha_desde or filtro_fecha_hasta or filtro_fecha_exacta):
+                        r_qs_temp = r_qs.filter(fecha_respuesta__gte=desde_temp)
+                        if r_qs_temp.exists():
+                            r_qs = r_qs_temp
+                    st_r = _calcular_stats_nps_csat(r_qs)
+                    if st_r['csat_total'] > 0:
+                        rubro_csat_map[str(loc_r.id)] = {
+                            'local_id': str(loc_r.id),
+                            'csat_pct': st_r['csat_pct'],
+                            'csat_satisfechos': st_r['csat_satisfechos'],
+                            'csat_total': st_r['csat_total'],
+                            'nps_score': st_r['nps_score'],
+                        }
+                cache.set(cache_key, rubro_csat_map, 60)
 
             # Base de referencia sectorial del rubro cuando hay pocos locales con encuestas en BD
             baseline_peers_csat = [58.0, 64.5, 71.0, 76.5, 81.0, 85.5, 89.0, 93.5]
