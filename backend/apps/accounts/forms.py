@@ -96,6 +96,13 @@ class RegistroUsuarioForm(forms.ModelForm):
             raise ValidationError(_('La contraseña debe tener al menos 8 caracteres.'), code='password_corta')
         return p2
 
+    def validate_unique(self):
+        # Si clean_email() ya validó que el usuario existe y su contraseña coincide
+        # para retomar el onboarding interrumpido, permitir continuar al paso 2 sin error de unicidad.
+        if getattr(self, 'user_existente', None) is not None:
+            return
+        super().validate_unique()
+
     def save(self, commit=True):
         user_existente = getattr(self, 'user_existente', None)
         if user_existente:

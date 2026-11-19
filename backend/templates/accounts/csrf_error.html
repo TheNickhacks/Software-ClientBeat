@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Sesión de seguridad expirada — ClientBeat{% endblock %}
+{% block content %}
+<section class="min-h-[75vh] flex items-center justify-center pt-28 pb-16 px-6 bg-slate-50">
+  <div class="max-w-md w-full bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
+    <div class="w-14 h-14 mx-auto mb-5 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl">
+      <i class="fa-solid fa-shield-halved"></i>
+    </div>
+    <h1 class="text-2xl font-bold text-slate-900 mb-3">Sesión de seguridad actualizada</h1>
+    <p class="text-sm text-slate-600 mb-6 leading-relaxed">
+      Tu token de seguridad expiró o se renovó al volver atrás o reiniciar el formulario. Recarga la página para continuar sin problemas.
+    </p>
+    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+      <a href="{{ request.get_full_path }}" class="btn-primary justify-center">
+        <i class="fa-solid fa-rotate-right"></i> Recargar y continuar
+      </a>
+      <a href="/" class="btn-secondary justify-center">
+        <i class="fa-solid fa-house"></i> Volver al inicio
+      </a>
+    </div>
+  </div>
+</section>
+{% endblock %}

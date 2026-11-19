@@ -1,12 +1,23 @@
+import logging
 from django.shortcuts import render, redirect
-from django.contrib.auth import views as auth_views, login as auth_login, update_session_auth_hash
+from django.http import JsonResponse
+from django.contrib.auth import (
+    views as auth_views,
+    login as auth_login,
+    logout as auth_logout,
+    update_session_auth_hash,
+)
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.views import View
 from django.utils.decorators import method_decorator
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.cache import never_cache
+from django.middleware.csrf import get_token
 from django.db import transaction, IntegrityError
+
+logger = logging.getLogger('clientbeat')
 
 from .forms import RegistroUsuarioForm
 from .onboarding_service import (
@@ -71,6 +82,55 @@ class LogoutView(auth_views.LogoutView):
     next_page = '/'
 
 
+def csrf_failure_view(request, reason=''):
+    """
+    Maneja fallos de verificación CSRF de forma segura y amigable:
+    - En flujos de registro/onboarding/login, si el token quedó desactualizado (ej: al cancelar,
+      cerrar sesión o usar el botón Atrás del navegador), renueva el token CSRF y redirige vía GET
+      al formulario con un aviso claro en lugar de bloquear al usuario en un error 403 sin salida.
+    - No ejecuta jamás la acción POST rechazada, manteniendo intacta la protección CSRF.
+    """
+    logger.warning('CSRF failure on %s: %s', request.path, reason)
+
+    is_api = (
+        request.path.startswith('/api/')
+        or 'application/json' in request.headers.get('Accept', '')
+        or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    )
+    if is_api:
+        return JsonResponse(
+            {'detail': 'La verificación de seguridad (CSRF) expiró. Recarga la página e intenta nuevamente.'},
+            status=403,
+        )
+
+    recoverable_prefixes = (
+        '/accounts/register/',
+        '/accounts/onboarding/',
+        '/accounts/login/',
+        '/accounts/password-reset/',
+    )
+    if any(request.path.startswith(p) for p in recoverable_prefixes):
+        # Emitir nuevo token CSRF en cookie para el próximo intento
+        get_token(request)
+        try:
+            messages.warning(
+                request,
+                'Tu sesión de seguridad se actualizó al reiniciar o volver atrás. Por favor, intenta continuar nuevamente.'
+            )
+        except Exception:
+            pass
+        # Preservar query string seguro (ej: ?paso=1 o ?plan_id=...)
+        qs = request.META.get('QUERY_STRING', '')
+        target = f'{request.path}?{qs}' if qs else request.path
+        response = redirect(target)
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        return response
+
+    get_token(request)
+    return render(request, 'accounts/csrf_error.html', {'reason': reason}, status=403)
+
+
+@method_decorator(never_cache, name='dispatch')
 @method_decorator(sensitive_post_parameters('password1', 'password2'), name='dispatch')
 @method_decorator(csrf_protect, name='dispatch')
 class OnboardingWizardView(View):
@@ -198,17 +258,29 @@ class OnboardingWizardView(View):
             return negocio.locales.order_by('-fecha_creacion').first()
         return None
 
+    def _reiniciar_wizard(self, request):
+        """Reinicia el wizard limpiando sesión, cerrando sesión actual de forma segura y renovando CSRF."""
+        for k in [
+            self.SESSION_KEY_USER,
+            self.SESSION_KEY_NEGOCIO,
+            self.SESSION_KEY_LOCAL,
+            self.SESSION_KEY_STEP,
+            'onboarding_plan_id',
+        ]:
+            request.session.pop(k, None)
+        if request.user.is_authenticated:
+            auth_logout(request)
+        get_token(request)
+        response = redirect('/accounts/register/?paso=1')
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        return response
+
     def get(self, request, *args, **kwargs):
         if request.GET.get('plan_id'):
             request.session['onboarding_plan_id'] = request.GET.get('plan_id')
 
         if request.GET.get('accion') == 'reiniciar':
-            for k in [self.SESSION_KEY_USER, self.SESSION_KEY_NEGOCIO,
-                      self.SESSION_KEY_LOCAL, self.SESSION_KEY_STEP, 'onboarding_plan_id']:
-                request.session.pop(k, None)
-            if not request.user.is_authenticated:
-                return self._redirect_paso(1)
-            return redirect('/accounts/logout/?next=/accounts/register/')
+            return self._reiniciar_wizard(request)
 
         user = self.get_saved_user(request)
         if user is not None and user.is_authenticated:
@@ -248,10 +320,7 @@ class OnboardingWizardView(View):
             return self._omitir_y_ir_dashboard(request, user=user)
 
         if accion == 'reiniciar':
-            for k in [self.SESSION_KEY_USER, self.SESSION_KEY_NEGOCIO,
-                      self.SESSION_KEY_LOCAL, self.SESSION_KEY_STEP]:
-                request.session.pop(k, None)
-            return self._redirect_paso(1)
+            return self._reiniciar_wizard(request)
 
         if paso == 1:
             return self._procesar_paso1(request)

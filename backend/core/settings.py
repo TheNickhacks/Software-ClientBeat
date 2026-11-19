@@ -242,8 +242,20 @@ CSRF_TRUSTED_ORIGINS = env.list(
         'https://sandbox.flow.cl',
     ]
 )
-if SITE_DOMAIN and SITE_DOMAIN not in CSRF_TRUSTED_ORIGINS:
+for _origin in [
+    'https://www.clientbeat.cl',
+    'https://clientbeat.cl',
+    'https://www.flow.cl',
+    'https://sandbox.flow.cl',
+]:
+    if _origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(_origin)
+if SITE_DOMAIN and SITE_DOMAIN.rstrip('/') not in CSRF_TRUSTED_ORIGINS:
     CSRF_TRUSTED_ORIGINS.append(SITE_DOMAIN.rstrip('/'))
+
+CSRF_FAILURE_VIEW = 'apps.accounts.views.csrf_failure_view'
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'Lax'
 
 GOOGLE_PLACES_API_KEY = env('GOOGLE_PLACES_API_KEY', default='')
 USE_MOCK_GOOGLE_PLACES = env.bool('USE_MOCK_GOOGLE_PLACES', default=not bool(GOOGLE_PLACES_API_KEY))

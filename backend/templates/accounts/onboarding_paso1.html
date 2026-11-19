@@ -31,6 +31,21 @@
 
       <div class="glass-effect rounded-2xl p-8 card-hover">
 
+        {% if messages %}
+          <div class="space-y-2 mb-6">
+            {% for msg in messages %}
+              <div class="p-4 rounded-xl text-sm font-medium border flex items-start gap-3
+                          {% if 'error' in msg.tags %}bg-red-50 border-red-200 text-red-800
+                          {% elif 'warning' in msg.tags %}bg-amber-50 border-amber-200 text-amber-800
+                          {% elif 'success' in msg.tags %}bg-emerald-50 border-emerald-200 text-emerald-800
+                          {% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+                <i class="fa fa-circle-info mt-0.5"></i>
+                <div>{{ msg }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
         <div class="bg-blue-50 border border-blue-100 text-blue-800 text-sm p-4 rounded-xl mb-6 flex items-start gap-3">
           <i class="fa fa-info-circle text-blue-600 mt-0.5 text-lg"></i>
           <div>
@@ -140,4 +155,12 @@
     </div>
   </div>
 </section>
+<script>
+  // Evitar tokens CSRF obsoletos si el navegador restaura el formulario desde bfcache (botón Atrás / cancelar)
+  window.addEventListener('pageshow', function(e) {
+    if (e.persisted) {
+      window.location.reload();
+    }
+  });
+</script>
 {% endblock %}
